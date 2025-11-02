@@ -24,14 +24,17 @@
 
 
 // Initializes spindle pins and hardware PWM, if enabled.
+// Инициализирует контакты шпинделя и аппаратную ШИМ, если она включена.
 void spindle_init();
 
 // Sets spindle direction and spindle rpm via PWM, if enabled.
+// Устанавливает направление вращения шпинделя и частоту вращения шпинделя с помощью ШИМ, если она включена.
 void spindle_run(uint8_t direction, float rpm);
 
 void spindle_set_state(uint8_t state, float rpm);
 
 // Kills spindle.
+// Убивает шпиндель.
 void spindle_stop();
 
 #endif

@@ -26,18 +26,20 @@ void spindle_init()
 {    
   // Configure variable spindle PWM and enable pin, if requried. On the Uno, PWM and enable are
   // combined unless configured otherwise.
+  // Настройте переменную PWM шпинделя и включите pin-код, если требуется. В Uno функции PWM и enable
+  // объединены, если не настроено иначе.
   #ifdef VARIABLE_SPINDLE
-    SPINDLE_PWM_DDR |= (1<<SPINDLE_PWM_BIT); // Configure as PWM output pin.
+    SPINDLE_PWM_DDR |= (1<<SPINDLE_PWM_BIT); // Configure as PWM output pin. // Сконфигурируйте как вывод ШИМ-сигнала.
     #if defined(CPU_MAP_ATMEGA2560) || defined(USE_SPINDLE_DIR_AS_ENABLE_PIN)
-      SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT); // Configure as output pin.
+      SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT); // Configure as output pin. // Сконфигурируйте как вывод ШИМ-сигнала.
     #endif     
   // Configure no variable spindle and only enable pin.
   #else  
-    SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT); // Configure as output pin.
+    SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT); // Configure as output pin. // Сконфигурируйте как вывод ШИМ-сигнала.
   #endif
   
   #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
-    SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT); // Configure as output pin.
+    SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT); // Configure as output pin. // Сконфигурируйте как вывод ШИМ-сигнала.
   #endif
   spindle_stop();
 }
@@ -45,9 +47,9 @@ void spindle_init()
 
 void spindle_stop()
 {
-  // On the Uno, spindle enable and PWM are shared. Other CPUs have seperate enable pin.
+  // On the Uno, spindle enable and PWM are shared. Other CPUs have seperate enable pin. // В Uno функции включения шпинделя и ШИМ являются общими. Другие процессоры имеют отдельный вывод для включения.
   #ifdef VARIABLE_SPINDLE
-    TCCRA_REGISTER &= ~(1<<COMB_BIT); // Disable PWM. Output voltage is zero.
+    TCCRA_REGISTER &= ~(1<<COMB_BIT); // Disable PWM. Output voltage is zero. // Отключите ШИМ. Выходное напряжение равно нулю.
     #if defined(CPU_MAP_ATMEGA2560) || defined(USE_SPINDLE_DIR_AS_ENABLE_PIN)
       #ifdef INVERT_SPINDLE_ENABLE_PIN
         SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);  // Set pin to high
@@ -67,7 +69,7 @@ void spindle_stop()
 
 void spindle_set_state(uint8_t state, float rpm)
 {
-  // Halt or set spindle direction and rpm. 
+  // Halt or set spindle direction and rpm.  // Остановите или задайте направление вращения шпинделя и обороты в минуту.
   if (state == SPINDLE_DISABLE) {
 
     spindle_stop();
@@ -83,7 +85,7 @@ void spindle_set_state(uint8_t state, float rpm)
     #endif
 
     #ifdef VARIABLE_SPINDLE
-      // TODO: Install the optional capability for frequency-based output for servos.
+      // TODO: Install the optional capability for frequency-based output for servos. // ЗАДАЧА: Установите дополнительную возможность частотного вывода для сервоприводов.
       #ifdef CPU_MAP_ATMEGA2560
       	TCCRA_REGISTER = (1<<COMB_BIT) | (1<<WAVE1_REGISTER) | (1<<WAVE0_REGISTER);
         TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02 | (1<<WAVE2_REGISTER) | (1<<WAVE3_REGISTER); // set to 1/8 Prescaler
@@ -91,25 +93,25 @@ void spindle_set_state(uint8_t state, float rpm)
         uint16_t current_pwm;
       #else
         TCCRA_REGISTER = (1<<COMB_BIT) | (1<<WAVE1_REGISTER) | (1<<WAVE0_REGISTER);
-        TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02; // set to 1/8 Prescaler
+        TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02; // set to 1/8 Prescaler // установлен предварительный калибратор на 1/8
         uint8_t current_pwm;
       #endif
 
-      if (rpm <= 0.0) { spindle_stop(); } // RPM should never be negative, but check anyway.
+      if (rpm <= 0.0) { spindle_stop(); } // RPM should never be negative, but check anyway. // RPM никогда не должно быть отрицательным, но все равно проверьте.
       else {
         #define SPINDLE_RPM_RANGE (SPINDLE_MAX_RPM-SPINDLE_MIN_RPM)
         if ( rpm < SPINDLE_MIN_RPM ) { rpm = 0; } 
         else { 
           rpm -= SPINDLE_MIN_RPM; 
-          if ( rpm > SPINDLE_RPM_RANGE ) { rpm = SPINDLE_RPM_RANGE; } // Prevent integer overflow
+          if ( rpm > SPINDLE_RPM_RANGE ) { rpm = SPINDLE_RPM_RANGE; } // Prevent integer overflow // Предотвращение переполнения целых чисел
         }
         current_pwm = floor( rpm*(PWM_MAX_VALUE/SPINDLE_RPM_RANGE) + 0.5);
         #ifdef MINIMUM_SPINDLE_PWM
           if (current_pwm < MINIMUM_SPINDLE_PWM) { current_pwm = MINIMUM_SPINDLE_PWM; }
         #endif
-        OCR_REGISTER = current_pwm; // Set PWM pin output
+        OCR_REGISTER = current_pwm; // Set PWM pin output // Установить вывод ШИМ-вывода
     
-        // On the Uno, spindle enable and PWM are shared, unless otherwise specified.
+        // On the Uno, spindle enable and PWM are shared, unless otherwise specified. // В Uno функции включения шпинделя и PWM являются общими, если не указано иное.
         #if defined(CPU_MAP_ATMEGA2560) || defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) 
           #ifdef INVERT_SPINDLE_ENABLE_PIN
             SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
@@ -122,6 +124,8 @@ void spindle_set_state(uint8_t state, float rpm)
     #else
       // NOTE: Without variable spindle, the enable bit should just turn on or off, regardless
       // if the spindle speed value is zero, as its ignored anyhow.      
+      // ПРИМЕЧАНИЕ: Без регулируемого шпинделя кнопка включения должна просто включаться или выключаться, независимо от того,
+      // если значение частоты вращения шпинделя равно нулю, поскольку оно все равно игнорируется.
       #ifdef INVERT_SPINDLE_ENABLE_PIN
         SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
       #else
@@ -136,6 +140,6 @@ void spindle_set_state(uint8_t state, float rpm)
 void spindle_run(uint8_t state, float rpm)
 {
   if (sys.state == STATE_CHECK_MODE) { return; }
-  protocol_buffer_synchronize(); // Empty planner buffer to ensure spindle is set when programmed.  
+  protocol_buffer_synchronize(); // Empty planner buffer to ensure spindle is set when programmed.   // Очистите буфер планировщика, чтобы убедиться, что шпиндель установлен в соответствии с программой.
   spindle_set_state(state, rpm);
 }

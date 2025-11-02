@@ -45,20 +45,23 @@
 
 void serial_init();
 
-// Writes one byte to the TX serial buffer. Called by main program.
+// Writes one byte to the TX serial buffer. Called by main program. // Записывает один байт в последовательный буфер TX. Вызывается основной программой.
 void serial_write(uint8_t data);
 
-// Fetches the first byte in the serial read buffer. Called by main program.
+// Fetches the first byte in the serial read buffer. Called by main program. // Извлекает первый байт из буфера последовательного чтения. Вызывается основной программой.
 uint8_t serial_read();
 
-// Reset and empty data in read buffer. Used by e-stop and reset.
+// Reset and empty data in read buffer. Used by e-stop and reset. // Сброс и очистка данных в буфере чтения. Используется e-stop и reset.
 void serial_reset_read_buffer();
 
-// Returns the number of bytes used in the RX serial buffer.
+// Returns the number of bytes used in the RX serial buffer. 
+// Возвращает количество байт, используемых в последовательном буфере RX.
 uint8_t serial_get_rx_buffer_count();
 
 // Returns the number of bytes used in the TX serial buffer.
 // NOTE: Not used except for debugging and ensuring no TX bottlenecks.
+// Возвращает количество байт, используемых в последовательном буфере TX.
+// ПРИМЕЧАНИЕ: Используется только для отладки и обеспечения отсутствия узких мест в TX.
 uint8_t serial_get_tx_buffer_count();
 
 #endif

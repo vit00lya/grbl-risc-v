@@ -25,6 +25,13 @@
 
 // NOTE: With new processors, only add the define name and filename to use.
 
+/* Файлы cpu_map.h служат в качестве центрального файла для выбора pin-кода для различных типов процессоров
+   , например, AVR 328p или AVR Mega 2560. У каждого процессора есть свой собственный файл для отображения pin-кода.
+   (например, cpu_map_atmega328p.h) Grbl официально поддерживает Arduino Uno, но
+другие прилагаемые схемы сопоставления выводов предоставляются пользователями, поэтому ваши результаты могут отличаться. */
+
+// ПРИМЕЧАНИЕ: При использовании новых процессоров добавляйте только имя define и имя файла для использования.
+
 #ifndef cpu_map_h
 #define cpu_map_h
 
@@ -39,6 +46,11 @@
 
 /* 
 #ifdef CPU_MAP_CUSTOM_PROC
+
+  // Для пользовательской пин-карты или другого процессора скопируйте и отредактируйте один из доступных процессоров
+  // файлы карты и измените их в соответствии с вашими потребностями. Убедитесь, что заданное имя также изменено в
+  // файле config.h.
+
   // For a custom pin map or different processor, copy and edit one of the available cpu
   // map files and modify it to your needs. Make sure the defined name is also changed in
   // the config.h file.

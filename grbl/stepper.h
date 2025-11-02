@@ -27,27 +27,35 @@
 #endif
 
 // Initialize and setup the stepper motor subsystem
+// Инициализация и настройка подсистемы шагового двигателя
 void stepper_init();
 
 // Enable steppers, but cycle does not start unless called by motion control or realtime command.
+// Включить степперы, но цикл не запускается, если он не вызван системой управления движением или командой реального времени.
 void st_wake_up();
 
 // Immediately disables steppers
+// Немедленно отключает степперы
 void st_go_idle();
 
 // Generate the step and direction port invert masks.
+// Сгенерируйте маски инвертирования шага и направления порта.
 void st_generate_step_dir_invert_masks();
 
-// Reset the stepper subsystem variables       
+// Reset the stepper subsystem variables 
+// Сброс переменных шаговой подсистемы      
 void st_reset();
              
 // Reloads step segment buffer. Called continuously by realtime execution system.
+// Перезагружает буфер сегмента шага. Непрерывно вызывается системой выполнения в реальном времени.
 void st_prep_buffer();
 
 // Called by planner_recalculate() when the executing block is updated by the new plan.
+// Вызывается функцией planner_recalculate(), когда исполняемый блок обновляется в соответствии с новым планом.
 void st_update_plan_block_parameters();
 
 // Called by realtime status reporting if realtime rate reporting is enabled in config.h.
+// Вызывается с помощью realtime status reporting, если в config.h включена функция realtime rate reporting.
 #ifdef REPORT_REALTIME_RATE
 float st_get_realtime_rate();
 #endif

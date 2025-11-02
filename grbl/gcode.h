@@ -22,6 +22,12 @@
 #ifndef gcode_h
 #define gcode_h
 
+// Определите внутренние номера модальных групп для проверки множественных нарушений команд и отслеживания
+//типа команды, которая вызывается в блоке. Модальная группа - это группа команд g-кода, которые являются
+// взаимоисключающие или не могут существовать в одной строке, поскольку каждый из них переключает состояние или выполняет
+// уникальное движение. Они определены в стандарте g-кода NIST RS274-NGC v3, доступном онлайн,
+//и аналогичны/идентичны другим интерпретаторам g-кода от производителей (Haas, Fanuc, Mazak и т.д.).
+// ПРИМЕЧАНИЕ: Значения, определяемые модальной группой, должны быть последовательными и начинаться с нуля.
 
 // Define modal group internal numbers for checking multiple command violations and tracking the 
 // type of command that is called in the block. A modal group is a group of g-code commands that are
@@ -29,21 +35,21 @@
 // a unique motion. These are defined in the NIST RS274-NGC v3 g-code standard, available online, 
 // and are similar/identical to other g-code interpreters by manufacturers (Haas,Fanuc,Mazak,etc).
 // NOTE: Modal group define values must be sequential and starting from zero.
-#define MODAL_GROUP_G0 0 // [G4,G10,G28,G28.1,G30,G30.1,G53,G92,G92.1] Non-modal
-#define MODAL_GROUP_G1 1 // [G0,G1,G2,G3,G38.2,G38.3,G38.4,G38.5,G80] Motion
-#define MODAL_GROUP_G2 2 // [G17,G18,G19] Plane selection
-#define MODAL_GROUP_G3 3 // [G90,G91] Distance mode
-#define MODAL_GROUP_G4 4 // [G91.1] Arc IJK distance mode
-#define MODAL_GROUP_G5 5 // [G93,G94] Feed rate mode
-#define MODAL_GROUP_G6 6 // [G20,G21] Units
-#define MODAL_GROUP_G7 7 // [G40] Cutter radius compensation mode. G41/42 NOT SUPPORTED.
-#define MODAL_GROUP_G8 8 // [G43.1,G49] Tool length offset
-#define MODAL_GROUP_G12 9 // [G54,G55,G56,G57,G58,G59] Coordinate system selection
-#define MODAL_GROUP_G13 10 // [G61] Control mode
+#define MODAL_GROUP_G0 0 // [G4,G10,G28,G28.1,G30,G30.1,G53,G92,G92.1] Non-modal Немодальный
+#define MODAL_GROUP_G1 1 // [G0,G1,G2,G3,G38.2,G38.3,G38.4,G38.5,G80] Motion Движение
+#define MODAL_GROUP_G2 2 // [G17,G18,G19] Plane selection Выбор плоскости
+#define MODAL_GROUP_G3 3 // [G90,G91] Distance mode Дистанционный режим
+#define MODAL_GROUP_G4 4 // [G91.1] Arc IJK distance mode Режим расстояния Arc IJK
+#define MODAL_GROUP_G5 5 // [G93,G94] Feed rate mode Режим скорости подачи
+#define MODAL_GROUP_G6 6 // [G20,G21] Units Единицы
+#define MODAL_GROUP_G7 7 // [G40] Cutter radius compensation mode. G41/42 NOT SUPPORTED. Режим компенсации радиуса резца. G41/42 НЕ ПОДДЕРЖИВАЕТСЯ.
+#define MODAL_GROUP_G8 8 // [G43.1,G49] Tool length offset Смещение длины инструмента
+#define MODAL_GROUP_G12 9 // [G54,G55,G56,G57,G58,G59] Coordinate system selection Выбор системы координат
+#define MODAL_GROUP_G13 10 // [G61] Control mode Режим управления
 
-#define MODAL_GROUP_M4 11  // [M0,M1,M2,M30] Stopping
-#define MODAL_GROUP_M7 12 // [M3,M4,M5] Spindle turning
-#define MODAL_GROUP_M8 13 // [M7,M8,M9] Coolant control
+#define MODAL_GROUP_M4 11  // [M0,M1,M2,M30] Stopping Остановка
+#define MODAL_GROUP_M7 12 // [M3,M4,M5] Spindle turning Вращение шпинделя
+#define MODAL_GROUP_M8 13 // [M7,M8,M9] Coolant control Управление охлаждающей жидкостью
 
 // #define OTHER_INPUT_F 14
 // #define OTHER_INPUT_S 15
@@ -51,6 +57,8 @@
 
 // Define command actions for within execution-type modal groups (motion, stopping, non-modal). Used
 // internally by the parser to know which command to execute.
+// Определите действия команд для модальных групп типа выполнения (движение, остановка, немодальные действия). Используемый
+// внутренне обрабатывается синтаксическим анализатором, чтобы знать, какую команду следует выполнить.
 
 // Modal Group G0: Non-modal actions
 #define NON_MODAL_NO_ACTION 0 // (Default: Must be zero)
@@ -141,6 +149,7 @@
 
 
 // NOTE: When this struct is zeroed, the above defines set the defaults for the system.
+// ПРИМЕЧАНИЕ: Когда эта структура обнулена, приведенные выше определения устанавливают значения по умолчанию для системы.
 typedef struct {
   uint8_t motion;          // {G0,G1,G2,G3,G38.2,G80}
   uint8_t feed_rate;       // {G93,G94}

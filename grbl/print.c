@@ -30,6 +30,7 @@ void printString(const char *s)
 
 
 // Print a string stored in PGM-memory
+// Вывести строку, сохраненную в PGM-памяти
 void printPgmString(const char *s)
 {
   char c;
@@ -61,6 +62,7 @@ void printPgmString(const char *s)
 
 
 // Prints an uint8 variable with base and number of desired digits.
+// Выводит переменную uint8 с основанием и количеством нужных цифр.
 void print_unsigned_int8(uint8_t n, uint8_t base, uint8_t digits)
 { 
   unsigned char buf[digits];
@@ -77,12 +79,14 @@ void print_unsigned_int8(uint8_t n, uint8_t base, uint8_t digits)
 
 
 // Prints an uint8 variable in base 2.
+// Выводит переменную uint8 в базе данных 2.
 void print_uint8_base2(uint8_t n) {
   print_unsigned_int8(n,2,8);
 }
 
 
 // Prints an uint8 variable in base 10.
+// Выводит переменную uint8 в базе данных 10.
 void print_uint8_base10(uint8_t n)
 {   
   uint8_t digits;
@@ -129,6 +133,11 @@ void printInteger(long n)
 // may be set by the user. The integer is then efficiently converted to a string.
 // NOTE: AVR '%' and '/' integer operations are very efficient. Bitshifting speed-up 
 // techniques are actually just slightly slower. Found this out the hard way.
+// Преобразовать значение с плавающей точкой в строку, немедленно преобразовав в длинное целое число, которое содержит
+// больше цифр, чем число с плавающей точкой. Количество знаков после запятой, которое отслеживается счетчиком,
+// может быть задано пользователем. Затем целое число эффективно преобразуется в строку.
+// ПРИМЕЧАНИЕ: Операции с целыми числами AVR '%' и '/' очень эффективны. Это ускоряет переключение битов 
+// на самом деле эти методы лишь немного медленнее. В этом я убедился на собственном горьком опыте.
 void printFloat(float n, uint8_t decimal_places)
 {
   if (n < 0) {
@@ -137,32 +146,32 @@ void printFloat(float n, uint8_t decimal_places)
   }
 
   uint8_t decimals = decimal_places;
-  while (decimals >= 2) { // Quickly convert values expected to be E0 to E-4.
+  while (decimals >= 2) { // Quickly convert values expected to be E0 to E-4. // Быстро преобразуйте ожидаемые значения E0 в E-4.
     n *= 100;
     decimals -= 2;
   }
   if (decimals) { n *= 10; }
-  n += 0.5; // Add rounding factor. Ensures carryover through entire value.
+  n += 0.5; // Add rounding factor. Ensures carryover through entire value. // Добавьте коэффициент округления. Обеспечивает перенос всего значения.
     
-  // Generate digits backwards and store in string.
+  // Generate digits backwards and store in string. // Генерировать цифры в обратном порядке и сохранять в виде строки.
   unsigned char buf[10]; 
   uint8_t i = 0;
   uint32_t a = (long)n;  
-  buf[decimal_places] = '.'; // Place decimal point, even if decimal places are zero.
+  buf[decimal_places] = '.'; // Place decimal point, even if decimal places are zero. // Поставьте десятичную точку, даже если десятичные разряды равны нулю.
   while(a > 0) {
-    if (i == decimal_places) { i++; } // Skip decimal point location
-    buf[i++] = (a % 10) + '0'; // Get digit
+    if (i == decimal_places) { i++; } // Skip decimal point location // Пропустить расположение десятичной точки
+    buf[i++] = (a % 10) + '0'; // Get digit // Получить цифру
     a /= 10;
   }
   while (i < decimal_places) { 
-     buf[i++] = '0'; // Fill in zeros to decimal point for (n < 1)
+     buf[i++] = '0'; // Fill in zeros to decimal point for (n < 1) // Введите нули с точностью до десятичной точки для (n < 1)
   }
-  if (i == decimal_places) { // Fill in leading zero, if needed.
+  if (i == decimal_places) { // Fill in leading zero, if needed. // При необходимости введите начальный ноль.
     i++;
     buf[i++] = '0'; 
   }   
   
-  // Print the generated string.
+  // Print the generated string. // Выведите сгенерированную строку.
   for (; i > 0; i--)
     serial_write(buf[i-1]);
 }
@@ -173,6 +182,11 @@ void printFloat(float n, uint8_t decimal_places)
 //  - CoordValue: Handles all position or coordinate values in inches or mm reporting.
 //  - RateValue: Handles feed rate and current velocity in inches or mm reporting.
 //  - SettingValue: Handles all floating point settings values (always in mm.)
+// Обработчики печати с плавающим значением для специальных типов переменных, используемых в Grbl и определенных
+// в файле config.h.
+// - CoordValue: Обрабатывает все значения положения или координат в дюймах или мм для создания отчетов.
+// - RateValue: Отображает скорость подачи и текущую скорость в дюймах или мм.
+// - SettingValue: Отображает все значения настроек с плавающей запятой (всегда в мм).
 void printFloat_CoordValue(float n) { 
   if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { 
     printFloat(n*INCH_PER_MM,N_DECIMAL_COORDVALUE_INCH);

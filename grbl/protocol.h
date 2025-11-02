@@ -28,29 +28,43 @@
 // characters. In future versions, this will be increased, when we know how much extra
 // memory space we can invest into here or we re-write the g-code parser not to have this 
 // buffer.
+// Размер буфера строк из потока последовательного ввода, который должен быть выполнен.
+// ПРИМЕЧАНИЕ: Это не проблема, за исключением крайних случаев, но размер буфера строк может быть слишком мал
+// и блоки g-кода могут быть обрезаны. Официально стандарты g-кода поддерживают до 256
+// символов. В будущих версиях это значение будет увеличено, когда мы узнаем, сколько дополнительного
+// пространства памяти мы можем здесь использовать, или мы перепишем синтаксический анализатор g-кода, чтобы в нем не было этого 
+// буфера.
 #ifndef LINE_BUFFER_SIZE
   #define LINE_BUFFER_SIZE 80
 #endif
 
 // Starts Grbl main loop. It handles all incoming characters from the serial port and executes
 // them as they complete. It is also responsible for finishing the initialization procedures.
+// Запускает основной цикл Grbl. Он обрабатывает все входящие символы из последовательного порта и выполняет
+// их по мере завершения. Он также отвечает за завершение процедур инициализации.
 void protocol_main_loop();
 
 // Checks and executes a realtime command at various stop points in main program
+// Проверяет и выполняет команду в реальном времени в различных точках остановки основной программы
 void protocol_execute_realtime();
 
+// Уведомить шаговую подсистему о начале выполнения программы g-code в буфере.
 // Notify the stepper subsystem to start executing the g-code program in buffer.
 // void protocol_cycle_start();
 
+// Повторно инициализирует буфер после задержки подачи для возобновления.
 // Reinitializes the buffer after a feed hold for a resume.
 // void protocol_cycle_reinitialize(); 
 
+// Инициирует удержание загрузки запущенной программы
 // Initiates a feed hold of the running program
 // void protocol_feed_hold();
 
+// Запускает функцию автоматического цикла, если она включена.
 // Executes the auto cycle feature, if enabled.
 void protocol_auto_cycle_start();
 
+// Блокировать до тех пор, пока не будут выполнены все буферизованные шаги
 // Block until all buffered steps are executed
 void protocol_buffer_synchronize();
 

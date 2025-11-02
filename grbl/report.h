@@ -20,7 +20,7 @@
 #ifndef report_h
 #define report_h
 
-// Define Grbl status codes.
+// Define Grbl status codes. // Определите коды состояния Grbl.
 #define STATUS_OK 0
 #define STATUS_EXPECTED_COMMAND_LETTER 1
 #define STATUS_BAD_NUMBER_FORMAT 2
@@ -54,14 +54,14 @@
 #define STATUS_GCODE_UNUSED_WORDS 36
 #define STATUS_GCODE_G43_DYNAMIC_AXIS_ERROR 37
 
-// Define Grbl alarm codes.
-#define ALARM_HARD_LIMIT_ERROR 1
+// Define Grbl alarm codes. // Определите коды аварийных сигналов Grbl.
+#define ALARM_HARD_LIMIT_ERROR 1 
 #define ALARM_SOFT_LIMIT_ERROR 2
 #define ALARM_ABORT_CYCLE 3
 #define ALARM_PROBE_FAIL 4
 #define ALARM_HOMING_FAIL 5
 
-// Define Grbl feedback message codes.
+// Define Grbl feedback message codes. // Определите коды сообщений обратной связи Grbl.
 #define MESSAGE_CRITICAL_EVENT 1
 #define MESSAGE_ALARM_LOCK 2
 #define MESSAGE_ALARM_UNLOCK 3
@@ -71,43 +71,43 @@
 #define MESSAGE_PROGRAM_END 7
 #define MESSAGE_RESTORE_DEFAULTS 8
 
-// Prints system status messages.
+// Prints system status messages. // Выводит сообщения о состоянии системы.
 void report_status_message(uint8_t status_code);
 
-// Prints system alarm messages.
+// Prints system alarm messages. // Выводит системные тревожные сообщения.
 void report_alarm_message(int8_t alarm_code);
 
-// Prints miscellaneous feedback messages.
+// Prints miscellaneous feedback messages. // Печатает различные сообщения обратной связи.
 void report_feedback_message(uint8_t message_code);
 
-// Prints welcome message
+// Prints welcome message // Выводит приветственное сообщение
 void report_init_message();
 
-// Prints Grbl help and current global settings
+// Prints Grbl help and current global settings // Выводит справку Grbl и текущие глобальные настройки
 void report_grbl_help();
 
-// Prints Grbl global settings
+// Prints Grbl global settings // Выводит глобальные настройки Grbl
 void report_grbl_settings();
 
-// Prints an echo of the pre-parsed line received right before execution.
+// Prints an echo of the pre-parsed line received right before execution. // Выводит эхо предварительно обработанной строки, полученной непосредственно перед выполнением.
 void report_echo_line_received(char *line);
 
-// Prints realtime status report
+// Prints realtime status report // Выводит отчет о состоянии в режиме реального времени
 void report_realtime_status();
 
-// Prints recorded probe position
+// Prints recorded probe position // Печатает записанное положение датчика
 void report_probe_parameters();
 
-// Prints Grbl NGC parameters (coordinate offsets, probe)
+// Prints Grbl NGC parameters (coordinate offsets, probe) // Выводит параметры Grbl NGC (смещения координат, зонд)
 void report_ngc_parameters();
 
-// Prints current g-code parser mode state
+// Prints current g-code parser mode state // Выводит текущее состояние режима анализатора g-кода
 void report_gcode_modes();
 
-// Prints startup line
+// Prints startup line // Выводит строку запуска
 void report_startup_line(uint8_t n, char *line);
 
-// Prints build info and user info
+// Prints build info and user info // Выводит информацию о сборке и пользователе
 void report_build_info(char *line);
 
 #endif

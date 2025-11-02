@@ -32,6 +32,7 @@ void printInteger(long n);
 void print_uint32_base10(uint32_t n);
 
 // Prints uint8 variable with base and number of desired digits.
+// Выводит переменную uint8 с основанием и количеством нужных цифр.
 void print_unsigned_int8(uint8_t n, uint8_t base, uint8_t digits); 
 
 // Prints an uint8 variable in base 2.
@@ -46,6 +47,10 @@ void printFloat(float n, uint8_t decimal_places);
 //  - CoordValue: Handles all position or coordinate values in inches or mm reporting.
 //  - RateValue: Handles feed rate and current velocity in inches or mm reporting.
 //  - SettingValue: Handles all floating point settings values (always in mm.)
+// Обработчики печати с плавающим значением для специальных типов переменных, используемых в Grbl. 
+// - CoordValue: Отображает все значения положения или координат в дюймах или мм.
+// - RateValue: Отображает скорость подачи и текущую скорость в дюймах или мм.
+// - SettingValue: Обрабатывает все значения настроек с плавающей запятой (всегда в мм).
 void printFloat_CoordValue(float n);
 
 void printFloat_RateValue(float n);
@@ -53,6 +58,7 @@ void printFloat_RateValue(float n);
 void printFloat_SettingValue(float n);
 
 // Debug tool to print free memory in bytes at the called point. Not used otherwise.
+// Инструмент отладки для вывода данных о свободной памяти в байтах в вызываемой точке. В противном случае не используется.
 void printFreeMemory();
 
 #endif

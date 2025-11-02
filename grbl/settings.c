@@ -25,6 +25,7 @@ settings_t settings;
 
 
 // Method to store startup lines into EEPROM
+// Способ сохранения строк запуска в EEPROM
 void settings_store_startup_line(uint8_t n, char *line)
 {
   uint32_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
@@ -33,6 +34,7 @@ void settings_store_startup_line(uint8_t n, char *line)
 
 
 // Method to store build info into EEPROM
+// Способ сохранения информации о сборке в EEPROM
 void settings_store_build_info(char *line)
 {
   memcpy_to_eeprom_with_checksum(EEPROM_ADDR_BUILD_INFO,(char*)line, LINE_BUFFER_SIZE);
@@ -40,6 +42,7 @@ void settings_store_build_info(char *line)
 
 
 // Method to store coord data parameters into EEPROM
+// Способ сохранения параметров координатных данных в EEPROM
 void settings_write_coord_data(uint8_t coord_select, float *coord_data)
 {  
   uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
@@ -48,6 +51,7 @@ void settings_write_coord_data(uint8_t coord_select, float *coord_data)
 
 
 // Method to store Grbl global settings struct and version number into EEPROM
+// Способ сохранения структуры глобальных настроек Grbl и номера версии в EEPROM
 void write_global_settings() 
 {
   eeprom_put_char(0, SETTINGS_VERSION);
@@ -56,6 +60,7 @@ void write_global_settings()
 
 
 // Method to restore EEPROM-saved Grbl global settings back to defaults. 
+// Способ восстановления глобальных настроек Grbl, сохраненных в EEPROM, к значениям по умолчанию.
 void settings_restore(uint8_t restore_flag) {  
   if (restore_flag & SETTINGS_RESTORE_DEFAULTS) {
 	settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
@@ -116,11 +121,12 @@ void settings_restore(uint8_t restore_flag) {
 
 
 // Reads startup line from EEPROM. Updated pointed line string data.
+// Считывает строку запуска из EEPROM. Обновлены строковые данные с заостренной строкой.
 uint8_t settings_read_startup_line(uint8_t n, char *line)
 {
   uint32_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
   if (!(memcpy_from_eeprom_with_checksum((char*)line, addr, LINE_BUFFER_SIZE))) {
-    // Reset line with default value
+    // Reset line with default value // Сбросить строку со значением по умолчанию
     line[0] = 0; // Empty line
     settings_store_startup_line(n, line);
     return(false);
@@ -129,11 +135,11 @@ uint8_t settings_read_startup_line(uint8_t n, char *line)
 }
 
 
-// Reads startup line from EEPROM. Updated pointed line string data.
+// Reads startup line from EEPROM. Updated pointed line string data. // Считывает строку запуска из EEPROM. Обновлены строковые данные с заостренной строкой.
 uint8_t settings_read_build_info(char *line)
 {
   if (!(memcpy_from_eeprom_with_checksum((char*)line, EEPROM_ADDR_BUILD_INFO, LINE_BUFFER_SIZE))) {
-    // Reset line with default value
+    // Reset line with default value // Сбросить строку со значением по умолчанию
     line[0] = 0; // Empty line
     settings_store_build_info(line);
     return(false);
@@ -142,7 +148,7 @@ uint8_t settings_read_build_info(char *line)
 }
 
 
-// Read selected coordinate data from EEPROM. Updates pointed coord_data value.
+// Read selected coordinate data from EEPROM. Updates pointed coord_data value. // Считывает выбранные данные о координатах из EEPROM. Обновляет указанное значение coord_data.
 uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
 {
   uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
@@ -156,12 +162,12 @@ uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
 }  
 
 
-// Reads Grbl global settings struct from EEPROM.
+// Reads Grbl global settings struct from EEPROM. // Считывает структуру глобальных настроек Grbl из EEPROM.
 uint8_t read_global_settings() {
-  // Check version-byte of eeprom
+  // Check version-byte of eeprom // Проверить версию-байт eeprom
   uint8_t version = eeprom_get_char(0);
   if (version == SETTINGS_VERSION) {
-    // Read settings-record and check checksum
+    // Read settings-record and check checksum // Настройки чтения - запись и проверка контрольной суммы
     if (!(memcpy_from_eeprom_with_checksum((char*)&settings, EEPROM_ADDR_GLOBAL, sizeof(settings_t)))) {
       return(false);
     }
@@ -172,12 +178,14 @@ uint8_t read_global_settings() {
 }
 
 
-// A helper method to set settings from command line
+// A helper method to set settings from command line // Вспомогательный метод для установки настроек из командной строки
 uint8_t settings_store_global_setting(uint8_t parameter, float value) {
   if (value < 0.0) { return(STATUS_NEGATIVE_VALUE); } 
   if (parameter >= AXIS_SETTINGS_START_VAL) {
     // Store axis configuration. Axis numbering sequence set by AXIS_SETTING defines.
     // NOTE: Ensure the setting index corresponds to the report.c settings printout.
+    // Сохранить конфигурацию осей. Определяется последовательность нумерации осей, заданная с помощью AXIS_SETTING.
+    // ПРИМЕЧАНИЕ: Убедитесь, что индекс настройки соответствует распечатке настроек отчета.c .
     parameter -= AXIS_SETTINGS_START_VAL;
     uint8_t set_idx = 0;
     while (set_idx < AXIS_N_SETTINGS) {
@@ -196,19 +204,19 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
             #endif
             settings.max_rate[parameter] = value;
             break;
-          case 2: settings.acceleration[parameter] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
-          case 3: settings.max_travel[parameter] = -value; break;  // Store as negative for grbl internal use.
+          case 2: settings.acceleration[parameter] = value*60*60; break; // Convert to mm/min^2 for grbl internal use. // Преобразовать в мм/мин^2 для внутреннего использования grbl.
+          case 3: settings.max_travel[parameter] = -value; break;  // Store as negative for grbl internal use. // Хранить как негатив для внутреннего использования grbl.
         }
-        break; // Exit while-loop after setting has been configured and proceed to the EEPROM write call.
-      } else {
+        break; // Exit while-loop after setting has been configured and proceed to the EEPROM write call. // Завершите цикл while после настройки параметров и перейдите к вызову записи в EEPROM.
+      } else { 
         set_idx++;
-        // If axis index greater than N_AXIS or setting index greater than number of axis settings, error out.
+        // If axis index greater than N_AXIS or setting index greater than number of axis settings, error out. // Если индекс оси больше, чем N_AXIS, или индекс настройки больше, чем количество настроек оси, выдается ошибка.
         if ((parameter < AXIS_SETTINGS_INCREMENT) || (set_idx == AXIS_N_SETTINGS)) { return(STATUS_INVALID_STATEMENT); }
         parameter -= AXIS_SETTINGS_INCREMENT;
       }
     }
   } else {
-    // Store non-axis Grbl settings
+    // Store non-axis Grbl settings // Сохранение настроек Grbl, не относящихся к оси
     uint8_t int_value = trunc(value);
     switch(parameter) {
       case 0: 
@@ -217,21 +225,21 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
       case 1: settings.stepper_idle_lock_time = int_value; break;
       case 2: 
         settings.step_invert_mask = int_value; 
-        st_generate_step_dir_invert_masks(); // Regenerate step and direction port invert masks.
+        st_generate_step_dir_invert_masks(); // Regenerate step and direction port invert masks. // Восстановите маски инвертирования шага и направления порта.
         break;
       case 3: 
         settings.dir_invert_mask = int_value; 
         st_generate_step_dir_invert_masks(); // Regenerate step and direction port invert masks.
         break;
-      case 4: // Reset to ensure change. Immediate re-init may cause problems.
+      case 4: // Reset to ensure change. Immediate re-init may cause problems. // Сброс для обеспечения изменений. Немедленная повторная загрузка может вызвать проблемы.
         if (int_value) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
         else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }
         break;
-      case 5: // Reset to ensure change. Immediate re-init may cause problems.
+      case 5: // Reset to ensure change. Immediate re-init may cause problems.// Сброс для обеспечения изменений. Немедленная повторная загрузка может вызвать проблемы.
         if (int_value) { settings.flags |= BITFLAG_INVERT_LIMIT_PINS; }
         else { settings.flags &= ~BITFLAG_INVERT_LIMIT_PINS; }
         break;
-      case 6: // Reset to ensure change. Immediate re-init may cause problems.
+      case 6: // Reset to ensure change. Immediate re-init may cause problems. // Сброс для обеспечения изменений. Немедленная повторная загрузка может вызвать проблемы.
         if (int_value) { settings.flags |= BITFLAG_INVERT_PROBE_PIN; }
         else { settings.flags &= ~BITFLAG_INVERT_PROBE_PIN; }
         break;
@@ -251,13 +259,13 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
       case 21:
         if (int_value) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
         else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
-        limits_init(); // Re-init to immediately change. NOTE: Nice to have but could be problematic later.
+        limits_init(); // Re-init to immediately change. NOTE: Nice to have but could be problematic later. // Повторно запустите, чтобы немедленно изменить. ПРИМЕЧАНИЕ: Приятно иметь, но позже могут возникнуть проблемы.
         break;
       case 22:
         if (int_value) { settings.flags |= BITFLAG_HOMING_ENABLE; }
         else { 
-          settings.flags &= ~BITFLAG_HOMING_ENABLE; 
-          settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; // Force disable soft-limits.
+          settings.flags &= ~BITFLAG_HOMING_ENABLE;  
+          settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; // Force disable soft-limits. // Принудительно отключить мягкие ограничения.
         }
         break;
       case 23: settings.homing_dir_mask = int_value; break;
@@ -274,17 +282,20 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
 }
 
 
-// Initialize the config subsystem
+// Initialize the config subsystem // Инициализируем конфигурационную подсистему
 void settings_init() {
   if(!read_global_settings()) {
     report_status_message(STATUS_SETTING_READ_FAIL);
-    settings_restore(SETTINGS_RESTORE_ALL); // Force restore all EEPROM data.
+    settings_restore(SETTINGS_RESTORE_ALL); // Force restore all EEPROM data. // Принудительно восстановите все данные EEPROM.
     report_grbl_settings();
   }
 
   // NOTE: Checking paramater data, startup lines, and build info string should be done here, 
   // but it seems fairly redundant. Each of these can be manually checked and reset or restored.
   // Check all parameter data into a dummy variable. If error, reset to zero, otherwise do nothing.
+  // ПРИМЕЧАНИЕ: Проверка данных параметров, строк запуска и информационной строки сборки должна выполняться здесь, 
+  // но это кажется излишним. Каждый из них можно проверить вручную и сбросить или восстановить.
+  // Переведите все данные параметров в фиктивную переменную. Если ошибка, сбросьте значение до нуля, в противном случае ничего не делайте.
   // float coord_data[N_AXIS];
   // uint8_t i;
   // for (i=0; i<=SETTING_INDEX_NCOORD; i++) {
@@ -293,10 +304,12 @@ void settings_init() {
   //   }
   // }
   // NOTE: Startup lines are checked and executed by protocol_main_loop at the end of initialization.
+  // ПРИМЕЧАНИЕ: Строки запуска проверяются и выполняются protocol_main_loop в конце инициализации.
 }
 
 
 // Returns step pin mask according to Grbl internal axis indexing.
+// Возвращает маску ступенчатого штифта в соответствии с индексацией внутренней оси Grbl.
 uint8_t get_step_pin_mask(uint8_t axis_idx)
 {
   if ( axis_idx == X_AXIS ) { return((1<<X_STEP_BIT)); }
@@ -306,6 +319,7 @@ uint8_t get_step_pin_mask(uint8_t axis_idx)
 
 
 // Returns direction pin mask according to Grbl internal axis indexing.
+// Возвращает маску направляющего штифта в соответствии с индексацией внутренней оси Grbl.
 uint8_t get_direction_pin_mask(uint8_t axis_idx)
 {
   if ( axis_idx == X_AXIS ) { return((1<<X_DIRECTION_BIT)); }
@@ -315,6 +329,7 @@ uint8_t get_direction_pin_mask(uint8_t axis_idx)
 
 
 // Returns limit pin mask according to Grbl internal axis indexing.
+// Возвращает маску предельного штифта в соответствии с индексацией внутренней оси Grbl.
 uint8_t get_limit_pin_mask(uint8_t axis_idx)
 {
   if ( axis_idx == X_AXIS ) { return((1<<X_LIMIT_BIT)); }

@@ -37,6 +37,14 @@
 // responses.
 // NOTE: In silent mode, all error codes are greater than zero.
 // TODO: Install silent mode to return only numeric values, primarily for GUIs.
+// Обрабатывает основной ответ протокола подтверждения для потоковых интерфейсов и обратной связи с пользователем.
+// Для каждой входящей строки этот метод выдает "ok" в случае успешной команды или 
+// "error:", чтобы указать на какое-либо событие, связанное с ошибкой в строке, или на какую-либо критическую системную ошибку во время работы 
+//. События Errors могут возникать из-за синтаксического анализатора g-кода, модуля настроек или асинхронно
+// из-за критической ошибки, такой как срабатывание жесткого ограничения. Интерфейс должен всегда отслеживать эти события
+// ответы.
+// ПРИМЕЧАНИЕ: В автоматическом режиме все коды ошибок больше нуля.
+// TODO: Установите автоматический режим, чтобы возвращать только числовые значения, в первую очередь для графических интерфейсов.
 void report_status_message(uint8_t status_code) 
 {
   if (status_code == 0) { // STATUS_OK
@@ -74,6 +82,7 @@ void report_status_message(uint8_t status_code)
           printPgmString(PSTR("Step rate > 30kHz")); break;
         #endif      
         // Common g-code parser errors.
+        // Распространенные ошибки синтаксического анализатора g-кода.
         case STATUS_GCODE_MODAL_GROUP_VIOLATION:
         printPgmString(PSTR("Modal group violation")); break;
         case STATUS_GCODE_UNSUPPORTED_COMMAND:
@@ -81,16 +90,16 @@ void report_status_message(uint8_t status_code)
         case STATUS_GCODE_UNDEFINED_FEED_RATE:
         printPgmString(PSTR("Undefined feed rate")); break;
         default:
-          // Remaining g-code parser errors with error codes
+          // Remaining g-code parser errors with error codes // Оставшиеся ошибки синтаксического анализатора g-кода с кодами ошибок
           printPgmString(PSTR("Invalid gcode ID:"));
-          print_uint8_base10(status_code); // Print error code for user reference
+          print_uint8_base10(status_code); // Print error code for user reference // Напечатать код ошибки для справки пользователю
       }
     #endif  
     printPgmString(PSTR("\r\n"));
   }
 }
 
-// Prints alarm messages.
+// Prints alarm messages. // Выводит тревожные сообщения.
 void report_alarm_message(int8_t alarm_code)
 {
   printPgmString(PSTR("ALARM: "));
@@ -111,7 +120,7 @@ void report_alarm_message(int8_t alarm_code)
     }
   #endif
   printPgmString(PSTR("\r\n"));
-  delay_ms(500); // Force delay to ensure message clears serial write buffer.
+  delay_ms(500); // Force delay to ensure message clears serial write buffer. // Принудительная задержка, чтобы гарантировать, что сообщение очистит буфер последовательной записи.
 }
 
 // Prints feedback messages. This serves as a centralized method to provide additional
@@ -120,6 +129,14 @@ void report_alarm_message(int8_t alarm_code)
 // NOTE: For interfaces, messages are always placed within brackets. And if silent mode
 // is installed, the message number codes are less than zero.
 // TODO: Install silence feedback messages option in settings
+
+// Печатает сообщения обратной связи. Это служит централизованным способом предоставления дополнительных
+// отзывов пользователей о событиях, которые не относятся к протоколу сообщений о состоянии/тревоге. Это
+// сообщения, такие как предупреждения о настройке, переключении переключателей и способах выхода из аварийных сигналов.
+// ПРИМЕЧАНИЕ: Для интерфейсов сообщения всегда заключаются в квадратные скобки. И если установлен беззвучный режим
+//, коды номеров сообщений будут меньше нуля.
+// ЗАДАЧА: Установите опцию отключения сообщений обратной связи в настройках
+
 void report_feedback_message(uint8_t message_code)
 {
   printPgmString(PSTR("["));
@@ -145,13 +162,13 @@ void report_feedback_message(uint8_t message_code)
 }
 
 
-// Welcome message
+// Welcome message // Приветственное сообщение
 void report_init_message()
 {
   printPgmString(PSTR("\r\nGrbl " GRBL_VERSION " ['$' for help]\r\n"));
 }
 
-// Grbl help message
+// Grbl help message // Справочное сообщение Grbl
 void report_grbl_help() {
   #ifndef REPORT_GUI_MODE
     printPgmString(PSTR("$$ (view Grbl settings)\r\n"
@@ -174,8 +191,10 @@ void report_grbl_help() {
 
 // Grbl global settings print out.
 // NOTE: The numbering scheme here must correlate to storing in settings.c
+// Распечатать глобальные настройки Grbl.
+// ПРИМЕЧАНИЕ: Схема нумерации здесь должна соответствовать схеме, сохраненной в settings.c
 void report_grbl_settings() {
-  // Print Grbl settings.
+  // Print Grbl settings. // Распечатать настройки Grbl.
   #ifdef REPORT_GUI_MODE
     printPgmString(PSTR("$0=")); print_uint8_base10(settings.pulse_microseconds);
     printPgmString(PSTR("\r\n$1=")); print_uint8_base10(settings.stepper_idle_lock_time);
@@ -225,6 +244,7 @@ void report_grbl_settings() {
   #endif
   
   // Print axis settings
+  // Настройки оси печати
   uint8_t idx, set_idx;
   uint8_t val = AXIS_SETTINGS_START_VAL;
   for (set_idx=0; set_idx<AXIS_N_SETTINGS; set_idx++) {
@@ -264,12 +284,16 @@ void report_grbl_settings() {
 // Prints current probe parameters. Upon a probe command, these parameters are updated upon a
 // successful probe or upon a failed probe with the G38.3 without errors command (if supported). 
 // These values are retained until Grbl is power-cycled, whereby they will be re-zeroed.
+// Выводит текущие параметры проверки. По команде проверки эти параметры обновляются после
+// успешной проверки или неудачной проверки с помощью команды G38.3 без ошибок (если поддерживается). 
+// Эти значения сохраняются до тех пор, пока Grbl не переключится на питание, после чего они будут повторно обнулены.
 void report_probe_parameters()
 {
   uint8_t i;
   float print_position[N_AXIS];
  
   // Report in terms of machine position.
+  // Отчет с точки зрения положения машины.
   printPgmString(PSTR("[PRB:"));
   for (i=0; i< N_AXIS; i++) {
     print_position[i] = system_convert_axis_steps_to_mpos(sys.probe_position,i);
@@ -283,6 +307,7 @@ void report_probe_parameters()
 
 
 // Prints Grbl NGC parameters (coordinate offsets, probing)
+// Выводит параметры Grbl NGC (смещения координат, зондирование)
 void report_ngc_parameters()
 {
   float coord_data[N_AXIS];
@@ -305,20 +330,20 @@ void report_ngc_parameters()
       else { printPgmString(PSTR("]\r\n")); }
     } 
   }
-  printPgmString(PSTR("[G92:")); // Print G92,G92.1 which are not persistent in memory
+  printPgmString(PSTR("[G92:")); // Print G92,G92.1 which are not persistent in memory // Выведите G92,G92.1, которые не являются постоянными в памяти
   for (i=0; i<N_AXIS; i++) {
     printFloat_CoordValue(gc_state.coord_offset[i]);
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
     else { printPgmString(PSTR("]\r\n")); }
   } 
-  printPgmString(PSTR("[TLO:")); // Print tool length offset value
+  printPgmString(PSTR("[TLO:")); // Print tool length offset value // Значение смещения длины печатающего инструмента
   printFloat_CoordValue(gc_state.tool_length_offset);
   printPgmString(PSTR("]\r\n"));
-  report_probe_parameters(); // Print probe parameters. Not persistent in memory.
+  report_probe_parameters(); // Print probe parameters. Not persistent in memory. // Вывод параметров датчика. Не сохраняется в памяти.
 }
 
 
-// Print current gcode parser mode state
+// Print current gcode parser mode state // Вывести текущее состояние режима синтаксического анализа gcode
 void report_gcode_modes()
 {
   printPgmString(PSTR("["));
@@ -386,7 +411,7 @@ void report_gcode_modes()
   printPgmString(PSTR("]\r\n"));
 }
 
-// Prints specified startup line
+// Prints specified startup line // Выводит указанную строку запуска
 void report_startup_line(uint8_t n, char *line)
 {
   printPgmString(PSTR("$N")); print_uint8_base10(n);
@@ -406,13 +431,19 @@ void report_build_info(char *line)
 
 // Prints the character string line Grbl has received from the user, which has been pre-parsed,
 // and has been sent into protocol_execute_line() routine to be executed by Grbl.
+// Выводит строку символьной строки, полученную Grbl от пользователя, которая была предварительно обработана,
+// и отправлена в процедуру protocol_execute_line() для выполнения Grbl.
 void report_echo_line_received(char *line)
 {
   printPgmString(PSTR("[echo: ")); printString(line);
   printPgmString(PSTR("]\r\n"));
 }
 
-
+// Печатает данные в режиме реального времени. Эта функция позволяет в режиме реального времени получить снимок шаговой подпрограммы 
+ // и фактическое местоположение станка с ЧПУ. Пользователи могут изменить следующую функцию по своему усмотрению.
+ // конкретные потребности, но желаемый отчет о данных в режиме реального времени должен быть как можно более коротким. Это
+// необходимо, поскольку сводит к минимуму вычислительную нагрузку и позволяет grbl продолжать бесперебойную работу,
+// особенно при работе с программами g-code с быстрыми, короткими отрезками строк и высокочастотными отчетами (5-20 Гц).
  // Prints real-time data. This function grabs a real-time snapshot of the stepper subprogram 
  // and the actual location of the CNC machine. Users may change the following function to their
  // specific needs, but the desired real-time data report must be as short as possible. This is
@@ -424,15 +455,19 @@ void report_realtime_status()
   // the system power on location (0,0,0) and work coordinate position (G54 and G92 applied). Eventually
   // to be added are distance to go on block, processed block id, and feed rate. Also a settings bitmask
   // for a user to select the desired real-time data.
+  // **В стадии разработки** Краткий отчет о состоянии станка. Отображает положение станка в реальном времени относительно 
+  // местоположения включения системы (0,0,0) и положения рабочих координат (применяются G54 и G92). В конце концов
+  // необходимо добавить расстояние до блока, идентификатор обрабатываемого блока и скорость подачи. Также битовую маску настроек
+  // чтобы пользователь мог выбрать нужные данные в режиме реального времени.
   uint8_t idx;
-  int32_t current_position[N_AXIS]; // Copy current state of the system position variable
+  int32_t current_position[N_AXIS]; // Copy current state of the system position variable // Скопировать текущее состояние системной переменной положения
   memcpy(current_position,sys.position,sizeof(sys.position));
   float print_position[N_AXIS];
  
-  // Report current machine state
+  // Report current machine state // Сообщить о текущем состоянии машины
   switch (sys.state) {
     case STATE_IDLE: printPgmString(PSTR("<Idle")); break;
-    case STATE_MOTION_CANCEL: // Report run state.
+    case STATE_MOTION_CANCEL: // Report run state. // Отчет о состоянии выполнения.
     case STATE_CYCLE: printPgmString(PSTR("<Run")); break;
     case STATE_HOLD: printPgmString(PSTR("<Hold")); break;
     case STATE_HOMING: printPgmString(PSTR("<Home")); break;
@@ -441,12 +476,13 @@ void report_realtime_status()
     case STATE_SAFETY_DOOR: printPgmString(PSTR("<Door")); break;
   }
  
-  // If reporting a position, convert the current step count (current_position) to millimeters.
+  // If reporting a position, convert the current step count (current_position) to millimeters. 
+  // Если вы сообщаете о местоположении, преобразуйте текущее количество шагов (current_position) в миллиметры.
   if (bit_istrue(settings.status_report_mask,(BITFLAG_RT_STATUS_MACHINE_POSITION | BITFLAG_RT_STATUS_WORK_POSITION))) {
     system_convert_array_steps_to_mpos(print_position,current_position);
   }
   
-  // Report machine position
+  // Report machine position // Сообщить о положении машины
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_MACHINE_POSITION)) {
     printPgmString(PSTR(",MPos:")); 
     for (idx=0; idx< N_AXIS; idx++) {
@@ -455,11 +491,11 @@ void report_realtime_status()
     }
   }
   
-  // Report work position
+  // Report work position // Сообщить о рабочем месте
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_WORK_POSITION)) {
     printPgmString(PSTR(",WPos:")); 
     for (idx=0; idx< N_AXIS; idx++) {
-      // Apply work coordinate offsets and tool length offset to current position.
+      // Apply work coordinate offsets and tool length offset to current position. // Примените смещения рабочих координат и длины инструмента к текущему положению.
       print_position[idx] -= gc_state.coord_system[idx]+gc_state.coord_offset[idx];
       if (idx == TOOL_LENGTH_OFFSET_AXIS) { print_position[idx] -= gc_state.tool_length_offset; }    
       printFloat_CoordValue(print_position[idx]);
@@ -467,20 +503,20 @@ void report_realtime_status()
     }
   }
         
-  // Returns the number of active blocks are in the planner buffer.
+  // Returns the number of active blocks are in the planner buffer. // Возвращает количество активных блоков, находящихся в буфере планировщика.
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_PLANNER_BUFFER)) {
     printPgmString(PSTR(",Buf:"));
     print_uint8_base10(plan_get_block_buffer_count());
   }
 
-  // Report serial read buffer status
+  // Report serial read buffer status // Сообщить о состоянии буфера последовательного чтения
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_SERIAL_RX)) {
     printPgmString(PSTR(",RX:"));
     print_uint8_base10(serial_get_rx_buffer_count());
   }
     
   #ifdef USE_LINE_NUMBERS
-    // Report current line number
+    // Report current line number // Сообщить номер текущей строки
     printPgmString(PSTR(",Ln:")); 
     int32_t ln=0;
     plan_block_t * pb = plan_get_current_block();
@@ -491,7 +527,7 @@ void report_realtime_status()
   #endif
     
   #ifdef REPORT_REALTIME_RATE
-    // Report realtime rate 
+    // Report realtime rate  // Сообщать о скорости в реальном времени2
     printPgmString(PSTR(",F:")); 
     printFloat_RateValue(st_get_realtime_rate());
   #endif    

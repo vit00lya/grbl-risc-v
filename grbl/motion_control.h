@@ -28,6 +28,9 @@
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // (1 minute)/feed_rate time.
+// Выполнить линейное перемещение в абсолютных миллиметровых координатах. Скорость подачи указана в миллиметрах в секунду
+// если значение invert_feed_rate не равно true. Тогда скорость подачи означает, что перемещение должно быть завершено за
+// (1 минуту)/время подачи.
 #ifdef USE_LINE_NUMBERS
 void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number);
 #else
@@ -38,6 +41,10 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate);
 // offset == offset from current xyz, axis_XXX defines circle plane in tool space, axis_linear is
 // the direction of helical travel, radius == circle radius, is_clockwise_arc boolean. Used
 // for vector transformation direction.
+// Выполнить дугу в формате режима смещения. позиция == текущее значение xyz, цель == целевое значение xyz,
+// смещение == смещение от текущего значения xyz, axis_XXX определяет плоскость окружности в пространстве инструмента, axis_linear - это
+// направление движения по спирали, radius == радиус окружности, имеет логическое значение clockwise_arc. Используемый
+// для направления векторного преобразования.
 #ifdef USE_LINE_NUMBERS
 void mc_arc(float *position, float *target, float *offset, float radius, float feed_rate, 
   uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, uint8_t is_clockwise_arc, int32_t line_number);
@@ -47,12 +54,15 @@ void mc_arc(float *position, float *target, float *offset, float radius, float f
 #endif
   
 // Dwell for a specific number of seconds
+// Задержитесь на определенное количество секунд
 void mc_dwell(float seconds);
 
 // Perform homing cycle to locate machine zero. Requires limit switches.
+// Выполните цикл самонаведения, чтобы определить нулевое значение машины. Требуются концевые выключатели.
 void mc_homing_cycle();
 
 // Perform tool length probe cycle. Requires probe switch.
+// Выполните цикл измерения длины инструмента. Требуется переключатель датчика.
 #ifdef USE_LINE_NUMBERS
 void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_probe_away,
   uint8_t is_no_error, int32_t line_number);
@@ -62,6 +72,7 @@ void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, ui
 #endif
 
 // Performs system reset. If in motion state, kills all motion and sets system alarm.
+// Выполняет сброс системы. Если находится в состоянии движения, отключает все движения и устанавливает системную сигнализацию.
 void mc_reset();
 
 #endif
