@@ -22,27 +22,27 @@
 #include "grbl.h"
 
 
-// Homing axis search distance multiplier. Computed by this value times the cycle travel.
+// Homing axis search distance multiplier. Computed by this value times the cycle travel. // Множитель расстояния поиска по оси самонаведения. Вычисленный по этому значению, умноженный на пройденный цикл.
 #ifndef HOMING_AXIS_SEARCH_SCALAR
-  #define HOMING_AXIS_SEARCH_SCALAR  1.5 // Must be > 1 to ensure limit switch will be engaged.
+  #define HOMING_AXIS_SEARCH_SCALAR  1.5 // Must be > 1 to ensure limit switch will be engaged. // Должно быть > 1, чтобы обеспечить включение концевого выключателя.
 #endif
 #ifndef HOMING_AXIS_LOCATE_SCALAR
-  #define HOMING_AXIS_LOCATE_SCALAR  5.0 // Must be > 1 to ensure limit switch is cleared.
+  #define HOMING_AXIS_LOCATE_SCALAR  5.0 // Must be > 1 to ensure limit switch is cleared. // Должно быть > 1, чтобы обеспечить включение концевого выключателя.
 #endif
 
 void limits_init() 
 {
-  LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
+  LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins // Установить в качестве входных контактов
 
   #ifdef DISABLE_LIMIT_PIN_PULL_UP
-    LIMIT_PORT &= ~(LIMIT_MASK); // Normal low operation. Requires external pull-down.
+    LIMIT_PORT &= ~(LIMIT_MASK); // Normal low operation. Requires external pull-down. // Нормальная работа на низком уровне. Требуется внешнее выдвижение.
   #else
-    LIMIT_PORT |= (LIMIT_MASK);  // Enable internal pull-up resistors. Normal high operation.
+    LIMIT_PORT |= (LIMIT_MASK);  // Enable internal pull-up resistors. Normal high operation. // Включите внутренние подтягивающие резисторы. Нормальная работа на высоком уровне.
   #endif
 
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
-    LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt
-    PCICR |= (1 << LIMIT_INT); // Enable Pin Change Interrupt
+    LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt // Включить определенные контакты прерывания смены контактов
+    PCICR |= (1 << LIMIT_INT); // Enable Pin Change Interrupt  // Включить прерывание смены вывода
   } else {
     limits_disable(); 
   }
@@ -58,14 +58,17 @@ void limits_init()
 // Disables hard limits.
 void limits_disable()
 {
-  LIMIT_PCMSK &= ~LIMIT_MASK;  // Disable specific pins of the Pin Change Interrupt
-  PCICR &= ~(1 << LIMIT_INT);  // Disable Pin Change Interrupt
+  LIMIT_PCMSK &= ~LIMIT_MASK;  // Disable specific pins of the Pin Change Interrupt // Отключить определенные контакты прерывания смены контактов
+  PCICR &= ~(1 << LIMIT_INT);  // Disable Pin Change Interrupt  // Отключить прерывание смены Pin-кода
 }
 
 
 // Returns limit state as a bit-wise uint8 variable. Each bit indicates an axis limit, where 
 // triggered is 1 and not triggered is 0. Invert mask is applied. Axes are defined by their
 // number in bit position, i.e. Z_AXIS is (1<<2) or bit 2, and Y_AXIS is (1<<1) or bit 1.
+// Возвращает предельное состояние в виде побитовой переменной uint8. Каждый бит указывает предельное значение оси, где 
+// срабатывание равно 1, а не срабатывание равно 0. Применяется инвертирующая маска. Оси определяются их
+// число в позиции бита, т.е. Z_AXIS равно (1<<2) или бит 2, а Y_AXIS равно (1<<1) или бит 1.
 uint8_t limits_get_state()
 {
   uint8_t limit_state = 0;

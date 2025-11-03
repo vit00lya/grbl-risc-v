@@ -864,7 +864,7 @@ uint8_t gc_execute_line(char *line)
       // the value must be positive. In inverse time mode, a positive value must be passed with each block.
       // [Ошибка G0]: Буква Axis не настроена или не имеет реального значения (готово.)
       // Слова Axis необязательны. Если они отсутствуют, установите флажок команды axis для игнорирования выполнения.
-      если (!axis_words) { axis_command = AXIS_COMMAND_NONE; }
+      //если (!axis_words) { axis_command = AXIS_COMMAND_NONE; }
       if (!axis_words) { axis_command = AXIS_COMMAND_NONE; }
     } else {
       // Проверьте, задана ли скорость подачи для требуемых режимов движения.
@@ -1389,8 +1389,8 @@ uint8_t gc_execute_line(char *line)
 	protocol_buffer_synchronize(); // Sync and finish all remaining buffered motions before moving on.
 	if (gc_state.modal.program_flow == PROGRAM_FLOW_PAUSED) {
 	  if (sys.state != STATE_CHECK_MODE) {
-		bit_true_atomic(sys_rt_exec_state, EXEC_FEED_HOLD); // Use feed hold for program pause.
-		protocol_execute_realtime(); // Execute suspend.
+		bit_true_atomic(sys_rt_exec_state, EXEC_FEED_HOLD); // Use feed hold for program pause. // Используйте удержание подачи для приостановки программы.
+		protocol_execute_realtime(); // Execute suspend. // Выполнить приостановку.
 	  }
 	} else { // == PROGRAM_FLOW_COMPLETED
 	  // Upon program complete, only a subset of g-codes reset to certain defaults, according to 
