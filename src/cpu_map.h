@@ -35,6 +35,10 @@
 #ifndef cpu_map_h
 #define cpu_map_h
 
+#ifdef CPU_MAP_ELRON_UNO_AMUR
+  #include "cpu_map/cpu_map_elron_uno_amur.h"
+#endif
+
 
 #ifdef CPU_MAP_ATMEGA328P // (Arduino Uno) Officially supported by Grbl.
   #include "cpu_map/cpu_map_atmega328p.h"

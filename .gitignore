@@ -12,8 +12,6 @@
 /.vs
 /.vscode
 /Autotest.log
-/Example/fileversion
-/Example/Templates/NativeAddIn/Ext/Template.bin
 /Decompile.bat
 manifest.xml
 *.epf
@@ -22,4 +20,7 @@ manifest.xml
 *.so
 *~
 .#*
-grbl/#gcode.h#
+#*#
+schema/atmega328p_cnc/#auto_saved_files#
+*backup*
+~*
