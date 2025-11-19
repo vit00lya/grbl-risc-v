@@ -21,8 +21,8 @@
 *                         $Revision: 1.6 $
 *                         $Date: Friday, February 11, 2005 07:16:44 UTC $
 ****************************************************************************/
-#include <avr/io.h>
-#include <avr/interrupt.h>
+//#include <avr/io.h>
+//#include <avr/interrupt.h>
 
 /* These EEPROM bits have different names on different devices. */
 /* Эти биты EEPROM имеют разные названия на разных устройствах. */

@@ -29,6 +29,15 @@
 #define RAMP_CRUISE 1
 #define RAMP_DECEL 2
 
+// Задайте уровни адаптивного многоосевого ступенчатого сглаживания (AMASS) и частоты среза. Диапазон частот самого высокого уровня
+// начинается с 0 Гц и заканчивается на частоте среза. Диапазон частот следующего более низкого уровня
+// начинается со следующей более высокой частоты среза и так далее. Частоты среза для каждого уровня должны быть
+// тщательно рассчитаны с учетом того, насколько это приводит к перегрузке шагового ISR, точности 16-разрядного
+// таймера и нагрузки на процессор. Уровень 0 (без накопления, нормальная работа) начинается с 
+// Частота среза 1-го уровня и настолько высокая, насколько позволяет процессор (более 30 кГц при ограниченном тестировании).
+// ПРИМЕЧАНИЕ: Суммарная частота среза, умноженная на коэффициент перегрузки ISR, не должна превышать максимальную частоту шага.
+// ПРИМЕЧАНИЕ: Текущие настройки настроены на перегрузку ISR не более чем на 16 кГц, что позволяет снизить нагрузку на процессор
+// и точность таймера.  Не изменяйте эти настройки, если вы не знаете, что делаете.
 // Define Adaptive Multi-Axis Step-Smoothing(AMASS) levels and cutoff frequencies. The highest level
 // frequency bin starts at 0Hz and ends at its cutoff frequency. The next lower level frequency bin
 // starts at the next higher cutoff frequency, and so on. The cutoff frequencies for each level must
@@ -39,10 +48,11 @@
 // NOTE: Current settings are set to overdrive the ISR to no more than 16kHz, balancing CPU overhead
 // and timer accuracy.  Do not alter these settings unless you know what you are doing.
 #define MAX_AMASS_LEVEL 3
+// AMASS_LEVEL0: Нормальная работа. Нет накопления. Нет верхней предельной частоты. Начинается с предельной частоты УРОВНЯ 1.
 // AMASS_LEVEL0: Normal operation. No AMASS. No upper cutoff frequency. Starts at LEVEL1 cutoff frequency.
-#define AMASS_LEVEL1 (F_CPU/8000) // Over-drives ISR (x2). Defined as F_CPU/(Cutoff frequency in Hz)
-#define AMASS_LEVEL2 (F_CPU/4000) // Over-drives ISR (x4)
-#define AMASS_LEVEL3 (F_CPU/2000) // Over-drives ISR (x8)
+#define AMASS_LEVEL1 (F_CPU/8000) // Over-drives ISR (x2). Defined as F_CPU/(Cutoff frequency in Hz) // Приводит к превышению ISR (x2). Определяется как F_CPU/(Частота среза в Гц)
+#define AMASS_LEVEL2 (F_CPU/4000) // Over-drives ISR (x4) // Перегрузка ISR (x4)
+#define AMASS_LEVEL3 (F_CPU/2000) // Over-drives ISR (x8) // Перегрузка ISR (x8)
 
 
 // Stores the planner block Bresenham algorithm execution data for the segments in the segment 
@@ -51,6 +61,12 @@
 // NOTE: This data is copied from the prepped planner blocks so that the planner blocks may be
 // discarded when entirely consumed and completed by the segment buffer. Also, AMASS alters this
 // data for its own use. 
+// Хранит данные о выполнении алгоритма Брезенхэма блока планировщика для сегментов в сегменте 
+// buffer. Обычно этот буфер используется частично, но в худшем случае он будет
+// никогда не превышайте количество доступных сегментов шагового буфера (SEGMENT_BUFFER_SIZE-1).
+// ПРИМЕЧАНИЕ: Эти данные копируются из подготовленных блоков планировщика, чтобы блоки планировщика могли быть
+// отброшены, когда они будут полностью использованы и заполнены буфером сегмента. Кроме того, AMASS изменяет эти
+// данные для собственного использования.
 typedef struct {  
   uint8_t direction_bits;
   uint32_t steps[N_AXIS];
@@ -62,31 +78,37 @@ static st_block_t st_block_buffer[SEGMENT_BUFFER_SIZE-1];
 // algorithm to execute, which are "checked-out" incrementally from the first block in the
 // planner buffer. Once "checked-out", the steps in the segments buffer cannot be modified by 
 // the planner, where the remaining planner block steps still can.
+// Кольцевой буфер основного шагового сегмента. Содержит небольшие, короткие линейные сегменты для выполнения шагового алгоритма 
+//, которые "извлекаются" постепенно, начиная с первого блока в буфере
+// планировщика. После "извлечения" шаги в буфере сегментов не могут быть изменены с помощью 
+// планировщика, в то время как остальные шаги блока планировщика все еще могут быть изменены.
 typedef struct {
-  uint16_t n_step;          // Number of step events to be executed for this segment
-  uint8_t st_block_index;   // Stepper block data index. Uses this information to execute this segment.
-  uint16_t cycles_per_tick; // Step distance traveled per ISR tick, aka step rate.
+  uint16_t n_step;          // Number of step events to be executed for this segment // Количество пошаговых событий, которые должны быть выполнены для этого сегмента
+  uint8_t st_block_index;   // Stepper block data index. Uses this information to execute this segment. // Индекс данных шагового блока. Эта информация используется для выполнения данного сегмента.
+  uint16_t cycles_per_tick; // Step distance traveled per ISR tick, aka step rate. // Расстояние, пройденное за такт ISR, или скорость шага.
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-    uint8_t amass_level;    // Indicates AMASS level for the ISR to execute this segment
+    uint8_t amass_level;    // Indicates AMASS level for the ISR to execute this segment // Указывает уровень накопления для ISR для выполнения этого сегмента
   #else
-    uint8_t prescaler;      // Without AMASS, a prescaler is required to adjust for slow timing.
+    uint8_t prescaler;      // Without AMASS, a prescaler is required to adjust for slow timing. // Без НАКОПЛЕНИЯ требуется предварительный масштабатор для настройки на медленное время.
   #endif
 } segment_t;
 static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 
 // Stepper ISR data struct. Contains the running data for the main stepper ISR.
+// Структура данных / Stepper ISR. Содержит текущие данные для основного stepper ISR.
 typedef struct {
   // Used by the bresenham line algorithm
-  uint32_t counter_x,        // Counter variables for the bresenham line tracer
+  // Используется линейным алгоритмом Брезенхэма
+  uint32_t counter_x,        // Counter variables for the bresenham line tracer // Переменные счетчика для трассировщика линии Брезенхэма
            counter_y, 
            counter_z;
   #ifdef STEP_PULSE_DELAY
-    uint8_t step_bits;  // Stores out_bits output to complete the step pulse delay
+    uint8_t step_bits;  // Stores out_bits output to complete the step pulse delay // Сохраняет выходные данные out_bits для завершения задержки пошагового импульса
   #endif
   
-  uint8_t execute_step;     // Flags step execution for each interrupt.
-  uint8_t step_pulse_time;  // Step pulse reset time after step rise
-  uint8_t step_outbits;         // The next stepping-bits to be output
+  uint8_t execute_step;     // Flags step execution for each interrupt. // Помечает выполнение шага для каждого прерывания.
+  uint8_t step_pulse_time;  // Step pulse reset time after step rise // Время сброса ступенчатого импульса после повышения ступени
+  uint8_t step_outbits;         // The next stepping-bits to be output // Следующие шаговые биты, которые будут выведены
   uint8_t dir_outbits;
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
     uint32_t steps[N_AXIS];
@@ -99,42 +121,51 @@ typedef struct {
 } stepper_t;
 static stepper_t st;
 
+// Индексы кольцевого буфера ступенчатого сегмента
 // Step segment ring buffer indices
 static volatile uint8_t segment_buffer_tail;
 static uint8_t segment_buffer_head;
 static uint8_t segment_next_head;
 
+// Порт шага и направления инвертирует маски.
 // Step and direction port invert masks. 
 static uint8_t step_port_invert_mask;
 static uint8_t dir_port_invert_mask;
 
+// Используется, чтобы избежать вложенности ISR в "Прерывание шагового драйвера". Однако это никогда не должно происходить.
 // Used to avoid ISR nesting of the "Stepper Driver Interrupt". Should never occur though.
 static volatile uint8_t busy;   
 
+// Указатели для сегмента шага, который подготавливается из буфера планировщика. Доступ к нему предоставляется только
+// основной программе. Указатели могут быть сегментами планирования или блоками планировщика, предшествующими тому, что выполняется.
 // Pointers for the step segment being prepped from the planner buffer. Accessed only by the
 // main program. Pointers may be planning segments or planner blocks ahead of what being executed.
-static plan_block_t *pl_block;     // Pointer to the planner block being prepped
-static st_block_t *st_prep_block;  // Pointer to the stepper block data being prepped 
+static plan_block_t *pl_block;     // Pointer to the planner block being prepped // Указатель на подготавливаемый блок планировщика
+static st_block_t *st_prep_block;  // Pointer to the stepper block data being prepped  // Указатель на подготавливаемые данные шагового блока
 
 // Segment preparation data struct. Contains all the necessary information to compute new segments
 // based on the current executing planner block.
+// Структура данных для подготовки сегмента. Содержит всю необходимую информацию для вычисления новых сегментов
+// на основе текущего выполняющегося блока планирования.
 typedef struct {
-  uint8_t st_block_index;  // Index of stepper common data block being prepped
-  uint8_t flag_partial_block;  // Flag indicating the last block completed. Time to load a new one.
+  uint8_t st_block_index;  // Index of stepper common data block being prepped // Индекс подготавливаемого шагового общего блока данных
+  uint8_t flag_partial_block;  // Flag indicating the last block completed. Time to load a new one. // Флаг, указывающий на завершение последнего блока. Пришло время загрузить новый.
 
   float steps_remaining;
-  float step_per_mm;           // Current planner block step/millimeter conversion scalar
+  float step_per_mm;           // Current planner block step/millimeter conversion scalar // Шаг текущего блока планировщика/скалярное преобразование в миллиметрах
   float req_mm_increment;
   float dt_remainder;
   
-  uint8_t ramp_type;      // Current segment ramp state
-  float mm_complete;      // End of velocity profile from end of current planner block in (mm).
+  uint8_t ramp_type;      // Current segment ramp state // Текущее состояние рампы сегмента
+  float mm_complete;      // End of velocity profile from end of current planner block in (mm). // Конец профиля скорости от конца текущего блока планировщика в (мм).
                           // NOTE: This value must coincide with a step(no mantissa) when converted.
-  float current_speed;    // Current speed at the end of the segment buffer (mm/min)
-  float maximum_speed;    // Maximum speed of executing block. Not always nominal speed. (mm/min)
-  float exit_speed;       // Exit speed of executing block (mm/min)
-  float accelerate_until; // Acceleration ramp end measured from end of block (mm)
-  float decelerate_after; // Deceleration ramp start measured from end of block (mm)
+                          // Конец профиля скорости от конца текущего блока планировщика в (мм).
+                          // ПРИМЕЧАНИЕ: При преобразовании это значение должно совпадать с шагом (без мантиссы).
+  float current_speed;    // Current speed at the end of the segment buffer (mm/min) // Текущая скорость в конце сегментного буфера (мм/мин)
+  float maximum_speed;    // Maximum speed of executing block. Not always nominal speed. (mm/min) // Максимальная скорость выполнения блока. Не всегда номинальная скорость. (мм/мин)
+  float exit_speed;       // Exit speed of executing block (mm/min) // Скорость выхода исполнительного блока (мм/мин)
+  float accelerate_until; // Acceleration ramp end measured from end of block (mm) // Конец рампы ускорения, измеренный от конца блока (мм)
+  float decelerate_after; // Deceleration ramp start measured from end of block (mm) // Начало снижения скорости, измеренное от конца блока (мм)
 } st_prep_t;
 static st_prep_t prep;
 
@@ -177,52 +208,102 @@ static st_prep_t prep;
   are shown and defined in the above illustration.
 */
 
+/* ОПРЕДЕЛЕНИЕ ПРОФИЛЯ СКОРОСТИ БЛОКА 
+          __________________________
+         /|                        |\     _________________         ^
+        / |                        | \   /|               |\        |
+       / | | \ / | | \ s
+/ | | | | | \ p
+/ | | | | | \ e
++-----+------------------------+---+--+---------------+----+ e
+| БЛОК 1 ^ БЛОК 2 | d
+                                       |
+                  время -----> ПРИМЕР: скорость входа в блок 2 соответствует максимальной скорости соединения
+  
+  Буфер блоков планировщика планируется с учетом профилей скорости постоянного ускорения и
+непрерывно соединяется на стыках блоков, как показано выше. Однако планировщик активно вычисляет только
+  скорость входа в блок для оптимального плана скорости, но не вычисляет внутренние
+профили скорости блока. Эти профили скорости вычисляются нерегулярно, поскольку они выполняются системой. 
+  пошаговый алгоритм и состоит всего из 7 возможных типов профилей: только для круиза, круиз-
+  замедление, круиз с ускорением, только для ускорения, только для замедления, полная трапеция и
+треугольник (без круиза).
 
+                                        максимальная скорость (< номинальная скорость)) -> +
++--------+ <- максимальная скорость (= номинальная скорость) /|\
+/ \ / | \                      
+ текущая_скорость -> + \ / | + <- выходная_скорость
+                  | + <- выход_скорость / | |
++-------------+ текущая_скорость -> +----+--+
+время --> ^ ^ ^ ^
+| | | |
+замедление_после(в мм) замедление_после(в мм)
+                    ^           ^                                           ^  ^
+                    |           |                                           |  |
+                accelerate_until(в мм) accelerate_until(в мм)
+                    
+  Буфер сегмента step вычисляет профиль скорости выполняемого блока и отслеживает критические
+параметры для алгоритма stepper для точного отслеживания профиля. Эти критические параметры
+показаны и определены на приведенном выше рисунке.
+*/
+
+// Инициализация состояния Stepper. Цикл должен запускаться только в том случае, если флаг st.cycle_start
+// включен. Startup init и limits вызывают эту функцию, но не должны запускать цикл.
 // Stepper state initialization. Cycle should only start if the st.cycle_start flag is
 // enabled. Startup init and limits call this function but shouldn't start the cycle.
 void st_wake_up() 
 {
-  // Enable stepper drivers.
+  // Enable stepper drivers. // Включить шаговые драйверы.
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
   else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
 
   if (sys.state & (STATE_CYCLE | STATE_HOMING)){
-    // Initialize stepper output bits
+    // Initialize stepper output bits // Инициализировать выходные биты шагового преобразователя
     st.dir_outbits = dir_port_invert_mask; 
     st.step_outbits = step_port_invert_mask;
     
     // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
+    // Инициализируйте синхронизацию пошаговых импульсов из настроек. Здесь для обеспечения обновления после перезаписи.
     #ifdef STEP_PULSE_DELAY
       // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
+      // Установите общее время импульса шага после установки направляющего контакта. Специальные вычисления с помощью осциллографа.
       st.step_pulse_time = -(((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
       // Set delay between direction pin write and step command.
+      // Установите задержку между записью пин-кода направления и командой шага.
       OCR0A = -(((settings.pulse_microseconds)*TICKS_PER_MICROSECOND) >> 3);
     #else // Normal operation
       // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
+      // Нормальная работа
+      // Установите время пошагового импульса. Специальные вычисления с помощью осциллографа. Используется дополнение two.
       st.step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
     #endif
 
     // Enable Stepper Driver Interrupt
+    // Включить прерывание шагового драйвера
     TIMSK1 |= (1<<OCIE1A);
   }
 }
 
 
 // Stepper shutdown
+// Шаговое выключение
 void st_go_idle() 
 {
   // Disable Stepper Driver Interrupt. Allow Stepper Port Reset Interrupt to finish, if active.
-  TIMSK1 &= ~(1<<OCIE1A); // Disable Timer1 interrupt
-  TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Reset clock to no prescaling.
+  // Отключите прерывание драйвера Stepper. Разрешите завершить прерывание сброса порта Stepper, если оно активно.
+  TIMSK1 &= ~(1<<OCIE1A); // Disable Timer1 interrupt // Отключить прерывание по таймеру 1
+  TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Reset clock to no prescaling. // Сброс времени без предварительного масштабирования.
   busy = false;
   
+  // Установите драйвер шагового двигателя в состояние ожидания, отключенное или включенное, в зависимости от настроек и обстоятельств.
   // Set stepper driver idle state, disabled or enabled, depending on settings and circumstances.
   bool pin_state = false; // Keep enabled.
   if (((settings.stepper_idle_lock_time != 0xff) || sys_rt_exec_alarm) && sys.state != STATE_HOMING) {
     // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
     // stop and not drift from residual inertial forces at the end of the last movement.
+    // Принудительно остановите шаговый механизм, чтобы зафиксировать оси на определенный промежуток времени, чтобы убедиться, что оси полностью выровнялись
+    // остановитесь и не дрейфуйте из-за остаточных сил инерции в конце последнего движения.
     delay_ms(settings.stepper_idle_lock_time);
-    pin_state = true; // Override. Disable steppers.
+    pin_state = true; // Override. Disable steppers. // Переопределить. Отключите шаговые двигатели.
   }
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
   if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
@@ -278,6 +359,54 @@ void st_go_idle()
 // TODO: Replace direct updating of the int32 position counters in the ISR somehow. Perhaps use smaller
 // int8 variables and update position counters only when a segment completes. This can get complicated 
 // with probing and homing cycles that require true real-time positions.
+/* "Прерывание шагового привода" - это прерывание по таймеру является рабочей лошадкой Grbl. В Grbl используется
+   знаменитый линейный алгоритм Брезенхэма для управления и точной синхронизации многоосевых перемещений.
+   В отличие от популярного алгоритма DDA, алгоритм Брезенхэма не подвержен ошибкам округления чисел
+   и требует только быстрого подсчета целых чисел, что означает низкую вычислительную нагрузку
+и максимизацию возможностей Arduino. Однако у алгоритма Брезенхэма есть и обратная сторона
+   заключается в том, что при определенных многоосевых перемещениях не доминирующие оси могут иметь неровный шаг 
+   последовательности импульсов или искажение, которые могут привести к появлению странных звуковых сигналов или дрожанию. Это
+особенно заметно или может вызвать проблемы с движением на низких ступенчатых частотах (0-5 кГц), но
+обычно не является физической проблемой на более высоких частотах, хотя и слышно.
+     Чтобы улучшить производительность многоосевого алгоритма Брезенхэма, Grbl использует так называемый адаптивный многоосевой алгоритм
+   Пошагового сглаживания (AMASS), который выполняет то, что следует из названия. При более низких частотах шага,
+   AMASS искусственно увеличивает разрешение по Брезенхэму, не влияя на эффективность алгоритма. 
+   врожденная точность. AMASS автоматически адаптирует свои уровни разрешения в зависимости от шага
+   частота, которую необходимо выполнить, означает, что при еще более низких частотах шага
+уровень сглаживания шага увеличивается. Алгоритмически НАКОПЛЕНИЕ достигается простым сдвигом количества
+шагов Брезенхэма в битах для каждого уровня накопления. Например, для сглаживания шага уровня 1 мы немного сдвигаем
+количество событий шага Брезенхэма, фактически умножая его на 2, в то время как количество шагов по оси 
+   остается неизменным, а затем удваиваем частоту ISR шагового устройства. По сути, мы разрешаем
+   недоминантные оси Брезенхэма делают шаг в промежуточном такте ISR, в то время как доминирующая ось
+делает шаг каждые два такта ISR, а не каждый такт ISR в традиционном смысле. В AMASS
+   На уровне 2 мы просто снова меняем битовый сдвиг, чтобы недоминантные оси Брезенхэма могли перемещаться в пределах любого
+из четырех тактов ISR, доминирующая ось перемещается каждые четыре такта ISR и увеличивает частоту шагового
+ISR в четыре раза. И так далее. Это, по сути, практически устраняет
+проблемы с многоосевым сглаживанием в алгоритме Брезенхэма и существенно не влияет на производительность Grbl, но 
+   фактически, более эффективно используются неиспользуемые циклы процессора в целом во всех конфигурациях.
+     AMASS сохраняет точность алгоритма Брезенхэма, требуя, чтобы он всегда выполнял полный
+   Шаг Брезенхэма, независимо от уровня накопления. Это означает, что для уровня накопления 2
+должны быть выполнены все четыре промежуточных шага, чтобы всегда сохранялся базовый показатель Брезенхэма (уровень 0)
+. Аналогично, уровень накопления 3 означает, что должны быть выполнены все восемь промежуточных шагов. 
+   Несмотря на то, что уровни накопления на самом деле произвольны, базовые значения Брезенхема могут
+   быть умноженным на любое целое значение, умножение на степени двойки просто используется для облегчения 
+   Нагрузка на процессор при выполнении целочисленных операций со сдвигом битов. 
+     Это прерывание является простым и немым по своей конструкции. Вся тяжелая вычислительная работа, как и при
+определении ускорений, выполняется в другом месте. Это прерывание извлекает предварительно вычисленные сегменты,
+определенные как сегменты с постоянной скоростью на протяжении n шагов, из буфера сегментов шага, а затем 
+   выполняет их, соответствующим образом активируя контакты шагового устройства с помощью алгоритма Брезенхэма. Этот 
+   ISR поддерживается прерыванием сброса шагового порта, которое используется для сброса шагового порта
+   после каждого импульса. Алгоритм трассировки линии Брезенхэма управляет всеми выходами шагового порта
+   одновременно с этими двумя прерываниями.
+   
+   ПРИМЕЧАНИЕ: Это прерывание должно быть максимально эффективным и завершиться до следующего тика ISR,
+который для Grbl должен составлять менее 33,3usec (при частоте ISR 30 кГц). Время, измеренное осциллографом в 
+   Стандартное значение ISR составляет 5 мкс, максимальное - 25 мкс, что значительно ниже требований.
+   ПРИМЕЧАНИЕ: В этом ISR предполагается выполнение как минимум одного шага на сегмент.
+*/
+// ЗАДАЧА: Каким-то образом заменить прямое обновление счетчиков местоположения int32 в ISR. Возможно, использовать переменные меньшего размера
+// int8 и обновлять счетчики местоположения только по завершении сегмента. Это может усложниться 
+// с циклами зондирования и наведения, которые требуют точных данных о местоположении в реальном времени.
 ISR(TIMER1_COMPA_vect)
 {        
 // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR // Debug: Используется для определения времени ISR
