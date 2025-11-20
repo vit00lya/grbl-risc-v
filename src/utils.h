@@ -1,0 +1,66 @@
+#ifndef utils_h
+#define utils_h
+
+// Значения индекса массива Axis. Должны начинаться с 0 и быть непрерывными.
+// Axis array index values. Must start with 0 and be continuous.
+#define N_AXIS 3 // Number of axes // Количество осей
+#define X_AXIS 0 // Axis indexing value.  // Значение индексации оси.
+#define Y_AXIS 1
+#define Z_AXIS 2
+// #define A_AXIS 3
+
+// CoreXY motor assignments. DO NOT ALTER.
+// NOTE: If the A and B motor axis bindings are changed, this effects the CoreXY equations.
+// Назначение электродвигателей CoreXY. НЕ ИЗМЕНЯТЬ.
+// ПРИМЕЧАНИЕ: Если изменить привязку осей электродвигателей A и B, это повлияет на уравнения CoreXY.
+#ifdef COREXY
+ #define A_MOTOR X_AXIS // Must be X_AXIS
+ #define B_MOTOR Y_AXIS // Must be Y_AXIS
+#endif
+
+// Conversions
+// Конверсии
+//#define MM_PER_INCH (25.40)
+//#define INCH_PER_MM (0.0393701)
+#define TICKS_PER_MICROSECOND (F_CPU/1000000)
+
+// Useful macros
+// Полезные макросы
+#define clear_vector(a) memset(a, 0, sizeof(a))
+#define clear_vector_float(a) memset(a, 0.0, sizeof(float)*N_AXIS)
+// #define clear_vector_long(a) memset(a, 0.0, sizeof(long)*N_AXIS)
+#define max(a,b) (((a) > (b)) ? (a) : (b))
+#define min(a,b) (((a) < (b)) ? (a) : (b))
+
+// Bit field and masking macros
+// Битовое поле и маскирующие макросы
+#define bit(n) (1 << n) 
+#define bit_true_atomic(x,mask) {uint8_t sreg = SREG; cli(); (x) |= (mask); SREG = sreg; }
+#define bit_false_atomic(x,mask) {uint8_t sreg = SREG; cli(); (x) &= ~(mask); SREG = sreg; }
+#define bit_toggle_atomic(x,mask) {uint8_t sreg = SREG; cli(); (x) ^= (mask); SREG = sreg; }
+#define bit_true(x,mask) (x) |= (mask)
+#define bit_false(x,mask) (x) &= ~(mask)
+#define bit_istrue(x,mask) ((x & mask) != 0)
+#define bit_isfalse(x,mask) ((x & mask) == 0)
+
+// Read a floating point value from a string. Line points to the input buffer, char_counter 
+// is the indexer pointing to the current character of the line, while float_ptr is 
+// a pointer to the result variable. Returns true when it succeeds
+// Считывает значение с плавающей запятой из строки. Строка указывает на входной буфер, char_counter 
+// - это индексатор, указывающий на текущий символ строки, а float_ptr - это 
+// указатель на результирующую переменную. Возвращает значение true в случае успешного выполнения
+u8 read_float(char *line, u8 *char_counter, float *float_ptr);
+
+// Delays variable-defined milliseconds. Compiler compatibility fix for _delay_ms().
+// Задержки, определяемые переменной в миллисекундах. Исправлена ошибка совместимости компилятора с _delay_ms().
+void delay_ms(u16 ms);
+
+// Delays variable-defined microseconds. Compiler compatibility fix for _delay_us().
+// Задержка определяется переменной в микросекундах. Исправлена ошибка совместимости компилятора с _delay_us().
+void delay_us(u32 us);
+
+// Computes hypotenuse, avoiding avr-gcc's bloated version and the extra error checking.
+// Вычисляет гипотенузу, избегая раздутой версии avr-gcc и дополнительной проверки ошибок.
+float hypot_f(float x, float y);
+
+#endif
