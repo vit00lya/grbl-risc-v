@@ -5,6 +5,7 @@
 int main()
 {
     SystemClockConfig();
+    SettingsInit();// Load Grbl settings // Загрузка настроек grbl
     io_out(USER_LED);
 
     while (1)
@@ -25,7 +26,6 @@ int main()
 //   // Инициализация системы при включении питания
 //   // Initialize system upon power-up.
 //   serial_init();   // Setup serial baud rate and interrupts // Настройка серийного порта и прерываний
-//   settings_init(); // Load Grbl settings from EEPROM // Загрузка настроек grbl из EEPROM
 //   stepper_init();  // Configure stepper pins and interrupt timers // Настройка выходов шаговых двигателей и таймеров прерываний
 //   system_init();   // Configure pinout pins and pin-change interrupt // Настройка выводов распиновки и прерывания смены выводов
   

@@ -6,6 +6,7 @@
 
   Copyright (c) 2015 Sungeun K. Jeon
   Copyright (c) 2025 Сандалов В.П. vit00lya@yandex.ru
+  Copyright (c) 2025 Порошин Д.
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -50,30 +51,9 @@ extern "C" {
 #include "config.h"
 #include "cpu_map.h"
 #include "utils.h"
+#include "defaults.h"
 #include "settings.h"
-#include "utils.h"
+#include "system.h"
 
 
-/* чтобы «протащить» через несколько макросов несколько аргументов как один аргумент */
-#define  _(...)  __VA_ARGS__
 
-/* превращает число в строку средствами препроцессора */
-#ifndef  stringify
-    #define  pro_stringify(a)  #a
-    #define  stringify(a)      pro_stringify(a)
-#endif
-
-/* упрощённая работа с портами ввода/вывода */
-
-#define  io_RCC_EN(_p_,_b_)  PM->CLK_APB_P_SET |= PM_CLOCK_APB_P_GPIO_##_p_##_M
-#define  io_port(_p_,_b_)    (GPIO_##_p_)
-#define  io_bit(_p_,_b_)     (_b_)
-#define  io_bit_n(port_bit)  io_bit(port_bit)
-
-#define  io_inp(port_bit)  do { io_RCC_EN(port_bit); io_port(port_bit)->DIRECTION_IN  = 1 << io_bit(port_bit); } while(0)
-#define  io_out(port_bit)  do { io_RCC_EN(port_bit); io_port(port_bit)->DIRECTION_OUT = 1 << io_bit(port_bit); } while(0)
-#define  io_set(port_bit)    io_port(port_bit)->SET   = 1 << io_bit(port_bit)
-#define  io_clr(port_bit)    io_port(port_bit)->CLEAR = 1 << io_bit(port_bit)
-#define  io_read(port_bit)  (io_port(port_bit)->STATE >> io_bit(port_bit)  &  1)
-#define  io_SET_R(port_bit)  (&io_port(port_bit)->SET  )
-#define  io_CLR_R(port_bit)  (&io_port(port_bit)->CLEAR)
