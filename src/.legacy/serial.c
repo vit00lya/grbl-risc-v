@@ -203,7 +203,7 @@ ISR(SERIAL_RX)
 }
 
 
-void serial_reset_read_buffer() 
+void SerialResetReadBuffer() 
 {
   serial_rx_buffer_tail = serial_rx_buffer_head;
 

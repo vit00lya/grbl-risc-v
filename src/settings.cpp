@@ -74,10 +74,6 @@ void SettingsRestore(u8 restore_flag)
         settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
 
         settings.flags = 0;
-        if (DEFAULT_REPORT_INCHES)
-        {
-            settings.flags |= BITFLAG_REPORT_INCHES;
-        }
         if (DEFAULT_INVERT_ST_ENABLE)
         {
             settings.flags |= BITFLAG_INVERT_ST_ENABLE;

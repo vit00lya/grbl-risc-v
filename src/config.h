@@ -667,25 +667,6 @@
 // #define RX_BUFFER_SIZE 128 // Uncomment to override defaults in serial.h
 // #define TX_BUFFER_SIZE 64
   
-// Toggles XON/XOFF software flow control for serial communications. Not officially supported
-// due to problems involving the Atmega8U2 USB-to-serial chips on current Arduinos. The firmware
-// on these chips do not support XON/XOFF flow control characters and the intermediate buffer 
-// in the chips cause latency and overflow problems with standard terminal programs. However, 
-// using specifically-programmed UI's to manage this latency problem has been confirmed to work.
-// As well as, older FTDI FT232RL-based Arduinos(Duemilanove) are known to work with standard
-// terminal programs since their firmware correctly manage these XON/XOFF characters. In any
-// case, please report any successes to grbl administrators!
-
-// Переключает программное управление потоком XON/XOFF для последовательной связи. Официально не поддерживается
-// из-за проблем, связанных с чипами ATmega8U2 USB-to-serial в современных Arduino. Прошивка
-// в этих микросхемах не поддерживаются символы управления потоком XON/XOFF и промежуточный буфер 
-// в этих микросхемах возникают проблемы с задержкой и переполнением в стандартных программах терминала. Однако,
-// было подтверждено, что использование специально запрограммированного пользовательского интерфейса для решения этой проблемы с задержкой работает.
-// Кроме того, известно, что более старые Arduino на базе FTDI FT232RL (Duemilanove) работают со стандартными
-// терминальные программы, поскольку их встроенное ПО корректно управляет этими символами XON/XOFF. В любом
-// случае, пожалуйста, сообщайте о любых успехах администраторам grbl!
-
-// #define ENABLE_XONXOFF // Default disabled. Uncomment to enable.
 
 // A simple software debouncing feature for hard limit switches. When enabled, the interrupt 
 // monitoring the hard limit switch pins will enable the Arduino's watchdog timer to re-check 

@@ -42,6 +42,7 @@ extern "C" {
     #include <gpio.h> 
     #include <power_manager.h> 
     #include <wakeup.h>
+    #include "uart_lib.h"
 }
 #include <cmath>
 
@@ -54,6 +55,7 @@ extern "C" {
 #include "defaults.h"
 #include "settings.h"
 #include "system.h"
+#include "serial.h"
 
 
 
