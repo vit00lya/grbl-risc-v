@@ -21,7 +21,7 @@
 
 #include "grbl.h"
 
-settings_t settings;
+
 
 // Method to store startup lines into EEPROM
 // Способ сохранения строк запуска в EEPROM
@@ -56,7 +56,7 @@ settings_t settings;
 
 // Method to restore EEPROM-saved Grbl global settings back to defaults.
 // Способ восстановления глобальных настроек Grbl, сохраненных в EEPROM, к значениям по умолчанию.
-void SettingsRestore(u8 restore_flag)
+void SettingsRestore(u8 restore_flag, settings_t& settings)
 {
     if (restore_flag & SETTINGS_RESTORE_DEFAULTS)
     {
@@ -290,12 +290,12 @@ bool ReadGlobalSettings()
 // }
 
 // Initialize the config subsystem // Инициализируем конфигурационную подсистему
-void SettingsInit()
+void SettingsInit(settings_t& settings)
 {
     if (!ReadGlobalSettings())
     {
         // report_status_message(STATUS_SETTING_READ_FAIL);
-        SettingsRestore(SETTINGS_RESTORE_ALL); // Force restore all EEPROM data. // Принудительно восстановите все данные EEPROM.
+        SettingsRestore(SETTINGS_RESTORE_ALL, settings); // Force restore all EEPROM data. // Принудительно восстановите все данные EEPROM.
                                                // report_grbl_settings();
     }
 

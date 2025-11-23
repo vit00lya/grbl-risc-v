@@ -2,10 +2,16 @@
 #include "system.h"
 #define  USER_LED  2,7
 
+
+
 int main()
 {
+
+    settings_t settings;    
+
     SystemClockConfig();
-    SettingsInit();// Load Grbl settings // Загрузка настроек grbl
+    SettingsInit(settings);// Load Grbl settings // Загрузка настроек grbl
+    serial_init();  // Setup serial baud rate and interrupts // Настройка серийного порта и прерываний
     io_out(USER_LED);
 
     while (1)
@@ -15,6 +21,7 @@ int main()
         HAL_DelayMs(2000);
         io_clr(USER_LED);
         HAL_DelayMs(2000);
+        report_grbl_settings(settings);
         #endif
     }
 }
@@ -25,7 +32,6 @@ int main()
 
 //   // Инициализация системы при включении питания
 //   // Initialize system upon power-up.
-//   serial_init();   // Setup serial baud rate and interrupts // Настройка серийного порта и прерываний
 //   stepper_init();  // Configure stepper pins and interrupt timers // Настройка выходов шаговых двигателей и таймеров прерываний
 //   system_init();   // Configure pinout pins and pin-change interrupt // Настройка выводов распиновки и прерывания смены выводов
   

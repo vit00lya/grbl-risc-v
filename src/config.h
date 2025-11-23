@@ -1,3 +1,4 @@
+#pragma once
 /*
   config.h - compile time configuration
   Part of Grbl
@@ -18,7 +19,7 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-  
+
 // This file contains compile-time configurations for Grbl's internal system. For the most part,
 // users will not need to directly modify these, but they are here for specific needs, i.e.
 // performance tuning or adjusting to non-typical machines.
@@ -34,7 +35,8 @@
 #ifndef config_h
 #define config_h
 
-
+  
+#define F_CPU 32000000 // Частота работы кварцевого резонатора процессора
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
 // Настройки по умолчанию. Используется при сбросе EEPROM. Измените название на желаемое в defaults.h
@@ -42,7 +44,7 @@
 
 // Serial baud rate
 // Скорость серийного порта
-#define BAUD_RATE 115200
+#define BAUD_RATE 9600
 
 // Default cpu mappings. Grbl officially supports the Arduino Uno only. Other processor types
 // may exist from user-supplied templates or directly user-defined in cpu_map.h

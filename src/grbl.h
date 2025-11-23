@@ -22,18 +22,6 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-typedef  signed char         i8;
-typedef  signed short        i16;
-typedef  signed long         i32;
-typedef  signed long long    i64;
-
-typedef  unsigned char       u8;
-typedef  unsigned short      u16;
-typedef  unsigned long       u32;
-typedef  unsigned long long  u64;
-
-typedef  float f;
-
 extern "C" {
     #include "mik32_hal_pcc.h"
     #include "mik32_hal_gpio.h"
@@ -43,8 +31,10 @@ extern "C" {
     #include <power_manager.h> 
     #include <wakeup.h>
     #include "uart_lib.h"
+    #include "xprintf.h"
 }
 #include <cmath>
+#include <cstring>
 
 #define GRBL_VERSION "0.9j"
 #define GRBL_VERSION_BUILD "20160726"
@@ -56,6 +46,11 @@ extern "C" {
 #include "settings.h"
 #include "system.h"
 #include "serial.h"
+#include "report.h"
+#include "print.h"
+#include "gcode.h"
+#include "planner.h"
+#include "limits.h"
 
 
 

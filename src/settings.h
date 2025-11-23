@@ -111,10 +111,44 @@ struct settings_t
   float homing_pulloff;
 };
 
-void SettingsInit();
+void SettingsInit(settings_t& settings);
 bool ReadGlobalSettings();
-void SettingsRestore(u8 restore_flag);
+void SettingsRestore(u8 restore_flag, settings_t& settings);
+
+// Initialize the configuration subsystem (load settings from EEPROM) // Инициализировать конфигурационную подсистему (загрузить настройки из EEPROM)
+void settings_init();
 
 
+// A helper method to set new settings from command line // Вспомогательный метод для установки новых настроек из командной строки
+uint8_t settings_store_global_setting(uint8_t parameter, float value);
+
+// Stores the protocol line variable as a startup line in EEPROM // Сохраняет переменную строки протокола в качестве начальной строки в EEPROM
+void settings_store_startup_line(uint8_t n, char *line);
+
+// Reads an EEPROM startup line to the protocol line variable // Считывает строку запуска EEPROM в переменную строки протокола
+uint8_t settings_read_startup_line(uint8_t n, char *line);
+
+// Stores build info user-defined string // Хранит информацию о сборке в пользовательской строке
+void settings_store_build_info(char *line);
+
+// Reads build info user-defined string // Считывает пользовательскую строку информации о сборке
+uint8_t settings_read_build_info(char *line);
+
+// Writes selected coordinate data to EEPROM // Записывает выбранные данные о координатах в EEPROM
+void settings_write_coord_data(uint8_t coord_select, float *coord_data);
+
+// Reads selected coordinate data from EEPROM // Считывает выбранные координатные данные из EEPROM
+uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data);
+
+// Returns the step pin mask according to Grbl's internal axis numbering // Возвращает маску ступенчатого штифта в соответствии с нумерацией внутренних осей Grbl
+uint8_t get_step_pin_mask(uint8_t i);
+
+// Returns the direction pin mask according to Grbl's internal axis numbering // Возвращает маску направляющего штифта в соответствии с нумерацией внутренних осей Grbl
+uint8_t get_direction_pin_mask(uint8_t i);
+
+// Returns the limit pin mask according to Grbl's internal axis numbering // Возвращает маску предельного штифта в соответствии с нумерацией внутренних осей Grbl
+uint8_t get_limit_pin_mask(uint8_t i);
+
+ 
  
 #endif

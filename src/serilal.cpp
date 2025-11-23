@@ -21,29 +21,29 @@
 
 #include "grbl.h"
 
-void SerialInit(){
-      UART_Init(UART_0, 32000000/9600, UART_CONTROL1_TE_M | UART_CONTROL1_RE_M  | UART_CONTROL1_M_8BIT_M, 0, 0);
+void serial_init(){
+      UART_Init(UART_0, F_CPU/BAUD_RATE, UART_CONTROL1_TE_M | UART_CONTROL1_RE_M  | UART_CONTROL1_M_8BIT_M, 0, 0);
 }
 
 // Writes one byte to the TX serial buffer. Called by main program. // Записывает один байт в последовательный буфер TX. Вызывается основной программой.
-void SerialWrite(u8 data){
+void serial_write(u8 data){
 	UART_WriteByte(UART_0, data);
 	UART_WaitTransmission(UART_0);
 }
 
 // Fetches the first byte in the serial read buffer. Called by main program. // Извлекает первый байт из буфера последовательного чтения. Вызывается основной программой.
-u16 SerialRead(){
+u16 serial_read(){
   return UART_ReadByte(UART_0);
 }
 
 // Reset and empty data in read buffer. Used by e-stop and reset. // Сброс и очистка данных в буфере чтения. Используется e-stop и reset.
-void SerialResetReadBuffer(){
+void serial_reset_read_buffer(){
   UART_ClearRxFifo(UART_0);
 }
 
 // Returns the number of bytes used in the RX serial buffer. 
 // Возвращает количество байт, используемых в последовательном буфере RX.
-u8 SerialGetRxBufferCount(){
+u8 serial_get_rx_buffer_count(){
  return 0; // Заглушка
 }
 
@@ -51,6 +51,6 @@ u8 SerialGetRxBufferCount(){
 // NOTE: Not used except for debugging and ensuring no TX bottlenecks.
 // Возвращает количество байт, используемых в последовательном буфере TX.
 // ПРИМЕЧАНИЕ: Используется только для отладки и обеспечения отсутствия узких мест в TX.
-u8 SerialGetTxBufferVount(){
+u8 serial_get_tx_buffer_count(){
   return 0; // Заглушка
 }
