@@ -1,24 +1,3 @@
-/*
-  stepper.c - stepper motor driver: executes motion plans using stepper motors
-  Part of Grbl
-
-  Copyright (c) 2011-2015 Sungeun K. Jeon
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
-  
-  Grbl is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Grbl is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include "grbl.h"
 
 
@@ -67,11 +46,11 @@
 // ПРИМЕЧАНИЕ: Эти данные копируются из подготовленных блоков планировщика, чтобы блоки планировщика могли быть
 // отброшены, когда они будут полностью использованы и заполнены буфером сегмента. Кроме того, AMASS изменяет эти
 // данные для собственного использования.
-typedef struct {  
+struct st_block_t{  
   uint8_t direction_bits;
   uint32_t steps[N_AXIS];
   uint32_t step_event_count;
-} st_block_t;
+};
 static st_block_t st_block_buffer[SEGMENT_BUFFER_SIZE-1];
 
 // Primary stepper segment ring buffer. Contains small, short line segments for the stepper 
@@ -82,7 +61,7 @@ static st_block_t st_block_buffer[SEGMENT_BUFFER_SIZE-1];
 //, которые "извлекаются" постепенно, начиная с первого блока в буфере
 // планировщика. После "извлечения" шаги в буфере сегментов не могут быть изменены с помощью 
 // планировщика, в то время как остальные шаги блока планировщика все еще могут быть изменены.
-typedef struct {
+struct segment_t{
   uint16_t n_step;          // Number of step events to be executed for this segment // Количество пошаговых событий, которые должны быть выполнены для этого сегмента
   uint8_t st_block_index;   // Stepper block data index. Uses this information to execute this segment. // Индекс данных шагового блока. Эта информация используется для выполнения данного сегмента.
   uint16_t cycles_per_tick; // Step distance traveled per ISR tick, aka step rate. // Расстояние, пройденное за такт ISR, или скорость шага.
@@ -91,12 +70,12 @@ typedef struct {
   #else
     uint8_t prescaler;      // Without AMASS, a prescaler is required to adjust for slow timing. // Без НАКОПЛЕНИЯ требуется предварительный масштабатор для настройки на медленное время.
   #endif
-} segment_t;
+} ;
 static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 
 // Stepper ISR data struct. Contains the running data for the main stepper ISR.
 // Структура данных / Stepper ISR. Содержит текущие данные для основного stepper ISR.
-typedef struct {
+struct stepper_t {
   // Used by the bresenham line algorithm
   // Используется линейным алгоритмом Брезенхэма
   uint32_t counter_x,        // Counter variables for the bresenham line tracer // Переменные счетчика для трассировщика линии Брезенхэма
@@ -118,7 +97,7 @@ typedef struct {
   uint8_t exec_block_index; // Tracks the current st_block index. Change indicates new block.
   st_block_t *exec_block;   // Pointer to the block data for the segment being executed
   segment_t *exec_segment;  // Pointer to the segment being executed
-} stepper_t;
+};
 static stepper_t st;
 
 // Индексы кольцевого буфера ступенчатого сегмента
@@ -147,7 +126,7 @@ static st_block_t *st_prep_block;  // Pointer to the stepper block data being pr
 // based on the current executing planner block.
 // Структура данных для подготовки сегмента. Содержит всю необходимую информацию для вычисления новых сегментов
 // на основе текущего выполняющегося блока планирования.
-typedef struct {
+struct st_prep_t{
   uint8_t st_block_index;  // Index of stepper common data block being prepped // Индекс подготавливаемого шагового общего блока данных
   uint8_t flag_partial_block;  // Flag indicating the last block completed. Time to load a new one. // Флаг, указывающий на завершение последнего блока. Пришло время загрузить новый.
 
@@ -166,7 +145,7 @@ typedef struct {
   float exit_speed;       // Exit speed of executing block (mm/min) // Скорость выхода исполнительного блока (мм/мин)
   float accelerate_until; // Acceleration ramp end measured from end of block (mm) // Конец рампы ускорения, измеренный от конца блока (мм)
   float decelerate_after; // Deceleration ramp start measured from end of block (mm) // Начало снижения скорости, измеренное от конца блока (мм)
-} st_prep_t;
+};
 static st_prep_t prep;
 
 
@@ -252,35 +231,35 @@ static st_prep_t prep;
 // enabled. Startup init and limits call this function but shouldn't start the cycle.
 void st_wake_up() 
 {
-  // Enable stepper drivers. // Включить шаговые драйверы.
-  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
-  else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
+  // // Enable stepper drivers. // Включить шаговые драйверы.
+  // if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
+  // else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
 
-  if (sys.state & (STATE_CYCLE | STATE_HOMING)){
-    // Initialize stepper output bits // Инициализировать выходные биты шагового преобразователя
-    st.dir_outbits = dir_port_invert_mask; 
-    st.step_outbits = step_port_invert_mask;
+  // if (sys.state & (STATE_CYCLE | STATE_HOMING)){
+  //   // Initialize stepper output bits // Инициализировать выходные биты шагового преобразователя
+  //   st.dir_outbits = dir_port_invert_mask; 
+  //   st.step_outbits = step_port_invert_mask;
     
-    // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
-    // Инициализируйте синхронизацию пошаговых импульсов из настроек. Здесь для обеспечения обновления после перезаписи.
-    #ifdef STEP_PULSE_DELAY
-      // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
-      // Установите общее время импульса шага после установки направляющего контакта. Специальные вычисления с помощью осциллографа.
-      st.step_pulse_time = -(((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
-      // Set delay between direction pin write and step command.
-      // Установите задержку между записью пин-кода направления и командой шага.
-      OCR0A = -(((settings.pulse_microseconds)*TICKS_PER_MICROSECOND) >> 3);
-    #else // Normal operation
-      // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
-      // Нормальная работа
-      // Установите время пошагового импульса. Специальные вычисления с помощью осциллографа. Используется дополнение two.
-      st.step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
-    #endif
+  //   // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
+  //   // Инициализируйте синхронизацию пошаговых импульсов из настроек. Здесь для обеспечения обновления после перезаписи.
+  //   #ifdef STEP_PULSE_DELAY
+  //     // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
+  //     // Установите общее время импульса шага после установки направляющего контакта. Специальные вычисления с помощью осциллографа.
+  //     st.step_pulse_time = -(((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
+  //     // Set delay between direction pin write and step command.
+  //     // Установите задержку между записью пин-кода направления и командой шага.
+  //     OCR0A = -(((settings.pulse_microseconds)*TICKS_PER_MICROSECOND) >> 3);
+  //   #else // Normal operation
+  //     // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
+  //     // Нормальная работа
+  //     // Установите время пошагового импульса. Специальные вычисления с помощью осциллографа. Используется дополнение two.
+  //     st.step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
+  //   #endif
 
-    // Enable Stepper Driver Interrupt
-    // Включить прерывание шагового драйвера
-    TIMSK1 |= (1<<OCIE1A);
-  }
+  //   // Enable Stepper Driver Interrupt
+  //   // Включить прерывание шагового драйвера
+  //   TIMSK1 |= (1<<OCIE1A);
+  // }
 }
 
 
@@ -288,26 +267,26 @@ void st_wake_up()
 // Шаговое выключение
 void st_go_idle() 
 {
-  // Disable Stepper Driver Interrupt. Allow Stepper Port Reset Interrupt to finish, if active.
-  // Отключите прерывание драйвера Stepper. Разрешите завершить прерывание сброса порта Stepper, если оно активно.
-  TIMSK1 &= ~(1<<OCIE1A); // Disable Timer1 interrupt // Отключить прерывание по таймеру 1
-  TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Reset clock to no prescaling. // Сброс времени без предварительного масштабирования.
-  busy = false;
+  // // Disable Stepper Driver Interrupt. Allow Stepper Port Reset Interrupt to finish, if active.
+  // // Отключите прерывание драйвера Stepper. Разрешите завершить прерывание сброса порта Stepper, если оно активно.
+  // TIMSK1 &= ~(1<<OCIE1A); // Disable Timer1 interrupt // Отключить прерывание по таймеру 1
+  // TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Reset clock to no prescaling. // Сброс времени без предварительного масштабирования.
+  // busy = false;
   
-  // Установите драйвер шагового двигателя в состояние ожидания, отключенное или включенное, в зависимости от настроек и обстоятельств.
-  // Set stepper driver idle state, disabled or enabled, depending on settings and circumstances.
-  bool pin_state = false; // Keep enabled.
-  if (((settings.stepper_idle_lock_time != 0xff) || sys_rt_exec_alarm) && sys.state != STATE_HOMING) {
-    // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
-    // stop and not drift from residual inertial forces at the end of the last movement.
-    // Принудительно остановите шаговый механизм, чтобы зафиксировать оси на определенный промежуток времени, чтобы убедиться, что оси полностью выровнялись
-    // остановитесь и не дрейфуйте из-за остаточных сил инерции в конце последнего движения.
-    delay_ms(settings.stepper_idle_lock_time);
-    pin_state = true; // Override. Disable steppers. // Переопределить. Отключите шаговые двигатели.
-  }
-  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
-  if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
-  else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
+  // // Установите драйвер шагового двигателя в состояние ожидания, отключенное или включенное, в зависимости от настроек и обстоятельств.
+  // // Set stepper driver idle state, disabled or enabled, depending on settings and circumstances.
+  // bool pin_state = false; // Keep enabled.
+  // if (((settings.stepper_idle_lock_time != 0xff) || sys_rt_exec_alarm) && sys.state != STATE_HOMING) {
+  //   // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
+  //   // stop and not drift from residual inertial forces at the end of the last movement.
+  //   // Принудительно остановите шаговый механизм, чтобы зафиксировать оси на определенный промежуток времени, чтобы убедиться, что оси полностью выровнялись
+  //   // остановитесь и не дрейфуйте из-за остаточных сил инерции в конце последнего движения.
+  //   delay_ms(settings.stepper_idle_lock_time);
+  //   pin_state = true; // Override. Disable steppers. // Переопределить. Отключите шаговые двигатели.
+  // }
+  // if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
+  // if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
+  // else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
 }
 
 
@@ -406,142 +385,142 @@ ISR в четыре раза. И так далее. Это, по сути, пр�
 */
 // ЗАДАЧА: Каким-то образом заменить прямое обновление счетчиков местоположения int32 в ISR. Возможно, использовать переменные меньшего размера
 // int8 и обновлять счетчики местоположения только по завершении сегмента. Это может усложниться 
-// с циклами зондирования и наведения, которые требуют точных данных о местоположении в реальном времени.
-ISR(TIMER1_COMPA_vect)
-{        
-// SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR // Debug: Используется для определения времени ISR
-  if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt // Флаг занятости используется для того, чтобы избежать повторного ввода этого прерывания
+// // с циклами зондирования и наведения, которые требуют точных данных о местоположении в реальном времени.
+// ISR(TIMER1_COMPA_vect)
+// {        
+// // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR // Debug: Используется для определения времени ISR
+//   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt // Флаг занятости используется для того, чтобы избежать повторного ввода этого прерывания
   
-  // Set the direction pins a couple of nanoseconds before we step the steppers // Установите направляющие штифты за пару наносекунд до того, как мы включим степперы
-  DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
+//   // Set the direction pins a couple of nanoseconds before we step the steppers // Установите направляющие штифты за пару наносекунд до того, как мы включим степперы
+//   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
 
-  // Then pulse the stepping pins // Затем подайте импульс на шаговые штифты
-  #ifdef STEP_PULSE_DELAY
-    st.step_bits = (STEP_PORT & ~STEP_MASK) | st.step_outbits; // Store out_bits to prevent overwriting. // Сохраните out_bits, чтобы предотвратить перезапись.
-  #else  // Normal operation // Нормальная работа
-    STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
-  #endif  
+//   // Then pulse the stepping pins // Затем подайте импульс на шаговые штифты
+//   #ifdef STEP_PULSE_DELAY
+//     st.step_bits = (STEP_PORT & ~STEP_MASK) | st.step_outbits; // Store out_bits to prevent overwriting. // Сохраните out_bits, чтобы предотвратить перезапись.
+//   #else  // Normal operation // Нормальная работа
+//     STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
+//   #endif  
 
-  // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
-  // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
-  // Включите таймер сброса шагового импульса, чтобы прерывание сброса шагового порта могло сбрасывать сигнал после
-  // точных настроек.pulse_microseconds в микросекундах, независимо от основного таймера1.
-  TCNT0 = st.step_pulse_time; // Reload Timer0 counter // Счетчик времени перезагрузки 0
-  TCCR0B = (1<<CS01); // Begin Timer0. Full speed, 1/8 prescaler // Время начала 0. Полная скорость, предустановка на 1/8
+//   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
+//   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
+//   // Включите таймер сброса шагового импульса, чтобы прерывание сброса шагового порта могло сбрасывать сигнал после
+//   // точных настроек.pulse_microseconds в микросекундах, независимо от основного таймера1.
+//   TCNT0 = st.step_pulse_time; // Reload Timer0 counter // Счетчик времени перезагрузки 0
+//   TCCR0B = (1<<CS01); // Begin Timer0. Full speed, 1/8 prescaler // Время начала 0. Полная скорость, предустановка на 1/8
 
-  busy = true;
-  sei(); // Re-enable interrupts to allow Stepper Port Reset Interrupt to fire on-time. 
-         // NOTE: The remaining code in this ISR will finish before returning to main program.
-         // Повторно включите прерывания, чтобы обеспечить своевременное срабатывание прерывания сброса шагового порта. 
-         // ПРИМЕЧАНИЕ: Оставшийся код в этом ISR будет завершен до возврата к основной программе.
+//   busy = true;
+//   sei(); // Re-enable interrupts to allow Stepper Port Reset Interrupt to fire on-time. 
+//          // NOTE: The remaining code in this ISR will finish before returning to main program.
+//          // Повторно включите прерывания, чтобы обеспечить своевременное срабатывание прерывания сброса шагового порта. 
+//          // ПРИМЕЧАНИЕ: Оставшийся код в этом ISR будет завершен до возврата к основной программе.
     
-  // If there is no step segment, attempt to pop one from the stepper buffer
-  // Если сегмента step нет, попробуйте извлечь его из буфера stepper
-  if (st.exec_segment == NULL) {
-    // Anything in the buffer? If so, load and initialize next step segment.
-    // Что-нибудь есть в буфере? Если да, загрузите и инициализируйте сегмент следующего шага.
-    if (segment_buffer_head != segment_buffer_tail) {
-      // Initialize new step segment and load number of steps to execute
-      // Инициализируем новый сегмент шага и загружаем количество шагов для выполнения
-      st.exec_segment = &segment_buffer[segment_buffer_tail];
+//   // If there is no step segment, attempt to pop one from the stepper buffer
+//   // Если сегмента step нет, попробуйте извлечь его из буфера stepper
+//   if (st.exec_segment == NULL) {
+//     // Anything in the buffer? If so, load and initialize next step segment.
+//     // Что-нибудь есть в буфере? Если да, загрузите и инициализируйте сегмент следующего шага.
+//     if (segment_buffer_head != segment_buffer_tail) {
+//       // Initialize new step segment and load number of steps to execute
+//       // Инициализируем новый сегмент шага и загружаем количество шагов для выполнения
+//       st.exec_segment = &segment_buffer[segment_buffer_tail];
 
-      #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-        // With AMASS is disabled, set timer prescaler for segments with slow step frequencies (< 250Hz).
-        // Если функция AMASS отключена, установите предварительный масштабатор таймера для сегментов с низкой частотой шага (< 250 Гц).
-        TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
-      #endif
+//       #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+//         // With AMASS is disabled, set timer prescaler for segments with slow step frequencies (< 250Hz).
+//         // Если функция AMASS отключена, установите предварительный масштабатор таймера для сегментов с низкой частотой шага (< 250 Гц).
+//         TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
+//       #endif
 
-      // Initialize step segment timing per step and load number of steps to execute.
-      // Инициализируйте синхронизацию сегмента шага для каждого шага и загрузите количество шагов для выполнения.
-      OCR1A = st.exec_segment->cycles_per_tick;
-      st.step_count = st.exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow. // ПРИМЕЧАНИЕ: Иногда может быть равно нулю при медленном движении.
-      // If the new segment starts a new planner block, initialize stepper variables and counters.
-      // NOTE: When the segment data index changes, this indicates a new planner block.
-      // Если новый сегмент запускает новый блок планировщика, инициализируйте промежуточные переменные и счетчики.
-      // ПРИМЕЧАНИЕ: Когда индекс данных сегмента изменяется, это указывает на новый блок планировщика.
-      if ( st.exec_block_index != st.exec_segment->st_block_index ) {
-        st.exec_block_index = st.exec_segment->st_block_index;
-        st.exec_block = &st_block_buffer[st.exec_block_index];
+//       // Initialize step segment timing per step and load number of steps to execute.
+//       // Инициализируйте синхронизацию сегмента шага для каждого шага и загрузите количество шагов для выполнения.
+//       OCR1A = st.exec_segment->cycles_per_tick;
+//       st.step_count = st.exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow. // ПРИМЕЧАНИЕ: Иногда может быть равно нулю при медленном движении.
+//       // If the new segment starts a new planner block, initialize stepper variables and counters.
+//       // NOTE: When the segment data index changes, this indicates a new planner block.
+//       // Если новый сегмент запускает новый блок планировщика, инициализируйте промежуточные переменные и счетчики.
+//       // ПРИМЕЧАНИЕ: Когда индекс данных сегмента изменяется, это указывает на новый блок планировщика.
+//       if ( st.exec_block_index != st.exec_segment->st_block_index ) {
+//         st.exec_block_index = st.exec_segment->st_block_index;
+//         st.exec_block = &st_block_buffer[st.exec_block_index];
         
-        // Initialize Bresenham line and distance counters
-        // Инициализировать счетчики линий и расстояний Брезенхэма
-        st.counter_x = st.counter_y = st.counter_z = (st.exec_block->step_event_count >> 1);
-      }
-      st.dir_outbits = st.exec_block->direction_bits ^ dir_port_invert_mask; 
+//         // Initialize Bresenham line and distance counters
+//         // Инициализировать счетчики линий и расстояний Брезенхэма
+//         st.counter_x = st.counter_y = st.counter_z = (st.exec_block->step_event_count >> 1);
+//       }
+//       st.dir_outbits = st.exec_block->direction_bits ^ dir_port_invert_mask; 
 
-      #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-        // With AMASS enabled, adjust Bresenham axis increment counters according to AMASS level.
-        // При включенном режиме НАКОПЛЕНИЯ отрегулируйте счетчики приращения по оси Брезенхэма в соответствии с уровнем НАКОПЛЕНИЯ.
-        st.steps[X_AXIS] = st.exec_block->steps[X_AXIS] >> st.exec_segment->amass_level;
-        st.steps[Y_AXIS] = st.exec_block->steps[Y_AXIS] >> st.exec_segment->amass_level;
-        st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
-      #endif
+//       #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+//         // With AMASS enabled, adjust Bresenham axis increment counters according to AMASS level.
+//         // При включенном режиме НАКОПЛЕНИЯ отрегулируйте счетчики приращения по оси Брезенхэма в соответствии с уровнем НАКОПЛЕНИЯ.
+//         st.steps[X_AXIS] = st.exec_block->steps[X_AXIS] >> st.exec_segment->amass_level;
+//         st.steps[Y_AXIS] = st.exec_block->steps[Y_AXIS] >> st.exec_segment->amass_level;
+//         st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
+//       #endif
       
-    } else {
-      // Segment buffer empty. Shutdown.
-      // Буфер сегмента пуст. Выключение.
-      st_go_idle();
-      bit_true_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP); // Flag main program for cycle end // Помечает основную программу для завершения цикла
-      return; // Nothing to do but exit. // Ничего не остается, как выйти.
-    }  
-  }
+//     } else {
+//       // Segment buffer empty. Shutdown.
+//       // Буфер сегмента пуст. Выключение.
+//       st_go_idle();
+//       bit_true_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP); // Flag main program for cycle end // Помечает основную программу для завершения цикла
+//       return; // Nothing to do but exit. // Ничего не остается, как выйти.
+//     }  
+//   }
   
   
-  // Check probing state. // Проверьте состояние зондирования.
-  probe_state_monitor();
+//   // Check probing state. // Проверьте состояние зондирования.
+//   probe_state_monitor();
    
-  // Reset step out bits. // Сбросить биты вывода шага.
-  st.step_outbits = 0; 
+//   // Reset step out bits. // Сбросить биты вывода шага.
+//   st.step_outbits = 0; 
 
-  // Execute step displacement profile by Bresenham line algorithm // Выполнить профиль ступенчатого смещения с помощью линейного алгоритма Брезенхема
-  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-    st.counter_x += st.steps[X_AXIS];
-  #else
-    st.counter_x += st.exec_block->steps[X_AXIS];
-  #endif  
-  if (st.counter_x > st.exec_block->step_event_count) {
-    st.step_outbits |= (1<<X_STEP_BIT);
-    st.counter_x -= st.exec_block->step_event_count;
-    if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
-    else { sys.position[X_AXIS]++; }
-  }
-  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-    st.counter_y += st.steps[Y_AXIS];
-  #else
-    st.counter_y += st.exec_block->steps[Y_AXIS];
-  #endif    
-  if (st.counter_y > st.exec_block->step_event_count) {
-    st.step_outbits |= (1<<Y_STEP_BIT);
-    st.counter_y -= st.exec_block->step_event_count;
-    if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
-    else { sys.position[Y_AXIS]++; }
-  }
-  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-    st.counter_z += st.steps[Z_AXIS];
-  #else
-    st.counter_z += st.exec_block->steps[Z_AXIS];
-  #endif  
-  if (st.counter_z > st.exec_block->step_event_count) {
-    st.step_outbits |= (1<<Z_STEP_BIT);
-    st.counter_z -= st.exec_block->step_event_count;
-    if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
-    else { sys.position[Z_AXIS]++; }
-  }  
+//   // Execute step displacement profile by Bresenham line algorithm // Выполнить профиль ступенчатого смещения с помощью линейного алгоритма Брезенхема
+//   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+//     st.counter_x += st.steps[X_AXIS];
+//   #else
+//     st.counter_x += st.exec_block->steps[X_AXIS];
+//   #endif  
+//   if (st.counter_x > st.exec_block->step_event_count) {
+//     st.step_outbits |= (1<<X_STEP_BIT);
+//     st.counter_x -= st.exec_block->step_event_count;
+//     if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
+//     else { sys.position[X_AXIS]++; }
+//   }
+//   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+//     st.counter_y += st.steps[Y_AXIS];
+//   #else
+//     st.counter_y += st.exec_block->steps[Y_AXIS];
+//   #endif    
+//   if (st.counter_y > st.exec_block->step_event_count) {
+//     st.step_outbits |= (1<<Y_STEP_BIT);
+//     st.counter_y -= st.exec_block->step_event_count;
+//     if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
+//     else { sys.position[Y_AXIS]++; }
+//   }
+//   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+//     st.counter_z += st.steps[Z_AXIS];
+//   #else
+//     st.counter_z += st.exec_block->steps[Z_AXIS];
+//   #endif  
+//   if (st.counter_z > st.exec_block->step_event_count) {
+//     st.step_outbits |= (1<<Z_STEP_BIT);
+//     st.counter_z -= st.exec_block->step_event_count;
+//     if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
+//     else { sys.position[Z_AXIS]++; }
+//   }  
 
-  // During a homing cycle, lock out and prevent desired axes from moving. // Во время цикла наведения на цель заблокируйте и предотвратите перемещение нужных осей.
-  if (sys.state == STATE_HOMING) { st.step_outbits &= sys.homing_axis_lock; }   
+//   // During a homing cycle, lock out and prevent desired axes from moving. // Во время цикла наведения на цель заблокируйте и предотвратите перемещение нужных осей.
+//   if (sys.state == STATE_HOMING) { st.step_outbits &= sys.homing_axis_lock; }   
 
-  st.step_count--; // Decrement step events count // Уменьшить количество событий шага
-  if (st.step_count == 0) {
-    // Segment is complete. Discard current segment and advance segment indexing. // Сегмент завершен. Отменить текущий сегмент и продолжить индексацию сегмента.
-    st.exec_segment = NULL;
-    if ( ++segment_buffer_tail == SEGMENT_BUFFER_SIZE) { segment_buffer_tail = 0; }
-  }
+//   st.step_count--; // Decrement step events count // Уменьшить количество событий шага
+//   if (st.step_count == 0) {
+//     // Segment is complete. Discard current segment and advance segment indexing. // Сегмент завершен. Отменить текущий сегмент и продолжить индексацию сегмента.
+//     st.exec_segment = NULL;
+//     if ( ++segment_buffer_tail == SEGMENT_BUFFER_SIZE) { segment_buffer_tail = 0; }
+//   }
 
-  st.step_outbits ^= step_port_invert_mask;  // Apply step port invert mask   // Применить пошаговую маску инвертирования порта  
-  busy = false;
-// SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR // Debug: Используется для определения времени ISR
-}
+//   st.step_outbits ^= step_port_invert_mask;  // Apply step port invert mask   // Применить пошаговую маску инвертирования порта  
+//   busy = false;
+// // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR // Debug: Используется для определения времени ISR
+// }
 
 
 /* The Stepper Port Reset Interrupt: Timer0 OVF interrupt handles the falling edge of the step
@@ -567,98 +546,98 @@ ISR(TIMER1_COMPA_vect)
 // Это прерывание включается с помощью ISR_TIMER1_COMPAREA, когда оно устанавливает биты порта двигателя для выполнения
 // шага. Это ISR сбрасывает порт двигателя через короткий промежуток времени (settings.pulse_microseconds) 
 // завершение одноэтапного цикла.
-ISR(TIMER0_OVF_vect)
-{
-  // Сбросить шаговые штифты (оставить направляющие штифты)
-  // Reset stepping pins (leave the direction pins)
-  STEP_PORT = (STEP_PORT & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK); 
-  TCCR0B = 0; // Disable Timer0 to prevent re-entering this interrupt when it's not needed. // Отключите таймер0, чтобы предотвратить повторный ввод этого прерывания, когда оно не требуется.
-}
-#ifdef STEP_PULSE_DELAY
+// ISR(TIMER0_OVF_vect)
+// {
+//   // Сбросить шаговые штифты (оставить направляющие штифты)
+//   // Reset stepping pins (leave the direction pins)
+//   STEP_PORT = (STEP_PORT & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK); 
+//   TCCR0B = 0; // Disable Timer0 to prevent re-entering this interrupt when it's not needed. // Отключите таймер0, чтобы предотвратить повторный ввод этого прерывания, когда оно не требуется.
+// }
+// #ifdef STEP_PULSE_DELAY
 
-  // This interrupt is used only when STEP_PULSE_DELAY is enabled. Here, the step pulse is
-  // initiated after the STEP_PULSE_DELAY time period has elapsed. The ISR TIMER2_OVF interrupt
-  // will then trigger after the appropriate settings.pulse_microseconds, as in normal operation.
-  // The new timing between direction, step pulse, and step complete events are setup in the
-  // st_wake_up() routine.
+//   // This interrupt is used only when STEP_PULSE_DELAY is enabled. Here, the step pulse is
+//   // initiated after the STEP_PULSE_DELAY time period has elapsed. The ISR TIMER2_OVF interrupt
+//   // will then trigger after the appropriate settings.pulse_microseconds, as in normal operation.
+//   // The new timing between direction, step pulse, and step complete events are setup in the
+//   // st_wake_up() routine.
 
-  // Это прерывание используется только тогда, когда включена функция STEP_PULSE_DELAY. В данном случае импульс step
-  // инициируется по истечении периода времени STEP_PULSE_DELAY. Прерывание ISR TIMER2_OVF
-  // затем активируется после соответствующих настроек.pulse_microseconds, как при нормальной работе.
-  // Новый временной интервал между событиями direction, step pulse и step complete устанавливается в процедуре
-  // st_wake_up().
-  ISR(TIMER0_COMPA_vect) 
-  { 
-    STEP_PORT = st.step_bits; // Begin step pulse. // Запуск пошагового импульса.
-  }
-#endif
-
-
-// Generates the step and direction port invert masks used in the Stepper Interrupt Driver.
-// Генерирует маски инвертирования шага и направления порта, используемые в драйвере шагового прерывания.
-void st_generate_step_dir_invert_masks()
-{  
-  uint8_t idx;
-  step_port_invert_mask = 0;
-  dir_port_invert_mask = 0;
-  for (idx=0; idx<N_AXIS; idx++) {
-    if (bit_istrue(settings.step_invert_mask,bit(idx))) { step_port_invert_mask |= get_step_pin_mask(idx); }
-    if (bit_istrue(settings.dir_invert_mask,bit(idx))) { dir_port_invert_mask |= get_direction_pin_mask(idx); }
-  }
-}
+//   // Это прерывание используется только тогда, когда включена функция STEP_PULSE_DELAY. В данном случае импульс step
+//   // инициируется по истечении периода времени STEP_PULSE_DELAY. Прерывание ISR TIMER2_OVF
+//   // затем активируется после соответствующих настроек.pulse_microseconds, как при нормальной работе.
+//   // Новый временной интервал между событиями direction, step pulse и step complete устанавливается в процедуре
+//   // st_wake_up().
+//   ISR(TIMER0_COMPA_vect) 
+//   { 
+//     STEP_PORT = st.step_bits; // Begin step pulse. // Запуск пошагового импульса.
+//   }
+// #endif
 
 
-// Reset and clear stepper subsystem variables
-// Сброс и очистка переменных шаговой подсистемы
-void st_reset()
-{
-  // Initialize stepper driver idle state.
-  // Инициализируйте состояние бездействия шагового драйвера.
-  st_go_idle();
+// // Generates the step and direction port invert masks used in the Stepper Interrupt Driver.
+// // Генерирует маски инвертирования шага и направления порта, используемые в драйвере шагового прерывания.
+// void st_generate_step_dir_invert_masks()
+// {  
+//   uint8_t idx;
+//   step_port_invert_mask = 0;
+//   dir_port_invert_mask = 0;
+//   for (idx=0; idx<N_AXIS; idx++) {
+//     if (bit_istrue(settings.step_invert_mask,bit(idx))) { step_port_invert_mask |= get_step_pin_mask(idx); }
+//     if (bit_istrue(settings.dir_invert_mask,bit(idx))) { dir_port_invert_mask |= get_direction_pin_mask(idx); }
+//   }
+// }
+
+
+// // Reset and clear stepper subsystem variables
+// // Сброс и очистка переменных шаговой подсистемы
+// void st_reset()
+// {
+//   // Initialize stepper driver idle state.
+//   // Инициализируйте состояние бездействия шагового драйвера.
+//   st_go_idle();
   
-  // Initialize stepper algorithm variables.
-  // Инициализируем переменные шагового алгоритма.
-  memset(&prep, 0, sizeof(st_prep_t));
-  memset(&st, 0, sizeof(stepper_t));
-  st.exec_segment = NULL;
-  pl_block = NULL;  // Planner block pointer used by segment buffer // Указатель блока планировщика, используемый буфером сегмента
-  segment_buffer_tail = 0;
-  segment_buffer_head = 0; // empty = tail
-  segment_next_head = 1;
-  busy = false;
+//   // Initialize stepper algorithm variables.
+//   // Инициализируем переменные шагового алгоритма.
+//   memset(&prep, 0, sizeof(st_prep_t));
+//   memset(&st, 0, sizeof(stepper_t));
+//   st.exec_segment = NULL;
+//   pl_block = NULL;  // Planner block pointer used by segment buffer // Указатель блока планировщика, используемый буфером сегмента
+//   segment_buffer_tail = 0;
+//   segment_buffer_head = 0; // empty = tail
+//   segment_next_head = 1;
+//   busy = false;
   
-  st_generate_step_dir_invert_masks();
+//   st_generate_step_dir_invert_masks();
       
-  // Initialize step and direction port pins. // Инициализируйте выводы порта шага и направления.
-  STEP_PORT = (STEP_PORT & ~STEP_MASK) | step_port_invert_mask;
-  DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | dir_port_invert_mask;
-}
+//   // Initialize step and direction port pins. // Инициализируйте выводы порта шага и направления.
+//   STEP_PORT = (STEP_PORT & ~STEP_MASK) | step_port_invert_mask;
+//   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | dir_port_invert_mask;
+// }
 
 
 // Initialize and start the stepper motor subsystem // Инициализируйте и запустите подсистему шагового двигателя
 void stepper_init()
 {
   // Configure step and direction interface pins // Настройка выводов интерфейса шага и направления
-  STEP_DDR |= STEP_MASK;
-  STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
-  DIRECTION_DDR |= DIRECTION_MASK;
+//   STEP_DDR |= STEP_MASK;
+//   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
+//   DIRECTION_DDR |= DIRECTION_MASK;
 
-  // Configure Timer 1: Stepper Driver Interrupt // Настройка таймера 1: Прерывание работы шагового драйвера
-  TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
-  TCCR1B |=  (1<<WGM12);
-  TCCR1A &= ~((1<<WGM11) | (1<<WGM10)); 
-  TCCR1A &= ~((1<<COM1A1) | (1<<COM1A0) | (1<<COM1B1) | (1<<COM1B0)); // Disconnect OC1 output // Отсоединить выход OC1
-  // TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Set in st_go_idle().
-  // TIMSK1 &= ~(1<<OCIE1A);  // Set in st_go_idle().
+//   // Configure Timer 1: Stepper Driver Interrupt // Настройка таймера 1: Прерывание работы шагового драйвера
+//   TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
+//   TCCR1B |=  (1<<WGM12);
+//   TCCR1A &= ~((1<<WGM11) | (1<<WGM10)); 
+//   TCCR1A &= ~((1<<COM1A1) | (1<<COM1A0) | (1<<COM1B1) | (1<<COM1B0)); // Disconnect OC1 output // Отсоединить выход OC1
+//   // TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Set in st_go_idle().
+//   // TIMSK1 &= ~(1<<OCIE1A);  // Set in st_go_idle().
   
-  // Configure Timer 0: Stepper Port Reset Interrupt // Настройка таймера 0: Прерывание сброса шагового порта
-  TIMSK0 &= ~((1<<OCIE0B) | (1<<OCIE0A) | (1<<TOIE0)); // Disconnect OC0 outputs and OVF interrupt. // Отключите выходы OC0 и прерывание OVF.
-  TCCR0A = 0; // Normal operation // Нормальная работа
-  TCCR0B = 0; // Disable Timer0 until needed // Отключите таймер0 до тех пор, пока это не потребуется
-  TIMSK0 |= (1<<TOIE0); // Enable Timer0 overflow interrupt // Включить прерывание переполнения таймера 0
-  #ifdef STEP_PULSE_DELAY
-    TIMSK0 |= (1<<OCIE0A); // Enable Timer0 Compare Match A interrupt // Включить Таймер0 Для сравнения с прерыванием
-  #endif
+//   // Configure Timer 0: Stepper Port Reset Interrupt // Настройка таймера 0: Прерывание сброса шагового порта
+//   TIMSK0 &= ~((1<<OCIE0B) | (1<<OCIE0A) | (1<<TOIE0)); // Disconnect OC0 outputs and OVF interrupt. // Отключите выходы OC0 и прерывание OVF.
+//   TCCR0A = 0; // Normal operation // Нормальная работа
+//   TCCR0B = 0; // Disable Timer0 until needed // Отключите таймер0 до тех пор, пока это не потребуется
+//   TIMSK0 |= (1<<TOIE0); // Enable Timer0 overflow interrupt // Включить прерывание переполнения таймера 0
+//   #ifdef STEP_PULSE_DELAY
+//     TIMSK0 |= (1<<OCIE0A); // Enable Timer0 Compare Match A interrupt // Включить Таймер0 Для сравнения с прерыванием
+//   #endif
 }
   
 

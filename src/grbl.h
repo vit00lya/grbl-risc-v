@@ -25,6 +25,7 @@
 extern "C" {
     #include "mik32_hal_pcc.h"
     #include "mik32_hal_gpio.h"
+    #include "mik32_hal_eeprom.h"
     #include <mik32_memory_map.h> 
     #include <pad_config.h> 
     #include <gpio.h> 
@@ -51,6 +52,7 @@ extern "C" {
 #include "gcode.h"
 #include "planner.h"
 #include "limits.h"
+#include "stepper.h"
 
 
 
