@@ -1,5 +1,7 @@
 #include "grbl.h"
 
+TIMER32_HandleTypeDef htimer32;
+TIMER32_CHANNEL_HandleTypeDef htimer32_channel;
 
 // Some useful constants.
 #define DT_SEGMENT (1.0/(ACCELERATION_TICKS_PER_SECOND*60.0)) // min/segment 
@@ -617,6 +619,10 @@ ISR в четыре раза. И так далее. Это, по сути, пр�
 // Initialize and start the stepper motor subsystem // Инициализируйте и запустите подсистему шагового двигателя
 void stepper_init()
 {
+  io_inp(X_STEP_BIT); io_inp(Y_STEP_BIT); io_inp(Z_STEP_BIT);
+  io_inp(X_DIRECTION_BIT); io_inp(Y_DIRECTION_BIT); io_inp(Z_DIRECTION_BIT);
+  io_inp(STEPPERS_DISABLE_BIT);
+
   // Configure step and direction interface pins // Настройка выводов интерфейса шага и направления
 //   STEP_DDR |= STEP_MASK;
 //   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
@@ -638,6 +644,32 @@ void stepper_init()
 //   #ifdef STEP_PULSE_DELAY
 //     TIMSK0 |= (1<<OCIE0A); // Enable Timer0 Compare Match A interrupt // Включить Таймер0 Для сравнения с прерыванием
 //   #endif
+}
+
+static void Timer32_Init(void)
+{
+    htimer32.Instance = TIMER32_1;
+    htimer32.Top = 0x10000000;
+    htimer32.Clock.Source = TIMER32_SOURCE_PRESCALER;
+    htimer32.Clock.Prescaler = 0;
+    htimer32.InterruptMask = TIMER32_INT_OVERFLOW_M | TIMER32_INT_UNDERFLOW_M;
+    htimer32.CountMode = TIMER32_COUNTMODE_FORWARD;
+    if (HAL_Timer32_Init(&htimer32) != HAL_OK)
+    {
+        xprintf("Timer32_Init error\n");
+    }
+
+    htimer32_channel.TimerInstance = htimer32.Instance;
+    htimer32_channel.ChannelIndex = TIMER32_CHANNEL_0;
+    htimer32_channel.PWM_Invert = TIMER32_CHANNEL_NON_INVERTED_PWM;
+    htimer32_channel.Mode = TIMER32_CHANNEL_MODE_COMPARE;
+    htimer32_channel.CaptureEdge = TIMER32_CHANNEL_CAPTUREEDGE_RISING;
+    htimer32_channel.OCR = htimer32.Top / 2;
+    htimer32_channel.Noise = TIMER32_CHANNEL_FILTER_OFF;
+    if (HAL_Timer32_Channel_Init(&htimer32_channel) != HAL_OK)
+    {
+        xprintf("Timer32_Channel_Init error\n");
+    }
 }
   
 

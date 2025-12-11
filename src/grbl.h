@@ -26,6 +26,9 @@ extern "C" {
     #include "mik32_hal_pcc.h"
     #include "mik32_hal_gpio.h"
     #include "mik32_hal_eeprom.h"
+    #include "mik32_hal_timer32.h"
+    #include "mik32_hal_irq.h"
+    #include "mik32_hal.h"
     #include <mik32_memory_map.h> 
     #include <pad_config.h> 
     #include <gpio.h> 
@@ -36,6 +39,7 @@ extern "C" {
 }
 #include <cmath>
 #include <cstring>
+#include <array>
 
 #define GRBL_VERSION "0.9j"
 #define GRBL_VERSION_BUILD "20160726"
@@ -53,6 +57,6 @@ extern "C" {
 #include "planner.h"
 #include "limits.h"
 #include "stepper.h"
-
+#include "eeprom_utils.h"
 
 

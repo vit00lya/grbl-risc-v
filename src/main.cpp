@@ -2,33 +2,67 @@
 #include "system.h"
 #define  USER_LED  2,7
 
+struct NvVarList;
 
+EEPROM nvDriver;
+
+using tString6 = std::array<char, 6U>;
+
+inline constexpr float myFloatDataDefaultValue = 10.0f;
+inline constexpr tString6 myStrDefaultValue = { "Popit" };
+inline constexpr u32 myUint32DefaultValue = 0x30313233;
+inline constexpr u16 myUin16DeafultValue = 0xDEAD;
+
+constexpr AntiWearNvData<NvVarList, float, myFloatDataDefaultValue, 60U, nvDriver> myFloatData;
+constexpr AntiWearNvData<NvVarList, tString6, myStrDefaultValue, 60U,nvDriver> myStrData;
+constexpr AntiWearNvData<NvVarList, u32, myUint32DefaultValue, 60U, nvDriver> myUint32Data;
+constexpr AntiWearNvData<NvVarList, u32, myUint32DefaultValue, 60U, nvDriver> myUint32AntiWearData;
+constexpr AntiWearNvData<NvVarList, float, myFloatDataDefaultValue, 60U, nvDriver> myFloatAntiWearData;
+
+struct NvVarList : public NvVarListBase<0,
+                                        decltype(myStrData),
+                                        decltype(myFloatData),
+                                        decltype(myUint32Data),
+                                        decltype(myFloatAntiWearData),
+                                        decltype(myUint32AntiWearData)
+                                       >
+{
+};
 
 int main()
 {
-
     settings_t settings;    
+
+    nvDriver eeprom_1;
 
     SystemClockConfig();
     SettingsInit(settings);// Load Grbl settings // Загрузка настроек grbl
     serial_init();  // Setup serial baud rate and interrupts // Настройка серийного порта и прерываний
     io_out(USER_LED);
 
+    NvVarList::SetToDefault();
+    NvVarList::Init();
+
+    myFloatData.Set(37.2F);
+    myStrData.Set(tString6{"Hello"});
+    myFloatAntiWearData.Set(12.0F);
+    myUint32AntiWearData.Set(11U);
+
+    auto flData = myFloatData.Get();
+    printFloat(flData,2);
+    flData = myFloatAntiWearData.Get();
+    printFloat(flData,2);
+
     while (1)
     {
-        #ifdef CPU_MAP_ELRON_UNO_AMUR
+
         io_set(USER_LED);
         HAL_DelayMs(2000);
         io_clr(USER_LED);
         HAL_DelayMs(2000);
         report_grbl_settings(settings);
-        #endif
     }
 }
-
-
-
-
 
 //   // Инициализация системы при включении питания
 //   // Initialize system upon power-up.
