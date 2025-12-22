@@ -23,16 +23,6 @@
 #error "cpu_map already defined: GRBL_PLATFORM=" GRBL_PLATFORM
 #endif
 
-typedef  signed char         i8;
-typedef  signed short        i16;
-typedef  signed long         i32;
-typedef  signed long long    i64;
-
-typedef  unsigned char       u8;
-typedef  unsigned short      u16;
-typedef  unsigned long       u32;
-typedef  unsigned long long  u64;
-
 /* чтобы «протащить» через несколько макросов несколько аргументов как один аргумент */
 #define  _(...)  __VA_ARGS__
 
@@ -64,6 +54,8 @@ typedef  unsigned long long  u64;
 // Определите контакты последовательного порта и векторы прерываний.
 #define SERIAL_RX     USART_RX_vect
 #define SERIAL_UDRE   USART_UDRE_vect
+
+#define axes 'X','Y','Z'
 
 // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
 // Определите выводы ступенчатого импульсного выхода. ПРИМЕЧАНИЕ: Все выводы ступенчатого разряда должны быть подключены к одному порту.
@@ -97,6 +89,7 @@ typedef  unsigned long long  u64;
 //#define LIMIT_DDR        DDRB
 //#define LIMIT_PIN        PINB
 //#define LIMIT_PORT       PORTB
+
 #define X_LIMIT_BIT      0,3  // Uno Digital Pin 9
 #define Y_LIMIT_BIT      1,3  // Uno Digital Pin 10
 #ifdef VARIABLE_SPINDLE // Z Limit pin and spindle enabled swapped to access hardware PWM on Pin 11.  
@@ -104,10 +97,29 @@ typedef  unsigned long long  u64;
 #else
   #define Z_LIMIT_BIT    1,1  // Uno Digital Pin 11
 #endif
-//#define LIMIT_MASK       ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
-#define LIMIT_INT        PCIE0  // Pin change interrupt enable pin
-#define LIMIT_INT_vect   PCINT0_vect 
-#define LIMIT_PCMSK      PCMSK0 // Pin change interrupt register
+
+#define X_LIMIT_BIT_PORT      GPIO_0
+#define X_LIMIT_BIT_PIN       GPIO_PIN_3
+#define X_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_3_PORT0_3
+
+#define Y_LIMIT_BIT_PORT      GPIO_1
+#define Y_LIMIT_BIT_PIN       GPIO_PIN_3
+#define Y_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_7_PORT1_3
+
+#ifdef VARIABLE_SPINDLE
+  #define Z_LIMIT_BIT_PORT      GPIO_1
+  #define Z_LIMIT_BIT_PIN       GPIO_PIN_0
+  #define Z_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_0_PORT1_0
+#else
+  #define Z_LIMIT_BIT_PORT GPIO_1
+  #define Z_LIMIT_BIT_PIN  GPIO_PIN_1
+  #define Z_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_5_PORT1_1
+#endif
+
+#define LIMIT_MASK       ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+// #define LIMIT_INT        PCIE0  // Pin change interrupt enable pin
+// #define LIMIT_INT_vect   PCINT0_vect 
+// #define LIMIT_PCMSK      PCMSK0 // Pin change interrupt register
 
 // Define spindle enable and spindle direction output pins.
 //#define SPINDLE_ENABLE_DDR    DDRB

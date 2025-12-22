@@ -2,7 +2,13 @@
 #ifndef limits_h
 #define limits_h 
 
+#include <array>
 #include "grbl.h"
+
+//  std::array<GPIO_TypeDef*, 3> limits_ports_ = {X_LIMIT_BIT_PORT, Y_LIMIT_BIT_PORT, Z_LIMIT_BIT_PORT };
+//  std::array< HAL_PinsTypeDef, 3> limits_pins_ = { X_LIMIT_BIT_PIN, Y_LIMIT_BIT_PIN, Z_LIMIT_BIT_PIN };
+
+void pin_init(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, bool pull_up, HAL_GPIO_Line_Config irq_line);
 
 // Initialize the limits module
 // Инициализируем модуль ограничений

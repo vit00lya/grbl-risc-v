@@ -3,6 +3,8 @@
 #ifndef utils_h
 #define utils_h
 
+#include <math.h>
+
 typedef  signed char         i8;
 typedef  signed short        i16;
 typedef  signed long         i32;

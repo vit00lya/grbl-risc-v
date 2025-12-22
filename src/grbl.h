@@ -22,6 +22,8 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define CPU_MAP_ELRON_UNO_AMUR
+
 extern "C" {
     #include "mik32_hal_pcc.h"
     #include "mik32_hal_gpio.h"
@@ -37,9 +39,7 @@ extern "C" {
     #include "uart_lib.h"
     #include "xprintf.h"
 }
-#include <cmath>
-#include <cstring>
-#include <array>
+
 
 #define GRBL_VERSION "0.9j"
 #define GRBL_VERSION_BUILD "20160726"
@@ -48,15 +48,16 @@ extern "C" {
 #include "cpu_map.h"
 #include "utils.h"
 #include "defaults.h"
-#include "settings.h"
-#include "system.h"
-#include "serial.h"
-#include "report.h"
-#include "print.h"
-#include "gcode.h"
-#include "planner.h"
-#include "limits.h"
-#include "stepper.h"
-#include "eeprom_utils.h"
+// #include "settings.h"
+// #include "system.h"
+// #include "serial.h"
+// #include "report.h"
+// #include "print.h"
+// #include "gcode.h"
+// #include "planner.h"
+// #include "limits.h"
+// #include "stepper.h"
+// #include "eeprom_utils.h"
+// #include "limits.h"
 
 

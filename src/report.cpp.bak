@@ -27,81 +27,81 @@
 // ответы.
 // ПРИМЕЧАНИЕ: В автоматическом режиме все коды ошибок больше нуля.
 // TODO: Установите автоматический режим, чтобы возвращать только числовые значения, в первую очередь для графических интерфейсов.
-void Report::StatusMessage(u8 status_code)
+void report_status_message(u8 status_code) 
 {
   if (status_code == 0) { // STATUS_OK
-    printer_.PgmString("ok\r\n");
+    printPgmString("ok\r\n");
   } else {
-    printer_.PgmString("error: ");
+    printPgmString("error: ");
     #ifdef REPORT_GUI_MODE
-      printer_.Uint8Base10(status_code);
+      print_uint8_base10(status_code);
     #else
       switch(status_code) {          
         case STATUS_EXPECTED_COMMAND_LETTER:
-        printer_.PgmString("Expected command letter"); break;
+        printPgmString("Expected command letter"); break;
         case STATUS_BAD_NUMBER_FORMAT:
-        printer_.PgmString("Bad number format"); break;
+        printPgmString("Bad number format"); break;
         case STATUS_INVALID_STATEMENT:
-        printer_.PgmString("Invalid statement"); break;
+        printPgmString("Invalid statement"); break;
         case STATUS_NEGATIVE_VALUE:
-        printer_.PgmString("Value < 0"); break;
+        printPgmString("Value < 0"); break;
         case STATUS_SETTING_DISABLED:
-        printer_.PgmString("Setting disabled"); break;
+        printPgmString("Setting disabled"); break;
         case STATUS_SETTING_STEP_PULSE_MIN:
-        printer_.PgmString("Value < 3 usec"); break;
+        printPgmString("Value < 3 usec"); break;
         case STATUS_SETTING_READ_FAIL:
-        printer_.PgmString("EEPROM read fail. Using defaults"); break;
+        printPgmString("EEPROM read fail. Using defaults"); break;
         case STATUS_IDLE_ERROR:
-        printer_.PgmString("Not idle"); break;
+        printPgmString("Not idle"); break;
         case STATUS_ALARM_LOCK:
-        printer_.PgmString("Alarm lock"); break;
+        printPgmString("Alarm lock"); break;
         case STATUS_SOFT_LIMIT_ERROR:
-        printer_.PgmString("Homing not enabled"); break;
+        printPgmString("Homing not enabled"); break;
         case STATUS_OVERFLOW:
-        printer_.PgmString("Line overflow"); break;
+        printPgmString("Line overflow"); break;
         #ifdef MAX_STEP_RATE_HZ
           case STATUS_MAX_STEP_RATE_EXCEEDED: 
-          printer_.PgmString("Step rate > 30kHz"); break;
+          printPgmString("Step rate > 30kHz"); break;
         #endif      
         // Common g-code parser errors.
         // Распространенные ошибки синтаксического анализатора g-кода.
         case STATUS_GCODE_MODAL_GROUP_VIOLATION:
-        printer_.PgmString("Modal group violation"); break;
+        printPgmString("Modal group violation"); break;
         case STATUS_GCODE_UNSUPPORTED_COMMAND:
-        printer_.PgmString("Unsupported command"); break;
+        printPgmString("Unsupported command"); break;
         case STATUS_GCODE_UNDEFINED_FEED_RATE:
-        printer_.PgmString("Undefined feed rate"); break;
+        printPgmString("Undefined feed rate"); break;
         default:
           // Remaining g-code parser errors with error codes // Оставшиеся ошибки синтаксического анализатора g-кода с кодами ошибок
-          printer_.PgmString("Invalid gcode ID:");
-          printer_.Uint8Base10(status_code); // Print error code for user reference // Напечатать код ошибки для справки пользователю
+          printPgmString("Invalid gcode ID:");
+          print_uint8_base10(status_code); // Print error code for user reference // Напечатать код ошибки для справки пользователю
       }
     #endif  
-    printer_.PgmString("\r\n");
+    printPgmString("\r\n");
   }
 }
 
 // Prints alarm messages. // Выводит тревожные сообщения.
-void Report::AlarmMessage(i8 alarm_code)
+void report_alarm_message(i8 alarm_code)
 {
-  printer_.PgmString("ALARM: ");
+  printPgmString("ALARM: ");
   #ifdef REPORT_GUI_MODE
-    printer_.Uint8Base10(alarm_code);
+    print_uint8_base10(alarm_code);
   #else
     switch (alarm_code) {
       case ALARM_HARD_LIMIT_ERROR: 
-      printer_.PgmString("Hard limit"); break;
+      printPgmString("Hard limit"); break;
       case ALARM_SOFT_LIMIT_ERROR:
-      printer_.PgmString("Soft limit"); break;
+      printPgmString("Soft limit"); break;
       case ALARM_ABORT_CYCLE: 
-      printer_.PgmString("Abort during cycle"); break;
+      printPgmString("Abort during cycle"); break;
       case ALARM_PROBE_FAIL:
-      printer_.PgmString("Probe fail"); break;
+      printPgmString("Probe fail"); break;
       case ALARM_HOMING_FAIL:
-      printer_.PgmString("Homing fail"); break;
+      printPgmString("Homing fail"); break;
     }
   #endif
-  printer_.PgmString("\r\n");
+  printPgmString("\r\n");
   delay_ms(500); // Force delay to ensure message clears serial write buffer. // Принудительная задержка, чтобы гарантировать, что сообщение очистит буфер последовательной записи.
 }
 
@@ -119,41 +119,41 @@ void Report::AlarmMessage(i8 alarm_code)
 //, коды номеров сообщений будут меньше нуля.
 // ЗАДАЧА: Установите опцию отключения сообщений обратной связи в настройках
 
-void Report::FeedbackMessage(u8 message_code)
+void report_feedback_message(u8 message_code)
 {
-  printer_.PgmString("[");
+  printPgmString("[");
   switch(message_code) {
     case MESSAGE_CRITICAL_EVENT:
-    printer_.PgmString("Reset to continue"); break;
+    printPgmString("Reset to continue"); break;
     case MESSAGE_ALARM_LOCK:
-    printer_.PgmString("'$H'|'$X' to unlock"); break;
+    printPgmString("'$H'|'$X' to unlock"); break;
     case MESSAGE_ALARM_UNLOCK:
-    printer_.PgmString("Caution: Unlocked"); break;
+    printPgmString("Caution: Unlocked"); break;
     case MESSAGE_ENABLED:
-    printer_.PgmString("Enabled"); break;
+    printPgmString("Enabled"); break;
     case MESSAGE_DISABLED:
-    printer_.PgmString("Disabled"); break; 
+    printPgmString("Disabled"); break; 
     case MESSAGE_SAFETY_DOOR_AJAR:
-    printer_.PgmString("Check Door"); break;
+    printPgmString("Check Door"); break;
     case MESSAGE_PROGRAM_END:
-    printer_.PgmString("Pgm End"); break;
+    printPgmString("Pgm End"); break;
     case MESSAGE_RESTORE_DEFAULTS:
-    printer_.PgmString("Restoring defaults"); break;
+    printPgmString("Restoring defaults"); break;
   }
-  printer_.PgmString("]\r\n");
+  printPgmString("]\r\n");
 }
 
 
 // Welcome message // Приветственное сообщение
-void Report::InitMessage()
+void report_init_message()
 {
-  printer_.PgmString("\r\nGrbl " GRBL_VERSION " ['$' for help]\r\n");
+  printPgmString("\r\nGrbl " GRBL_VERSION " ['$' for help]\r\n");
 }
 
 // Grbl help message // Справочное сообщение Grbl
-void Report::GrblHelp() {
+void report_grbl_help() {
   #ifndef REPORT_GUI_MODE
-    printer_.PgmString("$$ (view Grbl settings)\r\n"
+    printPgmString("$$ (view Grbl settings)\r\n"
                         "$# (view # parameters)\r\n"
                         "$G (view parser state)\r\n"
                         "$I (view build info)\r\n"
@@ -175,54 +175,54 @@ void Report::GrblHelp() {
 // NOTE: The numbering scheme here must correlate to storing in settings.c
 // Распечатать глобальные настройки Grbl.
 // ПРИМЕЧАНИЕ: Схема нумерации здесь должна соответствовать схеме, сохраненной в settings.c
-void Report::GrblSettings(const settings_t& settings) {
+void report_grbl_settings(const settings_t& settings) {
   // Print Grbl settings. // Распечатать настройки Grbl.
   #ifdef REPORT_GUI_MODE
-    printer_.PgmString("$0="); printer_.Uint8Base10(settings.pulse_microseconds);
-    printer_.PgmString("\r\n$1="); printer_.Uint8Base10(settings.stepper_idle_lock_time);
-    printer_.PgmString("\r\n$2="); printer_.Uint8Base10(settings.step_invert_mask); 
-    printer_.PgmString("\r\n$3="); printer_.Uint8Base10(settings.dir_invert_mask); 
-    printer_.PgmString("\r\n$4="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));
-    printer_.PgmString("\r\n$5="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS));
-    printer_.PgmString("\r\n$6="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_INVERT_PROBE_PIN));
-    printer_.PgmString("\r\n$10="); printer_.Uint8Base10(settings.status_report_mask);
-    printer_.PgmString("\r\n$11="); printer_.FloatSettingValue(settings.junction_deviation);
-    printer_.PgmString("\r\n$12="); printer_.FloatSettingValue(settings.arc_tolerance);
-    printer_.PgmString("\r\n$13="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
-    printer_.PgmString("\r\n$20="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));
-    printer_.PgmString("\r\n$21="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
-    printer_.PgmString("\r\n$22="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
-    printer_.PgmString("\r\n$23="); printer_.Uint8Base10(settings.homing_dir_mask);
-    printer_.PgmString("\r\n$24="); printer_.FloatSettingValue(settings.homing_feed_rate);
-    printer_.PgmString("\r\n$25="); printer_.FloatSettingValue(settings.homing_seek_rate);
-    printer_.PgmString("\r\n$26="); printer_.Uint8Base10(settings.homing_debounce_delay);
-    printer_.PgmString("\r\n$27="); printer_.FloatSettingValue(settings.homing_pulloff);
-    printer_.PgmString("\r\n");
+    printPgmString("$0="); print_uint8_base10(settings.pulse_microseconds);
+    printPgmString("\r\n$1="); print_uint8_base10(settings.stepper_idle_lock_time);
+    printPgmString("\r\n$2="); print_uint8_base10(settings.step_invert_mask); 
+    printPgmString("\r\n$3="); print_uint8_base10(settings.dir_invert_mask); 
+    printPgmString("\r\n$4="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));
+    printPgmString("\r\n$5="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS));
+    printPgmString("\r\n$6="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_INVERT_PROBE_PIN));
+    printPgmString("\r\n$10="); print_uint8_base10(settings.status_report_mask);
+    printPgmString("\r\n$11="); printFloat_SettingValue(settings.junction_deviation);
+    printPgmString("\r\n$12="); printFloat_SettingValue(settings.arc_tolerance);
+    printPgmString("\r\n$13="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
+    printPgmString("\r\n$20="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));
+    printPgmString("\r\n$21="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
+    printPgmString("\r\n$22="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
+    printPgmString("\r\n$23="); print_uint8_base10(settings.homing_dir_mask);
+    printPgmString("\r\n$24="); printFloat_SettingValue(settings.homing_feed_rate);
+    printPgmString("\r\n$25="); printFloat_SettingValue(settings.homing_seek_rate);
+    printPgmString("\r\n$26="); print_uint8_base10(settings.homing_debounce_delay);
+    printPgmString("\r\n$27="); printFloat_SettingValue(settings.homing_pulloff);
+    printPgmString("\r\n");
   #else      
-    printer_.PgmString("$0="); printer_.Uint8Base10(settings.pulse_microseconds);
-    printer_.PgmString(" (step pulse, usec)\r\n$1="); printer_.Uint8Base10(settings.stepper_idle_lock_time);
-    printer_.PgmString(" (step idle delay, msec)\r\n$2="); printer_.Uint8Base10(settings.step_invert_mask); 
-    printer_.PgmString(" (step port invert mask:"); printer_.Uint8Base2(settings.step_invert_mask);  
-    printer_.PgmString(")\r\n$3="); printer_.Uint8Base10(settings.dir_invert_mask); 
-    printer_.PgmString(" (dir port invert mask:"); printer_.Uint8Base2(settings.dir_invert_mask);  
-    printer_.PgmString(")\r\n$4="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));
-    printer_.PgmString(" (step enable invert, bool)\r\n$5="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS));
-    printer_.PgmString(" (limit pins invert, bool)\r\n$6="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_INVERT_PROBE_PIN));
-    printer_.PgmString(" (probe pin invert, bool)\r\n$10="); printer_.Uint8Base10(settings.status_report_mask);
-    printer_.PgmString(" (status report mask:"); printer_.Uint8Base2(settings.status_report_mask);
-    printer_.PgmString(")\r\n$11="); printer_.FloatSettingValue(settings.junction_deviation);
-    printer_.PgmString(" (junction deviation, mm)\r\n$12="); printer_.FloatSettingValue(settings.arc_tolerance);
-    printer_.PgmString(" (arc tolerance, mm)\r\n$13="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
-    printer_.PgmString(" (report inches, bool)\r\n$20="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));
-    printer_.PgmString(" (soft limits, bool)\r\n$21="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
-    printer_.PgmString(" (hard limits, bool)\r\n$22="); printer_.Uint8Base10(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
-    printer_.PgmString(" (homing cycle, bool)\r\n$23="); printer_.Uint8Base10(settings.homing_dir_mask);
-    printer_.PgmString(" (homing dir invert mask:"); printer_.Uint8Base2(settings.homing_dir_mask);  
-    printer_.PgmString(")\r\n$24="); printer_.FloatSettingValue(settings.homing_feed_rate);
-    printer_.PgmString(" (homing feed, mm/min)\r\n$25="); printer_.FloatSettingValue(settings.homing_seek_rate);
-    printer_.PgmString(" (homing seek, mm/min)\r\n$26="); printer_.Uint8Base10(settings.homing_debounce_delay);
-    printer_.PgmString(" (homing debounce, msec)\r\n$27="); printer_.FloatSettingValue(settings.homing_pulloff);
-    printer_.PgmString(" (homing pull-off, mm)\r\n");
+    printPgmString("$0="); print_uint8_base10(settings.pulse_microseconds);
+    printPgmString(" (step pulse, usec)\r\n$1="); print_uint8_base10(settings.stepper_idle_lock_time);
+    printPgmString(" (step idle delay, msec)\r\n$2="); print_uint8_base10(settings.step_invert_mask); 
+    printPgmString(" (step port invert mask:"); print_uint8_base2(settings.step_invert_mask);  
+    printPgmString(")\r\n$3="); print_uint8_base10(settings.dir_invert_mask); 
+    printPgmString(" (dir port invert mask:"); print_uint8_base2(settings.dir_invert_mask);  
+    printPgmString(")\r\n$4="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));
+    printPgmString(" (step enable invert, bool)\r\n$5="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS));
+    printPgmString(" (limit pins invert, bool)\r\n$6="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_INVERT_PROBE_PIN));
+    printPgmString(" (probe pin invert, bool)\r\n$10="); print_uint8_base10(settings.status_report_mask);
+    printPgmString(" (status report mask:"); print_uint8_base2(settings.status_report_mask);
+    printPgmString(")\r\n$11="); printFloat_SettingValue(settings.junction_deviation);
+    printPgmString(" (junction deviation, mm)\r\n$12="); printFloat_SettingValue(settings.arc_tolerance);
+    printPgmString(" (arc tolerance, mm)\r\n$13="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
+    printPgmString(" (report inches, bool)\r\n$20="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));
+    printPgmString(" (soft limits, bool)\r\n$21="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
+    printPgmString(" (hard limits, bool)\r\n$22="); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
+    printPgmString(" (homing cycle, bool)\r\n$23="); print_uint8_base10(settings.homing_dir_mask);
+    printPgmString(" (homing dir invert mask:"); print_uint8_base2(settings.homing_dir_mask);  
+    printPgmString(")\r\n$24="); printFloat_SettingValue(settings.homing_feed_rate);
+    printPgmString(" (homing feed, mm/min)\r\n$25="); printFloat_SettingValue(settings.homing_seek_rate);
+    printPgmString(" (homing seek, mm/min)\r\n$26="); print_uint8_base10(settings.homing_debounce_delay);
+    printPgmString(" (homing debounce, msec)\r\n$27="); printFloat_SettingValue(settings.homing_pulloff);
+    printPgmString(" (homing pull-off, mm)\r\n");
   #endif
   
   // Print axis settings
@@ -231,31 +231,31 @@ void Report::GrblSettings(const settings_t& settings) {
   uint8_t val = AXIS_SETTINGS_START_VAL;
   for (set_idx=0; set_idx<AXIS_N_SETTINGS; set_idx++) {
     for (idx=0; idx<N_AXIS; idx++) {
-      printer_.PgmString("$");
-      printer_.Uint8Base10(val+idx);
-      printer_.PgmString("=");
+      printPgmString("$");
+      print_uint8_base10(val+idx);
+      printPgmString("=");
       switch (set_idx) {
-        case 0: printer_.FloatSettingValue(settings.steps_per_mm[idx]); break;
-        case 1: printer_.FloatSettingValue(settings.max_rate[idx]); break;
-        case 2: printer_.FloatSettingValue(settings.acceleration[idx]/(60*60)); break;
-        case 3: printer_.FloatSettingValue(-settings.max_travel[idx]); break;
+        case 0: printFloat_SettingValue(settings.steps_per_mm[idx]); break;
+        case 1: printFloat_SettingValue(settings.max_rate[idx]); break;
+        case 2: printFloat_SettingValue(settings.acceleration[idx]/(60*60)); break;
+        case 3: printFloat_SettingValue(-settings.max_travel[idx]); break;
       }
       #ifdef REPORT_GUI_MODE
-        printer_.PgmString("\r\n");
+        printPgmString("\r\n");
       #else
-        printer_.PgmString(" (");
+        printPgmString(" (");
         switch (idx) {
-          case X_AXIS: printer_.PgmString("x"); break;
-          case Y_AXIS: printer_.PgmString("y"); break;
-          case Z_AXIS: printer_.PgmString("z"); break;
+          case X_AXIS: printPgmString("x"); break;
+          case Y_AXIS: printPgmString("y"); break;
+          case Z_AXIS: printPgmString("z"); break;
         }
         switch (set_idx) {
-          case 0: printer_.PgmString(", step/mm"); break;
-          case 1: printer_.PgmString(" max rate, mm/min"); break;
-          case 2: printer_.PgmString(" accel, mm/sec^2"); break;
-          case 3: printer_.PgmString(" max travel, mm"); break;
+          case 0: printPgmString(", step/mm"); break;
+          case 1: printPgmString(" max rate, mm/min"); break;
+          case 2: printPgmString(" accel, mm/sec^2"); break;
+          case 3: printPgmString(" max travel, mm"); break;
         }      
-        printer_.PgmString(")\r\n");
+        printPgmString(")\r\n");
       #endif
     }
     val += AXIS_SETTINGS_INCREMENT;
@@ -269,145 +269,145 @@ void Report::GrblSettings(const settings_t& settings) {
 // Выводит текущие параметры проверки. По команде проверки эти параметры обновляются после
 // успешной проверки или неудачной проверки с помощью команды G38.3 без ошибок (если поддерживается). 
 // Эти значения сохраняются до тех пор, пока Grbl не переключится на питание, после чего они будут повторно обнулены.
-void Report::ProbeParameters()
+void report_probe_parameters()
 {
   uint8_t i;
   float print_position[N_AXIS];
  
   // Report in terms of machine position.
   // Отчет с точки зрения положения машины.
-  printer_.PgmString("[PRB:");
+  printPgmString("[PRB:");
   for (i=0; i< N_AXIS; i++) {
     print_position[i] = system_convert_axis_steps_to_mpos(sys.probe_position,i);
-    printer_.FloatCoordValue(print_position[i]);
-    if (i < (N_AXIS-1)) { printer_.PgmString(","); }
+    printFloat_CoordValue(print_position[i]);
+    if (i < (N_AXIS-1)) { printPgmString(","); }
   }
-  printer_.PgmString(":");
-  printer_.Uint8Base10(sys.probe_succeeded);
-  printer_.PgmString("]\r\n");
+  printPgmString(":");
+  print_uint8_base10(sys.probe_succeeded);
+  printPgmString("]\r\n");
 }
 
 
 // Prints Grbl NGC parameters (coordinate offsets, probing)
 // Выводит параметры Grbl NGC (смещения координат, зондирование)
-void Report::NgcParameters()
+void report_ngc_parameters()
 {
-  // float coord_data[N_AXIS];
-  // uint8_t coord_select, i;
-  // for (coord_select = 0; coord_select <= SETTING_INDEX_NCOORD; coord_select++) { 
-  //   if (!(settings_read_coord_data(coord_select,coord_data))) { 
-  //     Report::StatusMessage(STATUS_SETTING_READ_FAIL);
-  //     return;
-  //   } 
-  //   printer_.PgmString("[G");
-  //   switch (coord_select) {
-  //     case 6: printer_.PgmString("28"); break;
-  //     case 7: printer_.PgmString("30"); break;
-  //     default: printer_.Uint8Base10(coord_select+54); break; // G54-G59
-  //   }  
-  //   printer_.PgmString(":");         
-  //   for (i=0; i<N_AXIS; i++) {
-  //     printer_.FloatCoordValue(coord_data[i]);
-  //     if (i < (N_AXIS-1)) { printer_.PgmString(","); }
-  //     else { printer_.PgmString("]\r\n"); }
-  //   } 
-  // }
-  // printer_.PgmString("[G92:"); // Print G92,G92.1 which are not persistent in memory // Выведите G92,G92.1, которые не являются постоянными в памяти
-  // for (i=0; i<N_AXIS; i++) {
-  //   printer_.FloatCoordValue(gc_state.coord_offset[i]);
-  //   if (i < (N_AXIS-1)) { printer_.PgmString(","); }
-  //   else { printer_.PgmString("]\r\n"); }
-  // } 
-  // printer_.PgmString("[TLO:"); // Print tool length offset value // Значение смещения длины печатающего инструмента
-  // printer_.FloatCoordValue(gc_state.tool_length_offset);
-  // printer_.PgmString("]\r\n");
-  Report::ProbeParameters(); // Print probe parameters. Not persistent in memory. // Вывод параметров датчика. Не сохраняется в памяти.
+  float coord_data[N_AXIS];
+  uint8_t coord_select, i;
+  for (coord_select = 0; coord_select <= SETTING_INDEX_NCOORD; coord_select++) { 
+    if (!(settings_read_coord_data(coord_select,coord_data))) { 
+      report_status_message(STATUS_SETTING_READ_FAIL); 
+      return;
+    } 
+    printPgmString("[G");
+    switch (coord_select) {
+      case 6: printPgmString("28"); break;
+      case 7: printPgmString("30"); break;
+      default: print_uint8_base10(coord_select+54); break; // G54-G59
+    }  
+    printPgmString(":");         
+    for (i=0; i<N_AXIS; i++) {
+      printFloat_CoordValue(coord_data[i]);
+      if (i < (N_AXIS-1)) { printPgmString(","); }
+      else { printPgmString("]\r\n"); }
+    } 
+  }
+  printPgmString("[G92:"); // Print G92,G92.1 which are not persistent in memory // Выведите G92,G92.1, которые не являются постоянными в памяти
+  for (i=0; i<N_AXIS; i++) {
+    printFloat_CoordValue(gc_state.coord_offset[i]);
+    if (i < (N_AXIS-1)) { printPgmString(","); }
+    else { printPgmString("]\r\n"); }
+  } 
+  printPgmString("[TLO:"); // Print tool length offset value // Значение смещения длины печатающего инструмента
+  printFloat_CoordValue(gc_state.tool_length_offset);
+  printPgmString("]\r\n");
+  report_probe_parameters(); // Print probe parameters. Not persistent in memory. // Вывод параметров датчика. Не сохраняется в памяти.
 }
 
 
 // Print current gcode parser mode state // Вывести текущее состояние режима синтаксического анализа gcode
-void Report::GcodeModes()
+void report_gcode_modes()
 {
-  printer_.PgmString("[");
+  printPgmString("[");
   
   switch (gc_state.modal.motion) {
-    case MOTION_MODE_SEEK : printer_.PgmString("G0"); break;
-    case MOTION_MODE_LINEAR : printer_.PgmString("G1"); break;
-    case MOTION_MODE_CW_ARC : printer_.PgmString("G2"); break;
-    case MOTION_MODE_CCW_ARC : printer_.PgmString("G3"); break;
-    case MOTION_MODE_NONE : printer_.PgmString("G80"); break;
+    case MOTION_MODE_SEEK : printPgmString("G0"); break;
+    case MOTION_MODE_LINEAR : printPgmString("G1"); break;
+    case MOTION_MODE_CW_ARC : printPgmString("G2"); break;
+    case MOTION_MODE_CCW_ARC : printPgmString("G3"); break;
+    case MOTION_MODE_NONE : printPgmString("G80"); break;
     default: 
-      printer_.PgmString("G38.");
-      printer_.Uint8Base10(gc_state.modal.motion - (MOTION_MODE_PROBE_TOWARD-2));
+      printPgmString("G38.");
+      print_uint8_base10(gc_state.modal.motion - (MOTION_MODE_PROBE_TOWARD-2));
   }
 
-  printer_.PgmString(" G");
-  printer_.Uint8Base10(gc_state.modal.coord_select+54);
+  printPgmString(" G");
+  print_uint8_base10(gc_state.modal.coord_select+54);
   
   switch (gc_state.modal.plane_select) {
-    case PLANE_SELECT_XY : printer_.PgmString(" G17"); break;
-    case PLANE_SELECT_ZX : printer_.PgmString(" G18"); break;
-    case PLANE_SELECT_YZ : printer_.PgmString(" G19"); break;
+    case PLANE_SELECT_XY : printPgmString(" G17"); break;
+    case PLANE_SELECT_ZX : printPgmString(" G18"); break;
+    case PLANE_SELECT_YZ : printPgmString(" G19"); break;
   }
   
-  if (gc_state.modal.units == UNITS_MODE_MM) { printer_.PgmString(" G21"); }
-  else { printer_.PgmString(" G20"); }
+  if (gc_state.modal.units == UNITS_MODE_MM) { printPgmString(" G21"); }
+  else { printPgmString(" G20"); }
   
-  if (gc_state.modal.distance == DISTANCE_MODE_ABSOLUTE) { printer_.PgmString(" G90"); }
-  else { printer_.PgmString(" G91"); }
+  if (gc_state.modal.distance == DISTANCE_MODE_ABSOLUTE) { printPgmString(" G90"); }
+  else { printPgmString(" G91"); }
   
-  if (gc_state.modal.feed_rate == FEED_RATE_MODE_INVERSE_TIME) { printer_.PgmString(" G93"); }
-  else { printer_.PgmString(" G94"); }
+  if (gc_state.modal.feed_rate == FEED_RATE_MODE_INVERSE_TIME) { printPgmString(" G93"); }
+  else { printPgmString(" G94"); }
     
   switch (gc_state.modal.program_flow) {
-    case PROGRAM_FLOW_RUNNING : printer_.PgmString(" M0"); break;
-    case PROGRAM_FLOW_PAUSED : printer_.PgmString(" M1"); break;
-    case PROGRAM_FLOW_COMPLETED : printer_.PgmString(" M2"); break;
+    case PROGRAM_FLOW_RUNNING : printPgmString(" M0"); break;
+    case PROGRAM_FLOW_PAUSED : printPgmString(" M1"); break;
+    case PROGRAM_FLOW_COMPLETED : printPgmString(" M2"); break;
   }
 
   switch (gc_state.modal.spindle) {
-    case SPINDLE_ENABLE_CW : printer_.PgmString(" M3"); break;
-    case SPINDLE_ENABLE_CCW : printer_.PgmString(" M4"); break;
-    case SPINDLE_DISABLE : printer_.PgmString(" M5"); break;
+    case SPINDLE_ENABLE_CW : printPgmString(" M3"); break;
+    case SPINDLE_ENABLE_CCW : printPgmString(" M4"); break;
+    case SPINDLE_DISABLE : printPgmString(" M5"); break;
   }
   
   switch (gc_state.modal.coolant) {
-    case COOLANT_DISABLE : printer_.PgmString(" M9"); break;
-    case COOLANT_FLOOD_ENABLE : printer_.PgmString(" M8"); break;
+    case COOLANT_DISABLE : printPgmString(" M9"); break;
+    case COOLANT_FLOOD_ENABLE : printPgmString(" M8"); break;
     #ifdef ENABLE_M7
-      case COOLANT_MIST_ENABLE : printer_.PgmString(" M7"); break;
+      case COOLANT_MIST_ENABLE : printPgmString(" M7"); break;
     #endif
   }
   
-  printer_.PgmString(" T");
-  printer_.Uint8Base10(gc_state.tool);
+  printPgmString(" T");
+  print_uint8_base10(gc_state.tool);
   
-  printer_.PgmString(" F");
-  printer_.FloatRateValue(gc_state.feed_rate);
+  printPgmString(" F");
+  printFloat_RateValue(gc_state.feed_rate);
   
   #ifdef VARIABLE_SPINDLE
-    printer_.PgmString(" S");
-    printer_.FloatRateValue(gc_state.spindle_speed);
+    printPgmString(" S");
+    printFloat_RateValue(gc_state.spindle_speed);
   #endif
 
-  printer_.PgmString("]\r\n");
+  printPgmString("]\r\n");
 }
 
 // Prints specified startup line // Выводит указанную строку запуска
-void Report::StartupLine(uint8_t n, char *line)
+void report_startup_line(uint8_t n, char *line)
 {
-  printer_.PgmString("$N"); printer_.Uint8Base10(n);
-  printer_.PgmString("="); printer_.String(line);
-  printer_.PgmString("\r\n");
+  printPgmString("$N"); print_uint8_base10(n);
+  printPgmString("="); printString(line);
+  printPgmString("\r\n");
 }
 
 
 // Prints build info line
-void Report::BuildInfo(char *line)
+void report_build_info(char *line)
 {
-  printer_.PgmString("[" GRBL_VERSION "." GRBL_VERSION_BUILD ":");
-  printer_.String(line);
-  printer_.PgmString("]\r\n");
+  printPgmString("[" GRBL_VERSION "." GRBL_VERSION_BUILD ":");
+  printString(line);
+  printPgmString("]\r\n");
 }
 
 
@@ -415,10 +415,10 @@ void Report::BuildInfo(char *line)
 // and has been sent into protocol_execute_line() routine to be executed by Grbl.
 // Выводит строку символьной строки, полученную Grbl от пользователя, которая была предварительно обработана,
 // и отправлена в процедуру protocol_execute_line() для выполнения Grbl.
-void Report::EchoLineReceived(char *line)
+void report_echo_line_received(char *line)
 {
-  printer_.PgmString("[echo: "); printer_.String(line);
-  printer_.PgmString("]\r\n");
+  printPgmString("[echo: "); printString(line);
+  printPgmString("]\r\n");
 }
 
 // Печатает данные в режиме реального времени. Эта функция позволяет в режиме реального времени получить снимок шаговой подпрограммы 
@@ -431,7 +431,7 @@ void Report::EchoLineReceived(char *line)
  // specific needs, but the desired real-time data report must be as short as possible. This is
  // requires as it minimizes the computational overhead and allows grbl to keep running smoothly, 
  // especially during g-code programs with fast, short line segments and high frequency reports (5-20Hz).
-void Report::RealtimeStatus(settings_t& settings)
+void report_realtime_status(settings_t settings)
 {
   // **Under construction** Bare-bones status report. Provides real-time machine position relative to 
   // the system power on location (0,0,0) and work coordinate position (G54 and G92 applied). Eventually
@@ -448,14 +448,14 @@ void Report::RealtimeStatus(settings_t& settings)
  
   // Report current machine state // Сообщить о текущем состоянии машины
   switch (sys.state) {
-    case STATE_IDLE: printer_.PgmString("<Idle"); break;
+    case STATE_IDLE: printPgmString("<Idle"); break;
     case STATE_MOTION_CANCEL: // Report run state. // Отчет о состоянии выполнения.
-    case STATE_CYCLE: printer_.PgmString("<Run"); break;
-    case STATE_HOLD: printer_.PgmString("<Hold"); break;
-    case STATE_HOMING: printer_.PgmString("<Home"); break;
-    case STATE_ALARM: printer_.PgmString("<Alarm"); break;
-    case STATE_CHECK_MODE: printer_.PgmString("<Check"); break;
-    case STATE_SAFETY_DOOR: printer_.PgmString("<Door"); break;
+    case STATE_CYCLE: printPgmString("<Run"); break;
+    case STATE_HOLD: printPgmString("<Hold"); break;
+    case STATE_HOMING: printPgmString("<Home"); break;
+    case STATE_ALARM: printPgmString("<Alarm"); break;
+    case STATE_CHECK_MODE: printPgmString("<Check"); break;
+    case STATE_SAFETY_DOOR: printPgmString("<Door"); break;
   }
  
   // If reporting a position, convert the current step count (current_position) to millimeters. 
@@ -466,40 +466,41 @@ void Report::RealtimeStatus(settings_t& settings)
   
   // Report machine position // Сообщить о положении машины
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_MACHINE_POSITION)) {
-    printer_.PgmString(",MPos:"); 
+    printPgmString(",MPos:"); 
     for (idx=0; idx< N_AXIS; idx++) {
-      printer_.FloatCoordValue(print_position[idx]);
-      if (idx < (N_AXIS-1)) { printer_.PgmString(","); }
+      printFloat_CoordValue(print_position[idx]);
+      if (idx < (N_AXIS-1)) { printPgmString(","); }
     }
   }
   
   // Report work position // Сообщить о рабочем месте
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_WORK_POSITION)) {
-    printer_.PgmString(",WPos:"); 
+    printPgmString(",WPos:"); 
     for (idx=0; idx< N_AXIS; idx++) {
       // Apply work coordinate offsets and tool length offset to current position. // Примените смещения рабочих координат и длины инструмента к текущему положению.
       print_position[idx] -= gc_state.coord_system[idx]+gc_state.coord_offset[idx];
       if (idx == TOOL_LENGTH_OFFSET_AXIS) { print_position[idx] -= gc_state.tool_length_offset; }    
-      printer_.FloatCoordValue(print_position[idx]);
-      if (idx < (N_AXIS-1)) { printer_.PgmString(","); }
+      printFloat_CoordValue(print_position[idx]);
+      if (idx < (N_AXIS-1)) { printPgmString(","); }
     }
   }
         
   // Returns the number of active blocks are in the planner buffer. // Возвращает количество активных блоков, находящихся в буфере планировщика.
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_PLANNER_BUFFER)) {
-    printer_.PgmString(",Buf:");
-    printer_.Uint8Base10(plan_get_block_buffer_count());
+    printPgmString(",Buf:");
+    print_uint8_base10(plan_get_block_buffer_count());
   }
 
   // Report serial read buffer status // Сообщить о состоянии буфера последовательного чтения
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_SERIAL_RX)) {
-    printer_.PgmString(",RX:");
-    printer_.SerialGetRxBufferCount();
+    printPgmString(",RX:");
+    Serial serial;
+    print_uint8_base10(serial.SerialGetRxBufferCount());
   }
     
   #ifdef USE_LINE_NUMBERS
     // Report current line number // Сообщить номер текущей строки
-    printer_.PgmString(",Ln:"); 
+    printPgmString(",Ln:"); 
     int32_t ln=0;
     plan_block_t * pb = plan_get_current_block();
     if(pb != NULL) {
@@ -510,19 +511,19 @@ void Report::RealtimeStatus(settings_t& settings)
     
   #ifdef REPORT_REALTIME_RATE
     // Report realtime rate  // Сообщать о скорости в реальном времени2
-    printer_.PgmString(",F:"); 
-    printer_.FloatRateValue(st_get_realtime_rate());
+    printPgmString(",F:"); 
+    printFloat_RateValue(st_get_realtime_rate());
   #endif    
   
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) {
-    printer_.PgmString(",Lim:");
-    printer_.UnsignedInt8(limits_get_state(),2,N_AXIS);
+    printPgmString(",Lim:");
+    print_unsigned_int8(limits_get_state(),2,N_AXIS);
   }
   
   #ifdef REPORT_CONTROL_PIN_STATE 
-    printer_.PgmString(",Ctl:");
-    printer_.Uint8Base2(CONTROL_PIN & CONTROL_MASK);
+    printPgmString(",Ctl:");
+    print_uint8_base2(CONTROL_PIN & CONTROL_MASK);
   #endif
   
-  printer_.PgmString(">\r\n");
+  printPgmString(">\r\n");
 }

@@ -4,6 +4,14 @@
 #define report_h
 
 #include "grbl.h"
+#include "settings.h"
+#include "gcode.h"
+#include "print.h"
+#include "limits.h"
+#include "system.h"
+#include "serial.h"
+#include "cstring"
+#include "planner.h"
 
 // Define Grbl status codes. // Определите коды состояния Grbl.
 #define STATUS_OK 0
@@ -56,43 +64,37 @@
 #define MESSAGE_PROGRAM_END 7
 #define MESSAGE_RESTORE_DEFAULTS 8
 
-// Prints system status messages. // Выводит сообщения о состоянии системы.
-void report_status_message(u8 status_code);
-
-// Prints system alarm messages. // Выводит системные тревожные сообщения.
-void report_alarm_message(i8 alarm_code);
-
-// Prints miscellaneous feedback messages. // Печатает различные сообщения обратной связи.
-void report_feedback_message(u8 message_code);
-
-// Prints welcome message // Выводит приветственное сообщение
-void report_init_message();
-
-// Prints Grbl help and current global settings // Выводит справку Grbl и текущие глобальные настройки
-void report_grbl_help();
-
-// Prints Grbl global settings // Выводит глобальные настройки Grbl
-void report_grbl_settings(const settings_t& settings);
-
-// Prints an echo of the pre-parsed line received right before execution. // Выводит эхо предварительно обработанной строки, полученной непосредственно перед выполнением.
-void report_echo_line_received(char *line);
-
-// Prints realtime status report // Выводит отчет о состоянии в режиме реального времени
-void report_realtime_status(settings_t settings);
-
-// Prints recorded probe position // Печатает записанное положение датчика
-void report_probe_parameters();
-
-// Prints Grbl NGC parameters (coordinate offsets, probe) // Выводит параметры Grbl NGC (смещения координат, зонд)
-void report_ngc_parameters();
-
-// Prints current g-code parser mode state // Выводит текущее состояние режима анализатора g-кода
-void report_gcode_modes();
-
-// Prints startup line // Выводит строку запуска
-void report_startup_line(u8 n, char *line);
-
-// Prints build info and user info // Выводит информацию о сборке и пользователе
-void report_build_info(char *line);
+class Report {
+private:
+    Printer &printer_;
+public:
+    Report(Printer &printer) : printer_(printer){} 
+    // Prints system status messages. // Выводит сообщения о состоянии системы.
+    void StatusMessage(u8 status_code);
+    // Prints system alarm messages. // Выводит системные тревожные сообщения.
+    void AlarmMessage(i8 alarm_code);
+    // Prints miscellaneous feedback messages. // Печатает различные сообщения обратной связи.
+    void FeedbackMessage(u8 message_code);
+    // Prints welcome message // Выводит приветственное сообщение
+    void InitMessage();
+    // Prints Grbl help and current global settings // Выводит справку Grbl и текущие глобальные настройки
+    void GrblHelp();
+    // Prints Grbl global settings // Выводит глобальные настройки Grbl
+    void GrblSettings(const settings_t& settings);
+    // Prints an echo of the pre-parsed line received right before execution. // Выводит эхо предварительно обработанной строки, полученной непосредственно перед выполнением.
+    void EchoLineReceived(char *line);
+    // Prints realtime status report // Выводит отчет о состоянии в режиме реального времени
+    void RealtimeStatus(settings_t& settings);
+    // Prints recorded probe position // Печатает записанное положение датчика
+    void ProbeParameters();
+    // Prints Grbl NGC parameters (coordinate offsets, probe) // Выводит параметры Grbl NGC (смещения координат, зонд)
+    void NgcParameters();
+    // Prints current g-code parser mode state // Выводит текущее состояние режима анализатора g-кода
+    void GcodeModes();
+    // Prints startup line // Выводит строку запуска
+    void StartupLine(u8 n, char *line);
+    // Prints build info and user info // Выводит информацию о сборке и пользователе
+    void BuildInfo(char *line);
+};
 
 #endif

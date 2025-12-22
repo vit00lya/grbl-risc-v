@@ -26,6 +26,10 @@
   #define SEGMENT_BUFFER_SIZE 6
 #endif
 
+#include "planner.h"
+#include <math.h>
+#include "system.h"
+
 // Initialize and setup the stepper motor subsystem
 // Инициализация и настройка подсистемы шагового двигателя
 void stepper_init();

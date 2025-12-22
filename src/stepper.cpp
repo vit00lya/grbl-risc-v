@@ -1,4 +1,6 @@
 #include "grbl.h"
+#include "stepper.h"
+
 
 TIMER32_HandleTypeDef htimer32;
 TIMER32_CHANNEL_HandleTypeDef htimer32_channel;

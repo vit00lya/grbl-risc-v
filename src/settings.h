@@ -25,7 +25,6 @@
 
 #include "grbl.h"
 
-
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
 // Версия данных EEPROM. Будет использоваться для переноса существующих данных из более старых версий Grbl
@@ -84,6 +83,7 @@
 #define AXIS_SETTINGS_START_VAL  100 // NOTE: Reserving settings values >= 100 for axis settings. Up to 255. // ПРИМЕЧАНИЕ: Сохраните значения настроек >= 100 для настроек оси. До 255.
 #define AXIS_SETTINGS_INCREMENT  10  // Must be greater than the number of axis settings // Должно быть больше, чем количество настроек оси
 
+
 // Global persistent settings (Stored from byte EEPROM_ADDR_GLOBAL onwards) // Глобальные постоянные настройки (сохраняются начиная с байта EEPROM_ADDR_GLOBAL и далее)
 struct settings_t
 {
@@ -94,60 +94,61 @@ struct settings_t
   float max_travel[N_AXIS];
 
   // Remaining Grbl settings // Остальные настройки Grbl
-  u8 pulse_microseconds;
-  u8 step_invert_mask;
-  u8 dir_invert_mask;
-  u8 stepper_idle_lock_time; // If max value 255, steppers do not disable. // При максимальном значении 255 степперы не отключаются.
-  u8 status_report_mask; // Mask to indicate desired report data. // Маска для указания желаемых данных отчета.
+  uint8_t pulse_microseconds;
+  uint8_t step_invert_mask;
+  uint8_t dir_invert_mask;
+  uint8_t stepper_idle_lock_time; // If max value 255, steppers do not disable. // При максимальном значении 255 степперы не отключаются.
+  uint8_t status_report_mask; // Mask to indicate desired report data. // Маска для указания желаемых данных отчета.
   float junction_deviation;
   float arc_tolerance;
   
-  u8 flags;  // Contains default boolean settings // Содержит логические настройки по умолчанию
+  uint8_t flags;  // Contains default boolean settings // Содержит логические настройки по умолчанию
 
-  u8 homing_dir_mask;
+  uint8_t homing_dir_mask;
   float homing_feed_rate;
   float homing_seek_rate;
-  u16 homing_debounce_delay;
+  uint16_t homing_debounce_delay;
   float homing_pulloff;
 };
 
-void SettingsInit(settings_t& settings);
-bool ReadGlobalSettings();
-void SettingsRestore(u8 restore_flag, settings_t& settings);
+// /
+// void SettingsInit(settings_t& settings);
+// bool ReadGlobalSettings();
+// void SettingsRestore(u8 restore_flag, settings_t& settings);
 
-// Initialize the configuration subsystem (load settings from EEPROM) // Инициализировать конфигурационную подсистему (загрузить настройки из EEPROM)
-void settings_init();
+// // Initialize the configuration subsystem (load settings from EEPROM) // Инициализировать конфигурационную подсистему (загрузить настройки из EEPROM)
+// void settings_init();
 
 
-// A helper method to set new settings from command line // Вспомогательный метод для установки новых настроек из командной строки
-uint8_t settings_store_global_setting(uint8_t parameter, float value);
+// // A helper method to set new settings from command line // Вспомогательный метод для установки новых настроек из командной строки
+// uint8_t settings_store_global_setting(uint8_t parameter, float value);
 
-// Stores the protocol line variable as a startup line in EEPROM // Сохраняет переменную строки протокола в качестве начальной строки в EEPROM
-void settings_store_startup_line(uint8_t n, char *line);
+// // Stores the protocol line variable as a startup line in EEPROM // Сохраняет переменную строки протокола в качестве начальной строки в EEPROM
+// void settings_store_startup_line(uint8_t n, char *line);
 
-// Reads an EEPROM startup line to the protocol line variable // Считывает строку запуска EEPROM в переменную строки протокола
-uint8_t settings_read_startup_line(uint8_t n, char *line);
+// // Reads an EEPROM startup line to the protocol line variable // Считывает строку запуска EEPROM в переменную строки протокола
+// uint8_t settings_read_startup_line(uint8_t n, char *line);
 
-// Stores build info user-defined string // Хранит информацию о сборке в пользовательской строке
-void settings_store_build_info(char *line);
+// // Stores build info user-defined string // Хранит информацию о сборке в пользовательской строке
+// void settings_store_build_info(char *line);
 
-// Reads build info user-defined string // Считывает пользовательскую строку информации о сборке
-uint8_t settings_read_build_info(char *line);
+// // Reads build info user-defined string // Считывает пользовательскую строку информации о сборке
+// uint8_t settings_read_build_info(char *line);
 
-// Writes selected coordinate data to EEPROM // Записывает выбранные данные о координатах в EEPROM
-void settings_write_coord_data(uint8_t coord_select, float *coord_data);
+// // Writes selected coordinate data to EEPROM // Записывает выбранные данные о координатах в EEPROM
+// void settings_write_coord_data(uint8_t coord_select, float *coord_data);
 
-// Reads selected coordinate data from EEPROM // Считывает выбранные координатные данные из EEPROM
-uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data);
+// // Reads selected coordinate data from EEPROM // Считывает выбранные координатные данные из EEPROM
+// uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data);
 
-// Returns the step pin mask according to Grbl's internal axis numbering // Возвращает маску ступенчатого штифта в соответствии с нумерацией внутренних осей Grbl
-uint8_t get_step_pin_mask(uint8_t i);
+// // Returns the step pin mask according to Grbl's internal axis numbering // Возвращает маску ступенчатого штифта в соответствии с нумерацией внутренних осей Grbl
+// uint8_t get_step_pin_mask(uint8_t i);
 
-// Returns the direction pin mask according to Grbl's internal axis numbering // Возвращает маску направляющего штифта в соответствии с нумерацией внутренних осей Grbl
-uint8_t get_direction_pin_mask(uint8_t i);
+// // Returns the direction pin mask according to Grbl's internal axis numbering // Возвращает маску направляющего штифта в соответствии с нумерацией внутренних осей Grbl
+// uint8_t get_direction_pin_mask(uint8_t i);
 
-// Returns the limit pin mask according to Grbl's internal axis numbering // Возвращает маску предельного штифта в соответствии с нумерацией внутренних осей Grbl
-uint8_t get_limit_pin_mask(uint8_t i);
+// // Returns the limit pin mask according to Grbl's internal axis numbering // Возвращает маску предельного штифта в соответствии с нумерацией внутренних осей Grbl
+// uint8_t get_limit_pin_mask(uint8_t i);
 
  
  
