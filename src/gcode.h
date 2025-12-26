@@ -133,31 +133,31 @@
 // NOTE: When this struct is zeroed, the above defines set the defaults for the system.
 // ПРИМЕЧАНИЕ: Когда эта структура обнулена, приведенные выше определения устанавливают значения по умолчанию для системы.
 typedef struct {
-  u8 motion;          // {G0,G1,G2,G3,G38.2,G80}
-  u8 feed_rate;       // {G93,G94}
-  u8 units;           // {G20,G21}
-  u8 distance;        // {G90,G91}
-  // u8 distance_arc; // {G91.1} NOTE: Don't track. Only default supported.
-  u8 plane_select;    // {G17,G18,G19}
+  uint8_t motion;          // {G0,G1,G2,G3,G38.2,G80}
+  uint8_t feed_rate;       // {G93,G94}
+  uint8_t units;           // {G20,G21}
+  uint8_t distance;        // {G90,G91}
+  // uint8_t distance_arc; // {G91.1} NOTE: Don't track. Only default supported.
+  uint8_t plane_select;    // {G17,G18,G19}
   // uint8_t cutter_comp;  // {G40} NOTE: Don't track. Only default supported.
-  u8 tool_length;     // {G43.1,G49}
-  u8 coord_select;    // {G54,G55,G56,G57,G58,G59}
-  // u8 control;      // {G61} NOTE: Don't track. Only default supported.
-  u8 program_flow;    // {M0,M1,M2,M30}
-  u8 coolant;         // {M7,M8,M9}
-  u8 spindle;         // {M3,M4,M5}
+  uint8_t tool_length;     // {G43.1,G49}
+  uint8_t coord_select;    // {G54,G55,G56,G57,G58,G59}
+  // uint8_t control;      // {G61} NOTE: Don't track. Only default supported.
+  uint8_t program_flow;    // {M0,M1,M2,M30}
+  uint8_t coolant;         // {M7,M8,M9}
+  uint8_t spindle;         // {M3,M4,M5}
 } gc_modal_t;  
 
 typedef struct {
   float f;         // Feed
   float ijk[3];    // I,J,K Axis arc offsets
-  u8 l;       // G10 or canned cycles parameters
-  i32 n;       // Line number
+  uint8_t l;       // G10 or canned cycles parameters
+  int32_t n;       // Line number
   float p;         // G10 or dwell parameters
   // float q;      // G82 peck drilling
   float r;         // Arc radius
   float s;         // Spindle speed
-  u8 t;       // Tool selection
+  uint8_t t;       // Tool selection
   float xyz[3];    // X,Y,Z Translational axes
 } gc_values_t;
 
@@ -167,8 +167,8 @@ typedef struct {
   
   float spindle_speed;          // RPM
   float feed_rate;              // Millimeters/min
-  u8 tool;                 // Tracks tool number. NOT USED.
-  i32 line_number;          // Last line number sent
+  uint8_t tool;                 // Tracks tool number. NOT USED.
+  int32_t line_number;          // Last line number sent
 
   float position[N_AXIS];       // Where the interpreter considers the tool to be at this point in the code
 
@@ -184,7 +184,7 @@ typedef struct {
 //   uint16_t command_words;  // NOTE: If this bitflag variable fills, G and M words can be separated.
 //   uint16_t value_words;
 
-  u8 non_modal_command;
+  uint8_t non_modal_command;
   gc_modal_t modal;
   gc_values_t values;
 

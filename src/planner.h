@@ -23,9 +23,9 @@ struct plan_block_t{
   // NOTE: Used by stepper algorithm to execute the block correctly. Do not alter these values.
   // Поля, используемые алгоритмом Брезенхэма для трассировки строки
   // ПРИМЕЧАНИЕ: Используются алгоритмом stepper для корректного выполнения блока. Не изменяйте эти значения. 
-  u8 direction_bits;    // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h) // Бит направления, установленный для этого блока (относится к *_DIRECTION_BIT в файле config.h)
-  u32 steps[N_AXIS];    // Step count along each axis // Количество шагов вдоль каждой оси
-  u32 step_event_count; // The maximum step axis count and number of steps required to complete this block.  // Максимальное количество осей шага и количество шагов, необходимых для завершения этого блока.
+  uint8_t direction_bits;    // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h) // Бит направления, установленный для этого блока (относится к *_DIRECTION_BIT в файле config.h)
+  uint32_t steps[N_AXIS];    // Step count along each axis // Количество шагов вдоль каждой оси
+  uint32_t step_event_count; // The maximum step axis count and number of steps required to complete this block.  // Максимальное количество осей шага и количество шагов, необходимых для завершения этого блока.
 
   // Fields used by the motion planner to manage acceleration // Поля, используемые планировщиком движения для управления ускорением
   float entry_speed_sqr;         // The current planned entry speed at block junction in (mm/min)^2 // Текущая планируемая скорость въезда на перекрестке блоков в (мм/мин)^2
@@ -73,7 +73,7 @@ plan_block_t *plan_get_current_block();
 
 // Called periodically by step segment buffer. Mostly used internally by planner.
 // Периодически вызывается буфером пошаговых сегментов. В основном используется внутри planner.
-u8 plan_next_block_index(u8 block_index);
+uint8_t plan_next_block_index(uint8_t block_index);
 
 // Called by step segment buffer when computing executing block velocity profile.
 // Вызывается буфером пошагового сегмента при вычислении профиля скорости выполнения блока.
@@ -89,10 +89,10 @@ void plan_cycle_reinitialize();
 
 // Returns the number of active blocks are in the planner buffer.
 // Возвращает количество активных блоков, находящихся в буфере планировщика.
-u8 plan_get_block_buffer_count();
+uint8_t plan_get_block_buffer_count();
 
 // Returns the status of the block ring buffer. True, if buffer is full.
 // Возвращает состояние кольцевого буфера блока. Значение True, если буфер заполнен.
-u8 plan_check_full_buffer();
+uint8_t plan_check_full_buffer();
 
 #endif

@@ -29,44 +29,25 @@
   #define HOMING_AXIS_LOCATE_SCALAR  5.0 // Must be > 1 to ensure limit switch is cleared. // Должно быть > 1, чтобы обеспечить включение концевого выключателя.
 #endif
 
-void pin_init(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, bool pull_up, HAL_GPIO_Line_Config irq_line){
-
-    GPIO_InitTypeDef GPIO_InitStruct;
-    GPIO_InitStruct.Pin = pin;
-    GPIO_InitStruct.Mode = HAL_GPIO_MODE_GPIO_INPUT;
-    if(pull_up){
-      GPIO_InitStruct.Pull = HAL_GPIO_PULL_UP;
-    }
-    else{
-      GPIO_InitStruct.Pull = HAL_GPIO_PULL_DOWN;
-    }
-
-    HAL_GPIO_Init(port, &GPIO_InitStruct);
-    HAL_GPIO_InitInterruptLine(irq_line, GPIO_INT_MODE_RISING);
-
-}
-
-void limits_init() 
+ void LimitsInit(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_Line_Config irq_line)
 {
-  #ifdef DISABLE_LIMIT_PIN_PULL_UP
-  bool pull_up = true;
-//     LIMIT_PORT &= ~(LIMIT_MASK); // Normal low operation. Requires external pull-down. // Нормальная работа на низком уровне. Требуется внешнее выдвижение.
-  #else
-  bool pull_up = false;
-//     LIMIT_PORT |= (LIMIT_MASK);  // Enable internal pull-up resistors. Normal high operation. // Включите внутренние подтягивающие резисторы. Нормальная работа на высоком уровне.
-   #endif
-  pin_init(X_LIMIT_BIT_PIN, X_LIMIT_BIT_PORT, pull_up, X_LIMIT_BIT_LINE_IRQ);
-  pin_init(Y_LIMIT_BIT_PIN, Y_LIMIT_BIT_PORT, pull_up, Y_LIMIT_BIT_LINE_IRQ);
-  pin_init(Z_LIMIT_BIT_PIN, Z_LIMIT_BIT_PORT, pull_up, Z_LIMIT_BIT_LINE_IRQ);
-//   LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins // Установить в качестве входных контактов
 
+  HAL_GPIO_PullTypeDef pull = HAL_GPIO_PULL_NONE;
+
+  #ifdef DISABLE_LIMIT_PIN_PULL_UP
+     pull = HAL_GPIO_PULL_UP;
+  #else
+     pull = HAL_GPIO_PULL_DOWN;
+  #endif
+
+  PinInitInputIRQ(pin, port, pull, irq_line);
 
 
 //   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
 //     LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt // Включить определенные контакты прерывания смены контактов
 //     PCICR |= (1 << LIMIT_INT); // Enable Pin Change Interrupt  // Включить прерывание смены вывода
 //   } else {
-//     limits_disable(); 
+//     LimitsDisable();
 //   }
   
 // Пока не знаю нужно ли установить дополнительный таймер для проверки прерываний концевых выключателей
@@ -78,22 +59,23 @@ void limits_init()
 }
 
 // Disables hard limits.
-void limits_disable()
+void Limits::LimitsDisable()
 {
 //   LIMIT_PCMSK &= ~LIMIT_MASK;  // Disable specific pins of the Pin Change Interrupt // Отключить определенные контакты прерывания смены контактов
 //   PCICR &= ~(1 << LIMIT_INT);  // Disable Pin Change Interrupt  // Отключить прерывание смены Pin-кода
 }
 
 
-// Returns limit state as a bit-wise uint8 variable. Each bit indicates an axis limit, where 
+// Returns limit state as a bit-wise uint8 variable. Each bit indicates an axis limit, where
 // triggered is 1 and not triggered is 0. Invert mask is applied. Axes are defined by their
 // number in bit position, i.e. Z_AXIS is (1<<2) or bit 2, and Y_AXIS is (1<<1) or bit 1.
-// Возвращает предельное состояние в виде побитовой переменной uint8. Каждый бит указывает предельное значение оси, где 
+// Возвращает предельное состояние в виде побитовой переменной uint8. Каждый бит указывает предельное значение оси, где
 // срабатывание равно 1, а не срабатывание равно 0. Применяется инвертирующая маска. Оси определяются их
 // число в позиции бита, т.е. Z_AXIS равно (1<<2) или бит 2, а Y_AXIS равно (1<<1) или бит 1.
-uint8_t limits_get_state()
+bool Limits::LimitGetState()
 {
-   uint8_t limit_state = 0;
+  return PinHightLevel(limit_bit_pin_, limit_bit_port_);
+  //  uint8_t limit_state = 0;
   //  if()
   //  io_read(X_LIMIT_BIT);
 //   uint8_t pin = (LIMIT_PIN & LIMIT_MASK);
@@ -101,7 +83,7 @@ uint8_t limits_get_state()
 //     pin ^= INVERT_LIMIT_PIN_MASK;
 //   #endif
 //   if (bit_isfalse(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { pin ^= LIMIT_MASK; }
-//   if (pin) {  
+//   if (pin) {
 //     uint8_t idx;
 //     for (idx=0; idx<N_AXIS; idx++) {
 //       if (pin & get_limit_pin_mask(idx)) { limit_state |= (1 << idx); }
@@ -111,22 +93,22 @@ uint8_t limits_get_state()
 }
 
 
-// This is the Limit Pin Change Interrupt, which handles the hard limit feature. A bouncing 
+// This is the Limit Pin Change Interrupt, which handles the hard limit feature. A bouncing
 // limit switch can cause a lot of problems, like false readings and multiple interrupt calls.
 // If a switch is triggered at all, something bad has happened and treat it as such, regardless
-// if a limit switch is being disengaged. It's impossible to reliably tell the state of a 
-// bouncing pin without a debouncing method. A simple software debouncing feature may be enabled 
+// if a limit switch is being disengaged. It's impossible to reliably tell the state of a
+// bouncing pin without a debouncing method. A simple software debouncing feature may be enabled
 // through the config.h file, where an extra timer delays the limit pin read by several milli-
 // seconds to help with, not fix, bouncing switches.
 // NOTE: Do not attach an e-stop to the limit pins, because this interrupt is disabled during
 // homing cycles and will not respond correctly. Upon user request or need, there may be a
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
-// Это прерывание при смене предельного вывода, которое управляет функцией жесткого ограничения. Скачкообразное переключение 
+// Это прерывание при смене предельного вывода, которое управляет функцией жесткого ограничения. Скачкообразное переключение
 // предельного переключателя может вызвать множество проблем, таких как ложные показания и многократные вызовы прерываний.
 // Если переключатель вообще сработал, значит, произошло что-то плохое, и относитесь к этому как к таковому, несмотря ни на что
 // если отключается концевой выключатель. Невозможно достоверно определить состояние
-// отскакивающего штифта без использования метода демонтажа. Возможно, включена простая программная функция демонтажа 
+// отскакивающего штифта без использования метода демонтажа. Возможно, включена простая программная функция демонтажа
 // через файл config.h, где дополнительный таймер задерживает считывание предельного pin-кода на несколько миллиграммов.-
 // секунды, необходимые для устранения отскакивающих переключателей, но не для их исправления.
 // ПРИМЕЧАНИЕ: Не подключайте электронный ограничитель к контактам ограничения, поскольку это прерывание отключается во время
@@ -137,20 +119,20 @@ uint8_t limits_get_state()
 //   ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process. // ПО УМОЛЧАНИЮ: Ограничение процесса прерывания смены pin-кода.
 //   {
 //     // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
-//     // When in the alarm state, Grbl should have been reset or will force a reset, so any pending 
-//     // moves in the planner and serial buffers are all cleared and newly sent blocks will be 
+//     // When in the alarm state, Grbl should have been reset or will force a reset, so any pending
+//     // moves in the planner and serial buffers are all cleared and newly sent blocks will be
 //     // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
 //     // limit setting if their limits are constantly triggering after a reset and move their axes.
 //     // Не обращайте внимания на концевые выключатели, если они уже находятся в аварийном состоянии или находятся в процессе подачи сигнала тревоги.
-//     // В аварийном состоянии Grbl должен быть сброшен или произойдет принудительный сброс, поэтому все ожидающие 
+//     // В аварийном состоянии Grbl должен быть сброшен или произойдет принудительный сброс, поэтому все ожидающие
 //     // все перемещения в планировщике и последовательные буферы очищены, и вновь отправленные блоки будут
 //     // заблокированы до тех пор, пока не сработает цикл наведения или команда блокировки. Позволяет пользователю отключить жесткий диск
 //     // установка предела, если их пределы постоянно срабатывают после сброса и перемещают свои оси.
-//     if (sys.state != STATE_ALARM) { 
+//     if (sys.state != STATE_ALARM) {
 //       if (!(sys_rt_exec_alarm)) {
 //         #ifdef HARD_LIMIT_FORCE_STATE_CHECK
 //           // Check limit pin state. // Проверьте состояние предельного pin-кода.
-//           if (limits_get_state()) {
+//           if (LimitsGetState()) {
 //             mc_reset(); // Initiate system kill. // Инициировать уничтожение системы.
 //             bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event // Указывает на критическое событие с жестким ограничением
 //           }
@@ -160,7 +142,7 @@ uint8_t limits_get_state()
 //         #endif
 //       }
 //     }
-//   }  
+//   }
 // #else // OPTIONAL: Software debounce limit pin routine.
   // Upon limit pin change, enable watchdog timer to create a short delay.
 // ДОПОЛНИТЕЛЬНО: Программная процедура отключения предельного pin-кода.
@@ -172,11 +154,11 @@ uint8_t limits_get_state()
 //     if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state. // Игнорировать, если он уже находится в состоянии тревоги.
 //       if (!(sys_rt_exec_alarm)) {
 //         // Check limit pin state.  // Проверьте состояние предельного pin-кода.
-//         if (limits_get_state()) {
+//         if (LimitsGetState()) {
 //           mc_reset(); // Initiate system kill. // Инициировать уничтожение системы.
 //           bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
 //         }
-//       }  
+//       }
 //     }
 //   }
 // #endif
@@ -184,20 +166,20 @@ uint8_t limits_get_state()
 
 // Задает заданные оси цикла, устанавливает положение машины и выполняет снятие с эксплуатации после
 // завершения. Самонаведение - это особый случай перемещения, который включает в себя быструю неконтролируемую остановку для определения местоположения
-// точки срабатывания концевых выключателей. Быстрая остановка осуществляется с помощью системной блокировки оси 
-// маска, которая не позволяет алгоритму stepper выполнять пошаговые импульсы. Как правило, самонаводящиеся движения 
+// точки срабатывания концевых выключателей. Быстрая остановка осуществляется с помощью системной блокировки оси
+// маска, которая не позволяет алгоритму stepper выполнять пошаговые импульсы. Как правило, самонаводящиеся движения
 // обходят процессы выполнения движений при нормальной работе.
 // ПРИМЕЧАНИЕ: Только команда abort в реальном времени может прервать этот процесс.
 // TODO: Переместите ограничение вызовов, зависящих от pin-кода, в общую функцию для удобства переноса.
 
 // Homes the specified cycle axes, sets the machine position, and performs a pull-off motion after
 // completing. Homing is a special motion case, which involves rapid uncontrolled stops to locate
-// the trigger point of the limit switches. The rapid stops are handled by a system level axis lock 
-// mask, which prevents the stepper algorithm from executing step pulses. Homing motions typically 
+// the trigger point of the limit switches. The rapid stops are handled by a system level axis lock
+// mask, which prevents the stepper algorithm from executing step pulses. Homing motions typically
 // circumvent the processes for executing motions in normal operation.
 // NOTE: Only the abort realtime command can interrupt this process.
 // TODO: Move limit pin-specific calls to a general function for portability.
-void limits_go_home(uint8_t cycle_mask) 
+void Limits::LimitsGoHome(uint8_t cycle_mask)
 {
 //   if (sys.abort) { return; } // Block if system reset has been issued. // Заблокировать, если был произведен сброс системы.
 
@@ -207,11 +189,11 @@ void limits_go_home(uint8_t cycle_mask)
 //   float target[N_AXIS];
 //   float max_travel = 0.0;
 //   uint8_t idx;
-//   for (idx=0; idx<N_AXIS; idx++) {  
+//   for (idx=0; idx<N_AXIS; idx++) {
 //     // Initialize step pin masks // Инициализировать маски пошаговых выводов
 //     step_pin[idx] = get_step_pin_mask(idx);
-//     #ifdef COREXY    
-//       if ((idx==A_MOTOR)||(idx==B_MOTOR)) { step_pin[idx] = (get_step_pin_mask(X_AXIS)|get_step_pin_mask(Y_AXIS)); } 
+//     #ifdef COREXY
+//       if ((idx==A_MOTOR)||(idx==B_MOTOR)) { step_pin[idx] = (get_step_pin_mask(X_AXIS)|get_step_pin_mask(Y_AXIS)); }
 //     #endif
 
 //     if (bit_istrue(cycle_mask,bit(idx))) {
@@ -250,8 +232,8 @@ void limits_go_home(uint8_t cycle_mask)
 //           } else if (idx == Y_AXIS) {
 //             int32_t axis_position = system_convert_corexy_to_x_axis_steps(sys.position);
 //             sys.position[A_MOTOR] = sys.position[B_MOTOR] = axis_position;
-//           } else { 
-//             sys.position[Z_AXIS] = 0; 
+//           } else {
+//             sys.position[Z_AXIS] = 0;
 //           }
 //         #else
 //           sys.position[idx] = 0;
@@ -263,7 +245,7 @@ void limits_go_home(uint8_t cycle_mask)
 //         if (bit_istrue(settings.homing_dir_mask,bit(idx))) {
 //           if (approach) { target[idx] = -max_travel; }
 //           else { target[idx] = max_travel; }
-//         } else { 
+//         } else {
 //           if (approach) { target[idx] = max_travel; }
 //           else { target[idx] = -max_travel; }
 //         }
@@ -291,15 +273,15 @@ void limits_go_home(uint8_t cycle_mask)
 //     do {
 //       if (approach) {
 //         // Check limit state. Lock out cycle axes when they change. // Проверьте предельное состояние. Блокируйте оси цикла при их изменении.
-//         limit_state = limits_get_state(); 
+//         limit_state = LimitsGetState();
 //         for (idx=0; idx<N_AXIS; idx++) {
 //           if (axislock & step_pin[idx]) {
-//             if (limit_state & (1 << idx)) { 
+//             if (limit_state & (1 << idx)) {
 //               #ifdef COREXY
 //                 if (idx==Z_AXIS) { axislock &= ~(step_pin[Z_AXIS]); }
 //                 else { axislock &= ~(step_pin[A_MOTOR]|step_pin[B_MOTOR]); }
 //               #else
-//                 axislock &= ~(step_pin[idx]); 
+//                 axislock &= ~(step_pin[idx]);
 //               #endif
 //             }
 //           }
@@ -313,7 +295,7 @@ void limits_go_home(uint8_t cycle_mask)
 //       if (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_STOP)) {
 //         // Homing failure: Limit switches are still engaged after pull-off motion // Сбой самонаведения: Концевые выключатели все еще включены после отрыва
 //         if ( (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET)) ||  // Safety door or reset issued // Сработала предохранительная дверь или сброс настроек
-//            (!approach && (limits_get_state() & cycle_mask)) ||  // Limit switch still engaged after pull-off motion // Концевой выключатель все еще включен после отрыва
+//            (!approach && (LimitsGetState() & cycle_mask)) ||  // Limit switch still engaged after pull-off motion // Концевой выключатель все еще включен после отрыва
 //            ( approach && (sys_rt_exec_state & EXEC_CYCLE_STOP)) ) { // Limit switch not found during approach. // Концевой выключатель не найден во время захода на посадку.
 //           mc_reset(); // Stop motors, if they are running. // Остановите двигатели, если они работают.
 //           protocol_execute_realtime();
@@ -322,7 +304,7 @@ void limits_go_home(uint8_t cycle_mask)
 //           // Pull-off motion complete. Disable CYCLE_STOP from executing. // Движение отрыва завершено. Отключите выполнение CYCLE_STOP.
 //           bit_false_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP);
 //           break;
-//         } 
+//         }
 //       }
 
 //     } while (STEP_MASK & axislock);
@@ -336,24 +318,24 @@ void limits_go_home(uint8_t cycle_mask)
 //     approach = !approach;
 
 //     // After first cycle, homing enters locating phase. Shorten search to pull-off distance. // После первого цикла самонаведение переходит в фазу определения местоположения. Сократите поиск до заданного расстояния.
-//     if (approach) { 
-//       max_travel = settings.homing_pulloff*HOMING_AXIS_LOCATE_SCALAR; 
+//     if (approach) {
+//       max_travel = settings.homing_pulloff*HOMING_AXIS_LOCATE_SCALAR;
 //       homing_rate = settings.homing_feed_rate;
 //     } else {
-//       max_travel = settings.homing_pulloff;    
+//       max_travel = settings.homing_pulloff;
 //       homing_rate = settings.homing_seek_rate;
 //     }
     
 //   } while (n_cycle-- > 0);
       
-//   // The active cycle axes should now be homed and machine limits have been located. By 
+//   // The active cycle axes should now be homed and machine limits have been located. By
 //   // default, Grbl defines machine space as all negative, as do most CNCs. Since limit switches
 //   // can be on either side of an axes, check and set axes machine zero appropriately. Also,
 //   // set up pull-off maneuver from axes limit switches that have been homed. This provides
 //   // some initial clearance off the switches and should also help prevent them from falsely
 //   // triggering when hard limits are enabled or when more than one axes shares a limit pin.
 
-//   // Теперь оси активного цикла должны быть выровнены, а пределы работы машины определены. Около 
+//   // Теперь оси активного цикла должны быть выровнены, а пределы работы машины определены. Около
 //   // по умолчанию Grbl определяет машинное пространство как полностью отрицательное, как и большинство систем ЧПУ. Поскольку концевые выключатели
 //   // могут располагаться по обе стороны от осей, проверьте и соответствующим образом обнулите оси станка. Кроме того,
 // // настройте маневр отключения от установленных концевых выключателей осей. Это обеспечивает
@@ -368,7 +350,7 @@ void limits_go_home(uint8_t cycle_mask)
 //     if (cycle_mask & bit(idx)) {
 //       #ifdef HOMING_FORCE_SET_ORIGIN
 //         set_axis_position = 0;
-//       #else 
+//       #else
 //         if ( bit_istrue(settings.homing_dir_mask,bit(idx)) ) {
 //           set_axis_position = lround((settings.max_travel[idx]+settings.homing_pulloff)*settings.steps_per_mm[idx]);
 //         } else {
@@ -376,19 +358,19 @@ void limits_go_home(uint8_t cycle_mask)
 //         }
 //       #endif
       
-//       #ifdef COREXY    
-//         if (idx==X_AXIS) { 
+//       #ifdef COREXY
+//         if (idx==X_AXIS) {
 //           int32_t off_axis_position = system_convert_corexy_to_y_axis_steps(sys.position);
 //           sys.position[A_MOTOR] = set_axis_position + off_axis_position;
-//           sys.position[B_MOTOR] = set_axis_position - off_axis_position;          
+//           sys.position[B_MOTOR] = set_axis_position - off_axis_position;
 //         } else if (idx==Y_AXIS) {
 //           int32_t off_axis_position = system_convert_corexy_to_x_axis_steps(sys.position);
 //           sys.position[A_MOTOR] = off_axis_position + set_axis_position;
 //           sys.position[B_MOTOR] = off_axis_position - set_axis_position;
 //         } else {
 //           sys.position[idx] = set_axis_position;
-//         }        
-//       #else 
+//         }
+//       #else
 //         sys.position[idx] = set_axis_position;
 //       #endif
 
@@ -406,7 +388,7 @@ void limits_go_home(uint8_t cycle_mask)
 // the workspace volume is in all negative space, and the system is in normal operation.
 // Выполняет проверку плавного ограничения. Вызывается только из функции mc_line(). Предполагается, что компьютер подключен к домашней сети,
 // объем рабочей области полностью заполнен, и система работает в нормальном режиме.
-void limits_soft_check(float *target)
+void Limits::LimitsSoftCheck(float *target)
 {
 //   uint8_t idx;
 //   for (idx=0; idx<N_AXIS; idx++) {
@@ -428,7 +410,7 @@ void limits_soft_check(float *target)
 //     #endif
     
 //     if (sys.soft_limit) {
-//       // Force feed hold if cycle is active. All buffered blocks are guaranteed to be within 
+//       // Force feed hold if cycle is active. All buffered blocks are guaranteed to be within
 //       // workspace volume so just come to a controlled stop so position is not lost. When complete
 //       // enter alarm mode.
 //       // Принудительная подача удерживается, если цикл активен. Гарантируется, что все буферизованные блоки будут находиться в пределах

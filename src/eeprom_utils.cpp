@@ -24,7 +24,7 @@ bool EEPROM::IsInitialized() const {
 }
 
 // Чтение одного 32-битного значения по адресу
-HAL_StatusTypeDef EEPROM::Get(u32 address, u32 *data, u32 size){
+HAL_StatusTypeDef EEPROM::Get(uint32_t address, uint32_t *data, uint32_t size){
     if (!IsInitialized()) {
         return HAL_ERROR;
     }
@@ -38,7 +38,7 @@ HAL_StatusTypeDef EEPROM::Get(u32 address, u32 *data, u32 size){
 }
 
 // Запись одного 32-битного значения по адресу
-HAL_StatusTypeDef EEPROM::Set(u32 address, const u32 *data, u32 size) {
+HAL_StatusTypeDef EEPROM::Set(uint32_t address, const uint32_t *data, uint32_t size) {
     if (!IsInitialized()) {
         return HAL_ERROR; // Возвращаем ошибку если библиотека не инициализирована
     }
@@ -48,5 +48,5 @@ HAL_StatusTypeDef EEPROM::Set(u32 address, const u32 *data, u32 size) {
         return HAL_ERROR; // Возвращаем ошибку если адрес вне диапазона
     }
     
-    return HAL_EEPROM_Write(&eeprom_handle_, address, const_cast<u32*>(data), size, HAL_EEPROM_WRITE_ALL, EEPROM_OP_TIMEOUT);
+    return HAL_EEPROM_Write(&eeprom_handle_, address, const_cast<uint32_t*>(data), size, HAL_EEPROM_WRITE_ALL, EEPROM_OP_TIMEOUT);
 }

@@ -4,12 +4,12 @@
 #include "grbl.h"
 #include <cassert> // Для assert
 
-using tNvAddress = u32;
-using tSeconds = u32;
-using tNvData  = u32; // Определение типа tNvData
+using tNvAddress = uint32_t;
+using tSeconds = uint32_t;
+using tNvData  = uint32_t; // Определение типа tNvData
 
-constexpr u32 eepromWriteCycles = 1'000'000U;
-constexpr u32 eepromPageSize = 32U;
+constexpr uint32_t eepromWriteCycles = 1'000'000U;
+constexpr uint32_t eepromPageSize = 32U;
 // Хотим чтобы EEPROM жила 10 лет
 constexpr tSeconds eepromLifeTime = 3600U * 24U * 365U * 10U;
 
@@ -18,9 +18,9 @@ class EEPROM {
 public:
     EEPROM();
     // Чтение одного 32-битного значения по адресу
-    HAL_StatusTypeDef Get(u32 address, u32 *data, u32 size);
+    HAL_StatusTypeDef Get(uint32_t address, uint32_t *data, uint32_t size);
     // Запись одного 32-битного значения по адресу
-    HAL_StatusTypeDef Set(u32 address, const u32 *data, u32 size);
+    HAL_StatusTypeDef Set(uint32_t address, const uint32_t *data, uint32_t size);
 
 private:
     bool IsInitialized() const;
@@ -67,7 +67,7 @@ class AntiWearNvData
 
     struct tAntiWear {
             T data;
-            u32 index;
+            uint32_t index;
         };
     
     HAL_StatusTypeDef Set(const T& value) const
@@ -110,14 +110,14 @@ class AntiWearNvData
     }
  private:
 
-    static size_t GetCalculatedAdress(u32 ind)
+    static size_t GetCalculatedAdress(uint32_t ind)
     {
         constexpr auto startAddress = GetAddress();
         size_t result = startAddress + recordSize * ((ind % recordCounts));
         // assert(result < sizeof(EEPROM)); // Удалено, так как EEPROM не определен в этом контексте
         return result;
     }
-    static u32 FindLastRecordPosition()
+    static uint32_t FindLastRecordPosition()
     {
         // Здесь нужно считать все записи парамтера и найти параметр с самым большим индексом, пока предположим,
         // AntiWearNvDataчто запись с самым большим индексом находится на позиции 1 - Там записано число 15 с индексом 5.

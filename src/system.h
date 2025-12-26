@@ -59,17 +59,17 @@
 #define SUSPEND_MOTION_CANCEL bit(3) // Cancels resume motion. Used by probing routine. // Отменяет возобновление движения. Используется в процедуре зондирования.
 
 struct system_t{
-  u8 abort;                 // System abort flag. Forces exit back to main loop for reset. // Флаг системного прерывания. Принудительный выход обратно в основной цикл для сброса.
-  u8 state;                 // Tracks the current state of Grbl. // Отслеживает текущее состояние Grbl.
-  u8 suspend;               // System suspend bitflag variable that manages holds, cancels, and safety door. // Системная переменная suspend bitflag, управляющая задержками, отменами и защитной дверью.
-  u8 soft_limit;            // Tracks soft limit errors for the state machine. (boolean) // Отслеживает ошибки мягкого ограничения для конечного автомата. (логическое значение)
+  uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset. // Флаг системного прерывания. Принудительный выход обратно в основной цикл для сброса.
+  uint8_t state;                 // Tracks the current state of Grbl. // Отслеживает текущее состояние Grbl.
+  uint8_t suspend;               // System suspend bitflag variable that manages holds, cancels, and safety door. // Системная переменная suspend bitflag, управляющая задержками, отменами и защитной дверью.
+  uint8_t soft_limit;            // Tracks soft limit errors for the state machine. (boolean) // Отслеживает ошибки мягкого ограничения для конечного автомата. (логическое значение)
   
-  i32 position[N_AXIS];      // Real-time machine (aka home) position vector in steps.  // Пошаговый вектор положения машины в реальном времени (он же home).
+  int32_t position[N_AXIS];      // Real-time machine (aka home) position vector in steps.  // Пошаговый вектор положения машины в реальном времени (он же home).
                                  // NOTE: This may need to be a volatile variable, if problems arise.    // ПРИМЕЧАНИЕ: Возможно, это должна быть переменная volatile, если возникнут проблемы.                          
 
-  i32 probe_position[N_AXIS]; // Last probe position in machine coordinates and steps. // Последнее положение датчика в машинных координатах и шагах.
-  u8 probe_succeeded;        // Tracks if last probing cycle was successful. // Отслеживает, был ли успешным последний цикл тестирования.
-  u8 homing_axis_lock;       // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR. // Блокирует оси при включении ограничителей. Используется в качестве маски перемещения оси в шаговом режиме ISR.
+  int32_t probe_position[N_AXIS]; // Last probe position in machine coordinates and steps. // Последнее положение датчика в машинных координатах и шагах.
+  uint8_t probe_succeeded;        // Tracks if last probing cycle was successful. // Отслеживает, был ли успешным последний цикл тестирования.
+  uint8_t homing_axis_lock;       // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR. // Блокирует оси при включении ограничителей. Используется в качестве маски перемещения оси в шаговом режиме ISR.
 };
 
 extern system_t sys;

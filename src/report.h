@@ -70,11 +70,11 @@ private:
 public:
     Report(Printer &printer) : printer_(printer){} 
     // Prints system status messages. // Выводит сообщения о состоянии системы.
-    void StatusMessage(u8 status_code);
+    void StatusMessage(uint8_t status_code);
     // Prints system alarm messages. // Выводит системные тревожные сообщения.
-    void AlarmMessage(i8 alarm_code);
+    void AlarmMessage(int8_t alarm_code);
     // Prints miscellaneous feedback messages. // Печатает различные сообщения обратной связи.
-    void FeedbackMessage(u8 message_code);
+    void FeedbackMessage(uint8_t message_code);
     // Prints welcome message // Выводит приветственное сообщение
     void InitMessage();
     // Prints Grbl help and current global settings // Выводит справку Grbl и текущие глобальные настройки
@@ -92,7 +92,7 @@ public:
     // Prints current g-code parser mode state // Выводит текущее состояние режима анализатора g-кода
     void GcodeModes();
     // Prints startup line // Выводит строку запуска
-    void StartupLine(u8 n, char *line);
+    void StartupLine(uint8_t n, char *line);
     // Prints build info and user info // Выводит информацию о сборке и пользователе
     void BuildInfo(char *line);
 };

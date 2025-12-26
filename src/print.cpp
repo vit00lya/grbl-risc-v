@@ -18,34 +18,34 @@ void Printer::PgmString(const char *s)
 }
 
 
-// void printIntegerInBase(unsigned long n, unsigned long base)
-// {
-// 	unsigned char buf[8 * sizeof(long)]; // Assumes 8-bit chars.
-// 	unsigned long i = 0;
-//
-// 	if (n == 0) {
-// 		serial_write('0');
-// 		return;
-// 	}
-//
-// 	while (n > 0) {
-// 		buf[i++] = n % base;
-// 		n /= base;
-// 	}
-//
-// 	for (; i > 0; i--)
-// 		serial_write(buf[i - 1] < 10 ?
-// 			'0' + buf[i - 1] :
-// 			'A' + buf[i - 1] - 10);
-// }
+void  Printer::IntegerInBase(unsigned long n, unsigned long base)
+{
+	unsigned char buf[8 * sizeof(long)]; // Assumes 8-bit chars.
+	unsigned long i = 0;
+
+	if (n == 0) {
+		serial_.Write('0');
+		return;
+	}
+
+	while (n > 0) {
+		buf[i++] = n % base;
+		n /= base;
+	}
+
+	for (; i > 0; i--)
+		serial_.Write(buf[i - 1] < 10 ?
+			'0' + buf[i - 1] :
+			'A' + buf[i - 1] - 10);
+}
 
 
 // Prints an uint8 variable with base and number of desired digits.
 // Выводит переменную uint8 с основанием и количеством нужных цифр.
-void Printer::UnsignedInt8(u8 n, u8 base, u8 digits)
+void Printer::UnsignedInt8(uint8_t n, uint8_t base, uint8_t digits)
 {
   unsigned char buf[digits];
-  u8 i = 0;
+  uint8_t i = 0;
 
   for (; i < digits; i++) {
       buf[i] = n % base ;
@@ -59,16 +59,16 @@ void Printer::UnsignedInt8(u8 n, u8 base, u8 digits)
 
 // Prints an uint8 variable in base 2.
 // Выводит переменную uint8 в базе данных 2.
-void Printer::Uint8Base2(u8 n) {
+void Printer::Uint8Base2(uint8_t n) {
   UnsignedInt8(n,2,8);
 }
 
 
 // Prints an uint8 variable in base 10.
 // Выводит переменную uint8 в базе данных 10.
-void Printer::Uint8Base10(u8 n)
+void Printer::Uint8Base10(uint8_t n)
 {
-  u8 digits;
+  uint8_t digits;
   if (n < 10) { digits = 1; }
   else if (n < 100) { digits = 2; }
   else { digits = 3; }
@@ -80,7 +80,7 @@ void Printer::SerialGetRxBufferCount(){
 }
 
 
-void Printer::Uint32Base10(u32 n)
+void Printer::Uint32Base10(uint32_t n)
 {
   if (n == 0) {
     serial_.Write('0');
@@ -88,7 +88,7 @@ void Printer::Uint32Base10(u32 n)
   }
 
   unsigned char buf[10];
-  u8 i = 0;
+  uint8_t i = 0;
   
   while (n > 0) {
     buf[i++] = n % 10;
@@ -121,14 +121,14 @@ void Printer::Integer(long n)
 // может быть задано пользователем. Затем целое число эффективно преобразуется в строку.
 // ПРИМЕЧАНИЕ: Операции с целыми числами AVR '%' и '/' очень эффективны. Это ускоряет переключение битов
 // на самом деле эти методы лишь немного медленнее. В этом я убедился на собственном горьком опыте.
-void Printer::Float(float n, u8 decimal_places)
+void Printer::Float(float n, uint8_t decimal_places)
 {
   if (n < 0) {
     serial_.Write('-');
     n = -n;
   }
 
-  u8 decimals = decimal_places;
+  uint8_t decimals = decimal_places;
   while (decimals >= 2) { // Quickly convert values expected to be E0 to E-4. // Быстро преобразуйте ожидаемые значения E0 в E-4.
     n *= 100;
     decimals -= 2;
@@ -138,8 +138,8 @@ void Printer::Float(float n, u8 decimal_places)
     
   // Generate digits backwards and store in string. // Генерировать цифры в обратном порядке и сохранять в виде строки.
   unsigned char buf[10];
-  u8 i = 0;
-  u32 a = (long)n;
+  uint8_t i = 0;
+  uint32_t a = (long)n;
   buf[decimal_places] = '.'; // Place decimal point, even if decimal places are zero. // Поставьте десятичную точку, даже если десятичные разряды равны нулю.
   while(a > 0) {
     if (i == decimal_places) { i++; } // Skip decimal point location // Пропустить расположение десятичной точки

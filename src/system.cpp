@@ -22,4 +22,8 @@ void SystemClockConfig()
     __HAL_PCC_GPIO_1_CLK_ENABLE();
     __HAL_PCC_GPIO_2_CLK_ENABLE();
 
+    //Включение прерываний
+    __HAL_PCC_GPIO_IRQ_CLK_ENABLE();
+
+
 }

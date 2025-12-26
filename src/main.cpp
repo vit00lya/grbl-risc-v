@@ -4,15 +4,54 @@
 #include "machine.h"
 #define  USER_LED  2,7
 
+void CheckLimits(Machine& machine){
+    if (HAL_GPIO_LineInterruptState(X_LIMIT_LINE_IRQ) 
+        || HAL_GPIO_LineInterruptState(Y_LIMIT_LINE_IRQ)
+        || HAL_GPIO_LineInterruptState(Z_LIMIT_LINE_IRQ)){
+
+  // При смене pin нужно создать небольшую задержку.
+    delay_ms(10);
+    if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state. // Игнорировать, если он уже находится в состоянии тревоги.
+      if (machine.SysRtExecAlarmGet().any()) {
+        // Если один или несколько пинов включены, тогда авария
+        if (machine.LimitsGetState().any()) {
+        //   mc_reset(); // Initiate system kill. // Инициировать уничтожение системы.
+            machine.SysRtExecAlarmSet((EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+        }
+      }
+    }
+  }   
+ }
+
+void trap_handler(Machine& machine)
+{
+    if (EPIC_CHECK_GPIO_IRQ())
+    {
+        CheckLimits(machine);
+        HAL_GPIO_ClearInterrupts();
+    }
+
+    /* Сброс прерываний */
+    HAL_EPIC_Clear(0xFFFFFFFF);
+}
+
 int main()
 {
 
+    HAL_Init();
     SystemClockConfig();
-    
+
+    /* Разрешить прерывания по уровню для линии EPIC GPIO_IRQ */
+    HAL_EPIC_MaskLevelSet(HAL_EPIC_GPIO_IRQ_MASK);
+    /* Разрешить глобальные прерывания */
+    HAL_IRQ_EnableInterrupts();
+
+
     Serial serial;
     Printer printer(serial);
     Report report(printer);
     Machine machine(report);
+    
     io_out(USER_LED);
 
      while (1)
@@ -22,7 +61,9 @@ int main()
         HAL_DelayMs(2000);
         io_clr(USER_LED);
         HAL_DelayMs(2000);
-        machine.PrintSettings();
+        // machine.PrintSettings();
+        // printer.String(machine.LimitsGetState().to_string().c_str());
+        // printer.String("\n");
      }
     return 0;
 }

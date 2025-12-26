@@ -5,16 +5,6 @@
 
 #include <math.h>
 
-typedef  signed char         i8;
-typedef  signed short        i16;
-typedef  signed long         i32;
-typedef  signed long long    i64;
-
-typedef  unsigned char       u8;
-typedef  unsigned short      u16;
-typedef  unsigned long       u32;
-typedef  unsigned long long  u64;
-
 /* чтобы «протащить» через несколько макросов несколько аргументов как один аргумент */
 #define  _(...)  __VA_ARGS__
 
@@ -67,8 +57,8 @@ typedef  unsigned long long  u64;
 #define clear_vector(a) memset(a, 0, sizeof(a))
 #define clear_vector_float(a) memset(a, 0.0, sizeof(float)*N_AXIS)
 // #define clear_vector_long(a) memset(a, 0.0, sizeof(long)*N_AXIS)
-#define max(a,b) (((a) > (b)) ? (a) : (b))
-#define min(a,b) (((a) < (b)) ? (a) : (b))
+// #define max(a,b) (((a) > (b)) ? (a) : (b))
+// #define min(a,b) (((a) < (b)) ? (a) : (b))
 
 // Bit field and masking macros
 // Битовое поле и маскирующие макросы
@@ -81,21 +71,25 @@ typedef  unsigned long long  u64;
 #define bit_istrue(x,mask) ((x & mask) != 0)
 #define bit_isfalse(x,mask) ((x & mask) == 0)
 
+void PinInitInputIRQ(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull, HAL_GPIO_Line_Config irq_line);
+void PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull);
+bool PinHightLevel(const HAL_PinsTypeDef pin, GPIO_TypeDef* port);
+
 // Read a floating point value from a string. Line points to the input buffer, char_counter 
 // is the indexer pointing to the current character of the line, while float_ptr is 
 // a pointer to the result variable. Returns true when it succeeds
 // Считывает значение с плавающей запятой из строки. Строка указывает на входной буфер, char_counter 
 // - это индексатор, указывающий на текущий символ строки, а float_ptr - это 
 // указатель на результирующую переменную. Возвращает значение true в случае успешного выполнения
-u8 read_float(char *line, u8 *char_counter, float *float_ptr);
+uint8_t read_float(char *line, uint8_t *char_counter, float *float_ptr);
 
 // Delays variable-defined milliseconds. Compiler compatibility fix for _delay_ms().
 // Задержки, определяемые переменной в миллисекундах. Исправлена ошибка совместимости компилятора с _delay_ms().
-void delay_ms(u16 ms);
+void delay_ms(uint16_t ms);
 
 // Delays variable-defined microseconds. Compiler compatibility fix for _delay_us().
 // Задержка определяется переменной в микросекундах. Исправлена ошибка совместимости компилятора с _delay_us().
-void delay_us(u32 us);
+void delay_us(uint32_t us);
 
 // Computes hypotenuse, avoiding avr-gcc's bloated version and the extra error checking.
 // Вычисляет гипотенузу, избегая раздутой версии avr-gcc и дополнительной проверки ошибок.

@@ -1,33 +1,37 @@
 #pragma once
 #ifndef limits_h
-#define limits_h 
+#define limits_h
 
 #include <array>
 #include "grbl.h"
 
-//  std::array<GPIO_TypeDef*, 3> limits_ports_ = {X_LIMIT_BIT_PORT, Y_LIMIT_BIT_PORT, Z_LIMIT_BIT_PORT };
-//  std::array< HAL_PinsTypeDef, 3> limits_pins_ = { X_LIMIT_BIT_PIN, Y_LIMIT_BIT_PIN, Z_LIMIT_BIT_PIN };
+class Limits {
+private:
+    GPIO_TypeDef* limit_bit_port_;
+    HAL_PinsTypeDef limit_bit_pin_;
+    HAL_GPIO_Line_Config irq_config_;
 
-void pin_init(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, bool pull_up, HAL_GPIO_Line_Config irq_line);
+public:
 
-// Initialize the limits module
-// Инициализируем модуль ограничений
-void limits_init();
+  // Initialize the limits module
+  // Инициализируем модуль ограничений
+  void LimitsInit(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_Line_Config irq_line);
 
-// Disables hard limits.
-// Отключает жесткие ограничения.
-void limits_disable();
+  // Disables hard limits.
+  // Отключает жесткие ограничения.
+  void LimitsDisable();
 
-// Returns limit state as a bit-wise uint8 variable.
-// Возвращает предельное состояние в виде побитовой переменной uint8.
-u8 limits_get_state();
+  // Returns limit state as a bit-wise uint8 variable.
+  // Возвращает предельное состояние в виде побитовой переменной uint8.
+  bool LimitGetState();
 
-// Perform one portion of the homing cycle based on the input settings.
-// Выполните одну часть цикла самонаведения в соответствии с входными настройками.
-void limits_go_home(u8 cycle_mask);
+  // Perform one portion of the homing cycle based on the input settings.
+  // Выполните одну часть цикла самонаведения в соответствии с входными настройками.
+  void LimitsGoHome(uint8_t cycle_mask);
 
-// Check for soft limit violations
-// Проверьте, нет ли нарушений мягкого лимита
-void limits_soft_check(float *target);
+  // Check for soft limit violations
+  // Проверьте, нет ли нарушений мягкого лимита
+  void LimitsSoftCheck(float *target);
+};
 
 #endif

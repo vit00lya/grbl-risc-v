@@ -27,7 +27,7 @@
 // ответы.
 // ПРИМЕЧАНИЕ: В автоматическом режиме все коды ошибок больше нуля.
 // TODO: Установите автоматический режим, чтобы возвращать только числовые значения, в первую очередь для графических интерфейсов.
-void Report::StatusMessage(u8 status_code)
+void Report::StatusMessage(uint8_t status_code)
 {
   if (status_code == 0) { // STATUS_OK
     printer_.PgmString("ok\r\n");
@@ -82,7 +82,7 @@ void Report::StatusMessage(u8 status_code)
 }
 
 // Prints alarm messages. // Выводит тревожные сообщения.
-void Report::AlarmMessage(i8 alarm_code)
+void Report::AlarmMessage(int8_t alarm_code)
 {
   printer_.PgmString("ALARM: ");
   #ifdef REPORT_GUI_MODE
@@ -119,7 +119,7 @@ void Report::AlarmMessage(i8 alarm_code)
 //, коды номеров сообщений будут меньше нуля.
 // ЗАДАЧА: Установите опцию отключения сообщений обратной связи в настройках
 
-void Report::FeedbackMessage(u8 message_code)
+void Report::FeedbackMessage(uint8_t message_code)
 {
   printer_.PgmString("[");
   switch(message_code) {
@@ -441,8 +441,8 @@ void Report::RealtimeStatus(settings_t& settings)
   // местоположения включения системы (0,0,0) и положения рабочих координат (применяются G54 и G92). В конце концов
   // необходимо добавить расстояние до блока, идентификатор обрабатываемого блока и скорость подачи. Также битовую маску настроек
   // чтобы пользователь мог выбрать нужные данные в режиме реального времени.
-  u8 idx;
-  i32 current_position[N_AXIS]; // Copy current state of the system position variable // Скопировать текущее состояние системной переменной положения
+  uint8_t idx;
+  int32_t current_position[N_AXIS]; // Copy current state of the system position variable // Скопировать текущее состояние системной переменной положения
   memcpy(current_position,sys.position,sizeof(sys.position));
   float print_position[N_AXIS];
  
@@ -514,10 +514,10 @@ void Report::RealtimeStatus(settings_t& settings)
     printer_.FloatRateValue(st_get_realtime_rate());
   #endif    
   
-  if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) {
-    printer_.PgmString(",Lim:");
-    printer_.UnsignedInt8(limits_get_state(),2,N_AXIS);
-  }
+  // if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) {
+  //   printer_.PgmString(",Lim:");
+    //printer_.UnsignedInt8(limits_get_state(),2,N_AXIS);
+  // }
   
   #ifdef REPORT_CONTROL_PIN_STATE 
     printer_.PgmString(",Ctl:");

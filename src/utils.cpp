@@ -24,6 +24,38 @@
 
 #define MAX_INT_DIGITS 8 // Maximum number of digits in int32 (and float) // Максимальное количество цифр в int32 (с плавающей точкой)
 
+void PinInitInputIRQ(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull, HAL_GPIO_Line_Config irq_line){
+
+    PinInitInput(pin,port,pull);
+    HAL_GPIO_InterruptMode interrupt_mode = GPIO_INT_MODE_LOW;
+    if (pull == HAL_GPIO_PULL_UP){
+     interrupt_mode = GPIO_INT_MODE_RISING;
+    }else if (pull == HAL_GPIO_PULL_DOWN) {
+      interrupt_mode = GPIO_INT_MODE_FALLING;
+    }
+    HAL_GPIO_InitInterruptLine(irq_line, interrupt_mode);
+
+}
+
+void PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull){
+
+    GPIO_InitTypeDef GPIO_InitStruct;
+    GPIO_InitStruct.Pin = pin;
+    GPIO_InitStruct.Mode = HAL_GPIO_MODE_GPIO_INPUT;
+    GPIO_InitStruct.Pull = pull;
+    HAL_GPIO_Init(port, &GPIO_InitStruct);
+
+}
+
+bool PinHightLevel(const HAL_PinsTypeDef pin, GPIO_TypeDef* port){
+  
+  GPIO_PinState state = HAL_GPIO_ReadPin(port,pin);
+  if(state == GPIO_PIN_LOW){
+    return false;
+  };
+  return true;
+
+}
 
 // Extracts a floating point value from a string. The following code is based loosely on
 // the avr-libc strtod() function by Michael Stumpf and Dmitry Xmelkov and many freely
@@ -39,7 +71,7 @@
 // Научная нотация официально не поддерживается g-кодом, и символ "E" может
 // быть g-кодовым словом в некоторых системах ЧПУ. Таким образом, обозначение "E" распознаваться не будет. 
 // ПРИМЕЧАНИЕ: Спасибо Раду-Иосифу Михайлеску за выявление проблем с использованием strtod().
-u8 read_float(char *line, u8 *char_counter, float *float_ptr)                  
+uint8_t read_float(char *line, uint8_t *char_counter, float *float_ptr)                  
 {
   char *ptr = line + *char_counter;
   unsigned char c;
@@ -125,7 +157,7 @@ u8 read_float(char *line, u8 *char_counter, float *float_ptr)
 // Задерживает переменную, определяемую в миллисекундах. Исправлена ошибка совместимости с компилятором для функции _delay_ms(),
 // которая принимает константы только в будущих версиях компилятора.
 
-void delay_ms(u16 ms) 
+void delay_ms(uint16_t ms) 
 {
    HAL_DelayMs(ms);
 }
@@ -138,7 +170,7 @@ void delay_ms(u16 ms)
 // Задержка определяется переменной в микросекундах. Исправлена ошибка совместимости с компилятором для _delay_us(),
 // которая принимает константы только в будущих версиях компилятора. Написано для выполнения большего 
 // эффективно с большими задержками, поскольку счетчик добавляет паразитное время на каждой итерации.
-void delay_us(u32 us) 
+void delay_us(uint32_t us) 
 {
   while (us) {
     if (us < 10) { 

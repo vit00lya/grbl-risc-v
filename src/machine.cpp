@@ -2,16 +2,34 @@
 
 void Machine::Init(){
     
-     if (!ReadGlobalSettings())
+    if (!ReadGlobalSettings())
     {
         report_.StatusMessage(STATUS_SETTING_READ_FAIL);
         SettingsRestore(SETTINGS_RESTORE_ALL); // Force restore all EEPROM data. // Принудительно восстановите все данные EEPROM.
         report_.GrblSettings(settings_);
     }
+
+    limits[X_AXIS].LimitsInit(X_LIMIT_BIT_PIN, X_LIMIT_BIT_PORT, X_LIMIT_BIT_LINE_IRQ);
+    limits[Y_AXIS].LimitsInit(Y_LIMIT_BIT_PIN, Y_LIMIT_BIT_PORT, Y_LIMIT_BIT_LINE_IRQ);
+    limits[Z_AXIS].LimitsInit(Z_LIMIT_BIT_PIN, Z_LIMIT_BIT_PORT, Z_LIMIT_BIT_LINE_IRQ);
 }
 
 void Machine::PrintSettings(){
     report_.GrblSettings(settings_);  
+}
+ std::bitset<8> Machine::SysRtExecAlarmGet(){
+    return sys_rt_exec_alarm_;
+}
+void Machine::SysRtExecAlarmSet(uint8_t sys_rt_exec_alarm){
+    sys_rt_exec_alarm_ = sys_rt_exec_alarm;
+}
+
+std::bitset<8> Machine::LimitsGetState(){
+    std::bitset<8> bits;
+    for(size_t i = 0 ; i < N_AXIS; ++i){
+        bits[i] = limits[i].LimitGetState();
+    };
+    return bits;
 }
 
 void Machine::SettingsRestore(uint8_t restore_flag)
