@@ -2,69 +2,83 @@
 #include "serial.h"
 #include "report.h"
 #include "machine.h"
-#define  USER_LED  2,7
 
-void CheckLimits(Machine& machine){
-    if (HAL_GPIO_LineInterruptState(X_LIMIT_LINE_IRQ) 
-        || HAL_GPIO_LineInterruptState(Y_LIMIT_LINE_IRQ)
-        || HAL_GPIO_LineInterruptState(Z_LIMIT_LINE_IRQ)){
+void* machine_glb;
 
-  // При смене pin нужно создать небольшую задержку.
-    delay_ms(10);
-    if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state. // Игнорировать, если он уже находится в состоянии тревоги.
-      if (machine.SysRtExecAlarmGet().any()) {
-        // Если один или несколько пинов включены, тогда авария
-        if (machine.LimitsGetState().any()) {
-        //   mc_reset(); // Initiate system kill. // Инициировать уничтожение системы.
-            machine.SysRtExecAlarmSet((EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+ void CheckLimits(){
+  if (HAL_GPIO_LineInterruptState(X_LIMIT_LINE_IRQ)
+      || HAL_GPIO_LineInterruptState(Y_LIMIT_LINE_IRQ)
+      || HAL_GPIO_LineInterruptState(Z_LIMIT_LINE_IRQ)){
+
+//   // auto machine = sys_obj.GetMachine();
+//   // При смене pin нужно создать небольшую задержку.
+//   delay_ms(10);
+        // io_set(USER_LED);
+        // HAL_DelayMs(500);
+        // io_clr(USER_LED);
+        // HAL_DelayMs(500);
+        // io_set(USER_LED);
+        // HAL_DelayMs(500);
+        // io_clr(USER_LED);
+        // HAL_DelayMs(500);
+        // io_set(USER_LED);
+        // HAL_DelayMs(500);
+        // io_clr(USER_LED);
+        // HAL_DelayMs(500);
+        
+        if (static_cast<Machine*>(machine_glb)->GetMachineState() != STATE_ALARM) {  // Ignore if already in alarm state. // Игнорировать, если он уже находится в состоянии тревоги.
+           static_cast<Machine*>(machine_glb)->Reset();
+           static_cast<Machine*>(machine_glb)->SysRtExecAlarmSet((EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
         }
-      }
     }
-  }   
  }
 
-void trap_handler(Machine& machine)
+extern "C"
 {
-    if (EPIC_CHECK_GPIO_IRQ())
+    // Обработчик прерываний
+    void trap_handler()
     {
-        CheckLimits(machine);
-        HAL_GPIO_ClearInterrupts();
-    }
 
-    /* Сброс прерываний */
-    HAL_EPIC_Clear(0xFFFFFFFF);
+        if (EPIC_CHECK_GPIO_IRQ())
+        {
+            CheckLimits();
+            HAL_GPIO_ClearInterrupts();
+        }
+
+        //   /* Сброс прерываний */
+        //   // Денис рекомендовал следующую последовательность, сбросить флаг прерывания, затем его обрабатывать.
+        //   // Чтобы было меньше багов
+        HAL_EPIC_Clear(0xFFFFFFFF);
+        // }
+    }
 }
 
 int main()
 {
 
-    HAL_Init();
-    SystemClockConfig();
-
-    /* Разрешить прерывания по уровню для линии EPIC GPIO_IRQ */
-    HAL_EPIC_MaskLevelSet(HAL_EPIC_GPIO_IRQ_MASK);
-    /* Разрешить глобальные прерывания */
-    HAL_IRQ_EnableInterrupts();
-
-
     Serial serial;
     Printer printer(serial);
     Report report(printer);
     Machine machine(report);
-    
+    SystemClockConfig();
+    machine.Init();
+
+    machine_glb = &machine;
+    report.SetMachine(&machine);
+
     io_out(USER_LED);
 
-     while (1)
-     {
+    while (1)
+    {
 
         io_set(USER_LED);
         HAL_DelayMs(2000);
         io_clr(USER_LED);
         HAL_DelayMs(2000);
-        // machine.PrintSettings();
-        // printer.String(machine.LimitsGetState().to_string().c_str());
-        // printer.String("\n");
-     }
+        machine.PrintSettings();
+        printer.String(machine.LimitsGetState());
+        printer.String("\n");
+    }
     return 0;
 }
 
@@ -72,7 +86,7 @@ int main()
 //   // Initialize system upon power-up.
 //   stepper_init();  // Configure stepper pins and interrupt timers // Настройка выходов шаговых двигателей и таймеров прерываний
 //   system_init();   // Configure pinout pins and pin-change interrupt // Настройка выводов распиновки и прерывания смены выводов
-  
+
 //   memset(&sys, 0, sizeof(system_t));  // Clear all system variables // Очистка всех системных переменных
 //   sys.abort = true;   // Set abort to complete initialization // Установка значения переменной abort при окончании инициализации
 //   sei(); // Enable interrupts //Включение перерываний
@@ -111,19 +125,19 @@ int main()
 //     // прерывание работы системы и обеспечение того, чтобы все активные прерывания были полностью сброшены.
 //     // TODO: Separate configure task that require interrupts to be disabled, especially upon
 //     // a system abort and ensuring any active interrupts are cleanly reset.
-  
+
 //     // Reset Grbl primary systems. // Перезагрузите основные системы Grbl.
 //     serial_reset_read_buffer(); // Clear serial read buffer //Очищает Com порт
 //     gc_init(); // Set g-code parser to default state // Устанавливает g-code парсер в состояние по умолчанию
 //     spindle_init();
 //     coolant_init();
-//     limits_init(); 
+//     limits_init();
 //     probe_init();
 //     plan_reset(); // Clear block buffer and planner variables //Очистить буфер блоков и переменную планировщика
 //     st_reset(); // Clear stepper subsystem variables. //Очистить переменные шаговой подсистемы
 
 //     // Синхронизируйте очищенные позиции gcode и планировать с текущей позицией в системе.
-//     // Sync cleared gcode and planner positions to current system position. 
+//     // Sync cleared gcode and planner positions to current system position.
 //     plan_sync_position();
 //     gc_sync_position();
 
@@ -136,5 +150,5 @@ int main()
 //     sys.soft_limit = false;
 
 //     // Запустите основной цикл Grbl. Обрабатывает вводимые программой данные и выполняет их.
-//     // Start Grbl main loop. Processes program inputs and executes them. 
+//     // Start Grbl main loop. Processes program inputs and executes them.
 //     protocol_main_loop();

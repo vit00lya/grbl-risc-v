@@ -29,19 +29,22 @@
   #define HOMING_AXIS_LOCATE_SCALAR  5.0 // Must be > 1 to ensure limit switch is cleared. // Должно быть > 1, чтобы обеспечить включение концевого выключателя.
 #endif
 
- void LimitsInit(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_Line_Config irq_line)
+void Limits::LimitsInit(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_Line_Config irq_line)
 {
 
   HAL_GPIO_PullTypeDef pull = HAL_GPIO_PULL_NONE;
 
   #ifdef DISABLE_LIMIT_PIN_PULL_UP
-     pull = HAL_GPIO_PULL_UP;
+      pull = HAL_GPIO_PULL_DOWN;
   #else
-     pull = HAL_GPIO_PULL_DOWN;
+      pull = HAL_GPIO_PULL_UP;
   #endif
 
   PinInitInputIRQ(pin, port, pull, irq_line);
 
+  limit_bit_pin_  = pin;
+  limit_bit_port_ = port;
+  irq_config_     = irq_line;
 
 //   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
 //     LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt // Включить определенные контакты прерывания смены контактов

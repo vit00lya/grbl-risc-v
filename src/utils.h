@@ -4,37 +4,36 @@
 #define utils_h
 
 #include <math.h>
+#include <optional>
+#include "grbl.h"
+// #include "machine.h"
+
 
 /* чтобы «протащить» через несколько макросов несколько аргументов как один аргумент */
-#define  _(...)  __VA_ARGS__
+// #define  _(...)  __VA_ARGS__
 
 /* превращает число в строку средствами препроцессора */
-#ifndef  stringify
-    #define  pro_stringify(a)  #a
-    #define  stringify(a)      pro_stringify(a)
-#endif
+// #ifndef  stringify
+//     #define  pro_stringify(a)  #a
+//     #define  stringify(a)      pro_stringify(a)
+// #endif
 
 /* упрощённая работа с портами ввода/вывода */
 
-#define  io_RCC_EN(_p_,_b_)  PM->CLK_APB_P_SET |= PM_CLOCK_APB_P_GPIO_##_p_##_M
-#define  io_port(_p_,_b_)    (GPIO_##_p_)
-#define  io_bit(_p_,_b_)     (_b_)
-#define  io_bit_n(port_bit)  io_bit(port_bit)
+// #define  io_RCC_EN(_p_,_b_)  PM->CLK_APB_P_SET |= PM_CLOCK_APB_P_GPIO_##_p_##_M
+// #define  io_port(_p_,_b_)    (GPIO_##_p_)
+// #define  io_bit(_p_,_b_)     (_b_)
+// #define  io_bit_n(port_bit)  io_bit(port_bit)
 
-#define  io_inp(port_bit)  do { io_RCC_EN(port_bit); io_port(port_bit)->DIRECTION_IN  = 1 << io_bit(port_bit); } while(0)
-#define  io_out(port_bit)  do { io_RCC_EN(port_bit); io_port(port_bit)->DIRECTION_OUT = 1 << io_bit(port_bit); } while(0)
-#define  io_set(port_bit)    io_port(port_bit)->SET   = 1 << io_bit(port_bit)
-#define  io_clr(port_bit)    io_port(port_bit)->CLEAR = 1 << io_bit(port_bit)
-#define  io_read(port_bit)  (io_port(port_bit)->STATE >> io_bit(port_bit)  &  1)
-#define  io_SET_R(port_bit)  (&io_port(port_bit)->SET  )
-#define  io_CLR_R(port_bit)  (&io_port(port_bit)->CLEAR)
+// #define  io_inp(port_bit)  do { io_RCC_EN(port_bit); io_port(port_bit)->DIRECTION_IN  = 1 << io_bit(port_bit); } while(0)
+// #define  io_out(port_bit)  do { io_RCC_EN(port_bit); io_port(port_bit)->DIRECTION_OUT = 1 << io_bit(port_bit); } while(0)
+// #define  io_set(port_bit)    io_port(port_bit)->SET   = 1 << io_bit(port_bit)
+// #define  io_clr(port_bit)    io_port(port_bit)->CLEAR = 1 << io_bit(port_bit)
+// #define  io_read(port_bit)  (io_port(port_bit)->STATE >> io_bit(port_bit)  &  1)
+// #define  io_SET_R(port_bit)  (&io_port(port_bit)->SET  )
+// #define  io_CLR_R(port_bit)  (&io_port(port_bit)->CLEAR)
 
-// Значения индекса массива Axis. Должны начинаться с 0 и быть непрерывными.
-// Axis array index values. Must start with 0 and be continuous.
-#define N_AXIS 3 // Number of axes // Количество осей
-#define X_AXIS 0 // Axis indexing value.  // Значение индексации оси.
-#define Y_AXIS 1
-#define Z_AXIS 2
+
 // #define A_AXIS 3
 
 // CoreXY motor assignments. DO NOT ALTER.
@@ -63,16 +62,29 @@
 // Bit field and masking macros
 // Битовое поле и маскирующие макросы
 #define bit(n) (1 << n) 
-#define bit_true_atomic(x,mask) {uint8_t sreg = SREG; cli(); (x) |= (mask); SREG = sreg; }
-#define bit_false_atomic(x,mask) {uint8_t sreg = SREG; cli(); (x) &= ~(mask); SREG = sreg; }
-#define bit_toggle_atomic(x,mask) {uint8_t sreg = SREG; cli(); (x) ^= (mask); SREG = sreg; }
-#define bit_true(x,mask) (x) |= (mask)
-#define bit_false(x,mask) (x) &= ~(mask)
+// #define bit_true_atomic(x,mask) {uint8_t sreg = SREG; cli(); (x) |= (mask); SREG = sreg; }
+// #define bit_false_atomic(x,mask) {uint8_t sreg = SREG; cli(); (x) &= ~(mask); SREG = sreg; }
+// #define bit_toggle_atomic(x,mask) {uint8_t sreg = SREG; cli(); (x) ^= (mask); SREG = sreg; }
+// #define bit_true(x,mask) (x) |= (mask)
+// #define bit_false(x,mask) (x) &= ~(mask)
 #define bit_istrue(x,mask) ((x & mask) != 0)
-#define bit_isfalse(x,mask) ((x & mask) == 0)
+// #define bit_isfalse(x,mask) ((x & mask) == 0)
 
+// class SysObj
+// {
+// private:
+//   void SystemClockConfig();
+//   void* machine_;
+// public:
+
+//    SysObj() = default;
+//   void Init(void* machine);
+//   void* GetMachine();
+// };
+
+GPIO_PinState ReadPin(GPIO_TypeDef *GPIO_x, HAL_PinsTypeDef pin);
 void PinInitInputIRQ(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull, HAL_GPIO_Line_Config irq_line);
-void PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull);
+HAL_StatusTypeDef PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull);
 bool PinHightLevel(const HAL_PinsTypeDef pin, GPIO_TypeDef* port);
 
 // Read a floating point value from a string. Line points to the input buffer, char_counter 

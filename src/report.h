@@ -7,7 +7,7 @@
 #include "settings.h"
 #include "gcode.h"
 #include "print.h"
-#include "limits.h"
+// #include "limits.h"
 #include "system.h"
 #include "serial.h"
 #include "cstring"
@@ -67,8 +67,10 @@
 class Report {
 private:
     Printer &printer_;
+    void* machine_glb_;
 public:
     Report(Printer &printer) : printer_(printer){} 
+    void SetMachine(void*);
     // Prints system status messages. // Выводит сообщения о состоянии системы.
     void StatusMessage(uint8_t status_code);
     // Prints system alarm messages. // Выводит системные тревожные сообщения.

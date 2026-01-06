@@ -22,7 +22,12 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define CPU_MAP_ELRON_UNO_AMUR
+// Значения индекса массива Axis. Должны начинаться с 0 и быть непрерывными.
+// Axis array index values. Must start with 0 and be continuous.
+#define N_AXIS 3 // Number of axes // Количество осей
+#define X_AXIS 0 // Axis indexing value.  // Значение индексации оси.
+#define Y_AXIS 1
+#define Z_AXIS 2
 
 extern "C" {
     #include "mik32_hal_pcc.h"
@@ -48,9 +53,10 @@ extern "C" {
 #include "cpu_map.h"
 #include "utils.h"
 #include "defaults.h"
-#include "bitset"
 // #include "settings.h"
  #include "system.h"
+//  #include "limits.h"
+//  #include "machine.h"
 // #include "serial.h"
 // #include "report.h"
 // #include "print.h"

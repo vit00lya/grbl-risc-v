@@ -23,38 +23,102 @@
 
 
 #define MAX_INT_DIGITS 8 // Maximum number of digits in int32 (and float) // Максимальное количество цифр в int32 (с плавающей точкой)
+ 
+// void SysObj::Init(void* machine){
+//   SystemClockConfig();
+//   machine_ = machine;
+// }
+// void* SysObj::GetMachine() {
+//   return machine_;
+// }
+
+void SystemClockConfig()
+{
+
+    HAL_Init();
+
+    PCC_InitTypeDef PCC_OscInit = {0};
+
+    PCC_OscInit.OscillatorEnable = PCC_OSCILLATORTYPE_ALL;
+    PCC_OscInit.FreqMon.OscillatorSystem = PCC_OSCILLATORTYPE_OSC32M;
+    PCC_OscInit.FreqMon.ForceOscSys = PCC_FORCE_OSC_SYS_UNFIXED;
+    PCC_OscInit.FreqMon.Force32KClk = PCC_FREQ_MONITOR_SOURCE_OSC32K;
+    PCC_OscInit.AHBDivider = 0;
+    PCC_OscInit.APBMDivider = 0;
+    PCC_OscInit.APBPDivider = 0;
+    PCC_OscInit.HSI32MCalibrationValue = 128;
+    PCC_OscInit.LSI32KCalibrationValue = 8;
+    PCC_OscInit.RTCClockSelection = PCC_RTC_CLOCK_SOURCE_AUTO;
+    PCC_OscInit.RTCClockCPUSelection = PCC_CPU_RTC_CLOCK_SOURCE_OSC32K;
+    HAL_PCC_Config(&PCC_OscInit);
+
+    __HAL_PCC_GPIO_0_CLK_ENABLE(); // Включение тактирования
+    __HAL_PCC_GPIO_1_CLK_ENABLE();
+    __HAL_PCC_GPIO_2_CLK_ENABLE();
+
+    //Включение прерываний
+    __HAL_PCC_GPIO_IRQ_CLK_ENABLE();
+
+    /* Разрешить прерывания по уровню для линии EPIC GPIO_IRQ */
+    HAL_EPIC_MaskLevelSet(HAL_EPIC_GPIO_IRQ_MASK);
+    /* Разрешить глобальные прерывания */
+    HAL_IRQ_EnableInterrupts();
+
+}
+
+/**
+ * @brief Считать текущее состояние выводов порта GPIO_x.
+ * @param GPIO_x порт GPIO_x, где x может быть (0, 1, 2).
+ * @param pin маска выводов порта GPIO_x, с которых считывание значение.
+ * @return @ref GPIO_PIN_HIGH если с одного или больше выводов, указанных в pin, считалась 1. Иначе @ref GPIO_PIN_LOW.
+ */
+GPIO_PinState ReadPin(GPIO_TypeDef *GPIO_x, HAL_PinsTypeDef pin)
+{
+    GPIO_PinState bitStatus;
+
+    if ((GPIO_x->STATE >> pin  &  1) != 0)
+    {
+        bitStatus = GPIO_PIN_HIGH;
+    }
+    else
+    {
+        bitStatus = GPIO_PIN_LOW;
+    }
+    return bitStatus;
+}
 
 void PinInitInputIRQ(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull, HAL_GPIO_Line_Config irq_line){
 
     PinInitInput(pin,port,pull);
     HAL_GPIO_InterruptMode interrupt_mode = GPIO_INT_MODE_LOW;
     if (pull == HAL_GPIO_PULL_UP){
-     interrupt_mode = GPIO_INT_MODE_RISING;
+     interrupt_mode = GPIO_INT_MODE_FALLING;
     }else if (pull == HAL_GPIO_PULL_DOWN) {
-      interrupt_mode = GPIO_INT_MODE_FALLING;
+      interrupt_mode = GPIO_INT_MODE_RISING;
     }
-    HAL_GPIO_InitInterruptLine(irq_line, interrupt_mode);
+   HAL_GPIO_InitInterruptLine(irq_line, interrupt_mode);
 
 }
 
-void PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull){
+HAL_StatusTypeDef PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull){
 
-    GPIO_InitTypeDef GPIO_InitStruct;
+    GPIO_InitTypeDef GPIO_InitStruct = {};
     GPIO_InitStruct.Pin = pin;
     GPIO_InitStruct.Mode = HAL_GPIO_MODE_GPIO_INPUT;
     GPIO_InitStruct.Pull = pull;
-    HAL_GPIO_Init(port, &GPIO_InitStruct);
+    return HAL_GPIO_Init(port, &GPIO_InitStruct);
+
 
 }
 
 bool PinHightLevel(const HAL_PinsTypeDef pin, GPIO_TypeDef* port){
   
-  GPIO_PinState state = HAL_GPIO_ReadPin(port,pin);
-  if(state == GPIO_PIN_LOW){
-    return false;
-  };
-  return true;
-
+    GPIO_PinState state = HAL_GPIO_ReadPin(port,pin);
+    if(state == GPIO_PIN_LOW){
+      return false;
+    };
+    return true;
+    
 }
 
 // Extracts a floating point value from a string. The following code is based loosely on

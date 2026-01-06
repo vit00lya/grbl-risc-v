@@ -8,8 +8,11 @@
 
 #include "grbl.h"
 #include "report.h"
+#include "machine.h"
 
-
+void Report::SetMachine(void* machine){
+  machine_glb_ = machine;
+}
 
 // Handles the primary confirmation protocol response for streaming interfaces and human-feedback.
 // For every incoming line, this method responds with an 'ok' for a successful command or an 
@@ -278,12 +281,12 @@ void Report::ProbeParameters()
   // Отчет с точки зрения положения машины.
   printer_.PgmString("[PRB:");
   for (i=0; i< N_AXIS; i++) {
-    print_position[i] = system_convert_axis_steps_to_mpos(sys.probe_position,i);
+    print_position[i] = static_cast<Machine*>(machine_glb_)->GetPosition(i);
     printer_.FloatCoordValue(print_position[i]);
     if (i < (N_AXIS-1)) { printer_.PgmString(","); }
   }
   printer_.PgmString(":");
-  printer_.Uint8Base10(sys.probe_succeeded);
+  printer_.Uint8Base10(static_cast<Machine*>(machine_glb_)->GetProbeSucceeded());
   printer_.PgmString("]\r\n");
 }
 
@@ -441,13 +444,15 @@ void Report::RealtimeStatus(settings_t& settings)
   // местоположения включения системы (0,0,0) и положения рабочих координат (применяются G54 и G92). В конце концов
   // необходимо добавить расстояние до блока, идентификатор обрабатываемого блока и скорость подачи. Также битовую маску настроек
   // чтобы пользователь мог выбрать нужные данные в режиме реального времени.
-  uint8_t idx;
-  int32_t current_position[N_AXIS]; // Copy current state of the system position variable // Скопировать текущее состояние системной переменной положения
-  memcpy(current_position,sys.position,sizeof(sys.position));
-  float print_position[N_AXIS];
+
+  // Временно закомментировал нужно переделать на  static_cast<Machine*>(machine_glb_)->GetPosition
+  // uint8_t idx;
+  // int32_t current_position[N_AXIS]; // Copy current state of the system position variable // Скопировать текущее состояние системной переменной положения
+  // memcpy(current_position,sys.position,sizeof(sys.position));
+  // float print_position[N_AXIS];
  
   // Report current machine state // Сообщить о текущем состоянии машины
-  switch (sys.state) {
+  switch (static_cast<Machine*>(machine_glb_)->GetMachineState()) {
     case STATE_IDLE: printer_.PgmString("<Idle"); break;
     case STATE_MOTION_CANCEL: // Report run state. // Отчет о состоянии выполнения.
     case STATE_CYCLE: printer_.PgmString("<Run"); break;
@@ -460,30 +465,30 @@ void Report::RealtimeStatus(settings_t& settings)
  
   // If reporting a position, convert the current step count (current_position) to millimeters. 
   // Если вы сообщаете о местоположении, преобразуйте текущее количество шагов (current_position) в миллиметры.
-  if (bit_istrue(settings.status_report_mask,(BITFLAG_RT_STATUS_MACHINE_POSITION | BITFLAG_RT_STATUS_WORK_POSITION))) {
-    system_convert_array_steps_to_mpos(print_position,current_position);
-  }
+  // if (bit_istrue(settings.status_report_mask,(BITFLAG_RT_STATUS_MACHINE_POSITION | BITFLAG_RT_STATUS_WORK_POSITION))) {
+    // system_convert_array_steps_to_mpos(print_position,current_position);
+  // }
   
   // Report machine position // Сообщить о положении машины
-  if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_MACHINE_POSITION)) {
-    printer_.PgmString(",MPos:"); 
-    for (idx=0; idx< N_AXIS; idx++) {
-      printer_.FloatCoordValue(print_position[idx]);
-      if (idx < (N_AXIS-1)) { printer_.PgmString(","); }
-    }
-  }
+  // if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_MACHINE_POSITION)) {
+  //   printer_.PgmString(",MPos:"); 
+  //   for (idx=0; idx< N_AXIS; idx++) {
+  //     printer_.FloatCoordValue(print_position[idx]);
+  //     if (idx < (N_AXIS-1)) { printer_.PgmString(","); }
+  //   }
+  // }
   
   // Report work position // Сообщить о рабочем месте
-  if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_WORK_POSITION)) {
-    printer_.PgmString(",WPos:"); 
-    for (idx=0; idx< N_AXIS; idx++) {
-      // Apply work coordinate offsets and tool length offset to current position. // Примените смещения рабочих координат и длины инструмента к текущему положению.
-      print_position[idx] -= gc_state.coord_system[idx]+gc_state.coord_offset[idx];
-      if (idx == TOOL_LENGTH_OFFSET_AXIS) { print_position[idx] -= gc_state.tool_length_offset; }    
-      printer_.FloatCoordValue(print_position[idx]);
-      if (idx < (N_AXIS-1)) { printer_.PgmString(","); }
-    }
-  }
+  // if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_WORK_POSITION)) {
+  //   printer_.PgmString(",WPos:"); 
+  //   for (idx=0; idx< N_AXIS; idx++) {
+  //     // Apply work coordinate offsets and tool length offset to current position. // Примените смещения рабочих координат и длины инструмента к текущему положению.
+  //     print_position[idx] -= gc_state.coord_system[idx]+gc_state.coord_offset[idx];
+  //     if (idx == TOOL_LENGTH_OFFSET_AXIS) { print_position[idx] -= gc_state.tool_length_offset; }    
+  //     printer_.FloatCoordValue(print_position[idx]);
+  //     if (idx < (N_AXIS-1)) { printer_.PgmString(","); }
+  //   }
+  // }
         
   // Returns the number of active blocks are in the planner buffer. // Возвращает количество активных блоков, находящихся в буфере планировщика.
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_PLANNER_BUFFER)) {
@@ -514,10 +519,10 @@ void Report::RealtimeStatus(settings_t& settings)
     printer_.FloatRateValue(st_get_realtime_rate());
   #endif    
   
-  // if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) {
-  //   printer_.PgmString(",Lim:");
-    //printer_.UnsignedInt8(limits_get_state(),2,N_AXIS);
-  // }
+   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) {
+     printer_.PgmString(",Lim:");
+     printer_.PgmString(static_cast<Machine*>(machine_glb_)->LimitsGetState());
+   }
   
   #ifdef REPORT_CONTROL_PIN_STATE 
     printer_.PgmString(",Ctl:");

@@ -49,13 +49,16 @@
 
 
 #define GRBL_PLATFORM "RiscV-Amur32"
+#define ELRON_ACE_UNO
+
+#define  USER_LED  2,7
 
 // Define serial port pins and interrupt vectors.
 // Определите контакты последовательного порта и векторы прерываний.
 #define SERIAL_RX     USART_RX_vect
 #define SERIAL_UDRE   USART_UDRE_vect
 
-#define axes 'X','Y','Z'
+// #define axes 'X','Y','Z'
 
 // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
 // Определите выводы ступенчатого импульсного выхода. ПРИМЕЧАНИЕ: Все выводы ступенчатого разряда должны быть подключены к одному порту.
@@ -90,27 +93,26 @@
 //#define LIMIT_PIN        PINB
 //#define LIMIT_PORT       PORTB
 
-#define X_LIMIT_BIT      1,14  // Uno Digital Pin 9
-#define Y_LIMIT_BIT      1,4  // Uno Digital Pin 10
+#define X_LIMIT_BIT      0,3  // Uno Digital Pin 9
+#define Y_LIMIT_BIT      1,3  // Uno Digital Pin 10
 #ifdef VARIABLE_SPINDLE // Z Limit pin and spindle enabled swapped to access hardware PWM on Pin 11.  
   #define Z_LIMIT_BIT	   1,0 // Uno Digital Pin 12
 #else
   #define Z_LIMIT_BIT    1,1  // Uno Digital Pin 11
 #endif
 
-
-// Линия 2 - X
-// Линия 4 - Y
+// Линия 3 - X
+// Линия 7 - Y
 // Линия 0 - Z
-#define X_LIMIT_BIT_PORT      GPIO_1
-#define X_LIMIT_BIT_PIN       GPIO_PIN_14
-#define X_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_2_PORT1_14
-#define X_LIMIT_LINE_IRQ      GPIO_LINE_2
+#define X_LIMIT_BIT_PORT      GPIO_0
+#define X_LIMIT_BIT_PIN       GPIO_PIN_3
+#define X_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_3_PORT0_3
+#define X_LIMIT_LINE_IRQ      GPIO_LINE_3
 
 #define Y_LIMIT_BIT_PORT      GPIO_1
-#define Y_LIMIT_BIT_PIN       GPIO_PIN_4
-#define Y_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_4_PORT1_4
-#define Y_LIMIT_LINE_IRQ      GPIO_LINE_4
+#define Y_LIMIT_BIT_PIN       GPIO_PIN_3
+#define Y_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_7_PORT1_3
+#define Y_LIMIT_LINE_IRQ      GPIO_LINE_7
 
 #ifdef VARIABLE_SPINDLE
   #define Z_LIMIT_BIT_PORT      GPIO_1

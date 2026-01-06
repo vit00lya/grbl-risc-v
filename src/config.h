@@ -413,7 +413,7 @@
 // ПРИМЕЧАНИЕ: Все контакты, связанные с этой функцией, отключены, т.е. контакты ограничения XYZ, а не отдельные оси.
 // ВНИМАНИЕ: Если подтягивающие устройства отключены, для этого требуется дополнительная проводка с подтягивающими резисторами!
 
-//#define DISABLE_LIMIT_PIN_PULL_UP
+#define DISABLE_LIMIT_PIN_PULL_UP
 //#define DISABLE_PROBE_PIN_PULL_UP
 //#define DISABLE_CONTROL_PIN_PULL_UP
 

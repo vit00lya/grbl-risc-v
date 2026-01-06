@@ -1,6 +1,4 @@
 #pragma once
-#ifndef limits_h
-#define limits_h
 
 #include <array>
 #include "grbl.h"
@@ -13,6 +11,7 @@ private:
 
 public:
 
+  Limits() = default;
   // Initialize the limits module
   // Инициализируем модуль ограничений
   void LimitsInit(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_Line_Config irq_line);
@@ -33,5 +32,3 @@ public:
   // Проверьте, нет ли нарушений мягкого лимита
   void LimitsSoftCheck(float *target);
 };
-
-#endif

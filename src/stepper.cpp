@@ -716,385 +716,385 @@ void st_update_plan_block_parameters()
 void st_prep_buffer()
 {
 
-  if (sys.state & (STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR)) { 
-    // Check if we still need to generate more segments for a motion suspend. // Проверьте, нужно ли нам по-прежнему генерировать дополнительные сегменты для приостановки движения.
-    if (prep.current_speed == 0.0) { return; } // Nothing to do. Bail. // Ничего не нужно делать. Поручительство.
-  }
+//   if (sys.state & (STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR)) { 
+//     // Check if we still need to generate more segments for a motion suspend. // Проверьте, нужно ли нам по-прежнему генерировать дополнительные сегменты для приостановки движения.
+//     if (prep.current_speed == 0.0) { return; } // Nothing to do. Bail. // Ничего не нужно делать. Поручительство.
+//   }
   
-  while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer. // Проверьте, нужно ли нам заполнять буфер.
+//   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer. // Проверьте, нужно ли нам заполнять буфер.
 
-    // Determine if we need to load a new planner block or if the block has been replanned. // Определите, нужно ли нам загружать новый блок планировщика или этот блок был перепланирован.
-    if (pl_block == NULL) {
-      pl_block = plan_get_current_block(); // Query planner for a queued block // Планировщик запросов для блока, находящегося в очереди
-      if (pl_block == NULL) { return; } // No planner blocks. Exit. // Нет блоков планировщика. Выход.
+//     // Determine if we need to load a new planner block or if the block has been replanned. // Определите, нужно ли нам загружать новый блок планировщика или этот блок был перепланирован.
+//     if (pl_block == NULL) {
+//       pl_block = plan_get_current_block(); // Query planner for a queued block // Планировщик запросов для блока, находящегося в очереди
+//       if (pl_block == NULL) { return; } // No planner blocks. Exit. // Нет блоков планировщика. Выход.
                       
-      // Check if the segment buffer completed the last planner block. If so, load the Bresenham
-      // data for the block. If not, we are still mid-block and the velocity profile was updated. 
-      // Проверьте, завершил ли буфер сегмента последний блок планировщика. Если да, то загрузите "Брезенхэм"
-      // данные для блока. Если нет, то мы все еще находимся в середине квартала, и профиль скорости был обновлен.
-      if (prep.flag_partial_block) {
-        prep.flag_partial_block = false; // Reset flag
-      } else {
-        // Increment stepper common data index to store new planner block data. 
-        // Увеличьте общий индекс данных stepper для хранения новых данных блока планировщика.
-        if ( ++prep.st_block_index == (SEGMENT_BUFFER_SIZE-1) ) { prep.st_block_index = 0; }
+//       // Check if the segment buffer completed the last planner block. If so, load the Bresenham
+//       // data for the block. If not, we are still mid-block and the velocity profile was updated. 
+//       // Проверьте, завершил ли буфер сегмента последний блок планировщика. Если да, то загрузите "Брезенхэм"
+//       // данные для блока. Если нет, то мы все еще находимся в середине квартала, и профиль скорости был обновлен.
+//       if (prep.flag_partial_block) {
+//         prep.flag_partial_block = false; // Reset flag
+//       } else {
+//         // Increment stepper common data index to store new planner block data. 
+//         // Увеличьте общий индекс данных stepper для хранения новых данных блока планировщика.
+//         if ( ++prep.st_block_index == (SEGMENT_BUFFER_SIZE-1) ) { prep.st_block_index = 0; }
         
-        // Prepare and copy Bresenham algorithm segment data from the new planner block, so that
-        // when the segment buffer completes the planner block, it may be discarded when the 
-        // segment buffer finishes the prepped block, but the stepper ISR is still executing it. 
-        // Подготовьте и скопируйте сегментные данные алгоритма Брезенхэма из нового блока планировщика, чтобы
-        // когда сегментный буфер завершит блок планировщика, они могли быть отброшены, когда
-        // сегментный буфер завершит подготовленный блок, но шаговый ISR все еще выполняет его.
-        st_prep_block = &st_block_buffer[prep.st_block_index];
-        st_prep_block->direction_bits = pl_block->direction_bits;
-        #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-          st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS];
-          st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS];
-          st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS];
-          st_prep_block->step_event_count = pl_block->step_event_count;
-        #else
-          // With AMASS enabled, simply bit-shift multiply all Bresenham data by the max AMASS 
-          // level, such that we never divide beyond the original data anywhere in the algorithm.
-          // If the original data is divided, we can lose a step from integer roundoff.
-          // При включенной функции AMASS просто умножьте все данные Брезенхэма со сдвигом в битах на максимальное значение AMASS 
-          // таким образом, чтобы нигде в алгоритме мы не производили деление дальше исходных данных.
-          // Если исходные данные будут разделены, мы можем потерять шаг при целочисленном округлении. 
-          st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS] << MAX_AMASS_LEVEL;
-          st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS] << MAX_AMASS_LEVEL;
-          st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS] << MAX_AMASS_LEVEL;
-          st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
-        #endif
+//         // Prepare and copy Bresenham algorithm segment data from the new planner block, so that
+//         // when the segment buffer completes the planner block, it may be discarded when the 
+//         // segment buffer finishes the prepped block, but the stepper ISR is still executing it. 
+//         // Подготовьте и скопируйте сегментные данные алгоритма Брезенхэма из нового блока планировщика, чтобы
+//         // когда сегментный буфер завершит блок планировщика, они могли быть отброшены, когда
+//         // сегментный буфер завершит подготовленный блок, но шаговый ISR все еще выполняет его.
+//         st_prep_block = &st_block_buffer[prep.st_block_index];
+//         st_prep_block->direction_bits = pl_block->direction_bits;
+//         #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+//           st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS];
+//           st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS];
+//           st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS];
+//           st_prep_block->step_event_count = pl_block->step_event_count;
+//         #else
+//           // With AMASS enabled, simply bit-shift multiply all Bresenham data by the max AMASS 
+//           // level, such that we never divide beyond the original data anywhere in the algorithm.
+//           // If the original data is divided, we can lose a step from integer roundoff.
+//           // При включенной функции AMASS просто умножьте все данные Брезенхэма со сдвигом в битах на максимальное значение AMASS 
+//           // таким образом, чтобы нигде в алгоритме мы не производили деление дальше исходных данных.
+//           // Если исходные данные будут разделены, мы можем потерять шаг при целочисленном округлении. 
+//           st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS] << MAX_AMASS_LEVEL;
+//           st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS] << MAX_AMASS_LEVEL;
+//           st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS] << MAX_AMASS_LEVEL;
+//           st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
+//         #endif
         
-        // Initialize segment buffer data for generating the segments.
-        // Инициализируйте данные буфера сегментов для генерации сегментов.
-        prep.steps_remaining = pl_block->step_event_count;
-        prep.step_per_mm = prep.steps_remaining/pl_block->millimeters;
-        prep.req_mm_increment = REQ_MM_INCREMENT_SCALAR/prep.step_per_mm;
+//         // Initialize segment buffer data for generating the segments.
+//         // Инициализируйте данные буфера сегментов для генерации сегментов.
+//         prep.steps_remaining = pl_block->step_event_count;
+//         prep.step_per_mm = prep.steps_remaining/pl_block->millimeters;
+//         prep.req_mm_increment = REQ_MM_INCREMENT_SCALAR/prep.step_per_mm;
         
-        prep.dt_remainder = 0.0; // Reset for new planner block // Сброс для нового блока планировщика
+//         prep.dt_remainder = 0.0; // Reset for new planner block // Сброс для нового блока планировщика
 
-        if (sys.state & (STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR)) {
-          // Override planner block entry speed and enforce deceleration during feed hold.
-          // Переопределите скорость ввода блока планировщика и принудительно замедлите его во время задержки подачи.
-          prep.current_speed = prep.exit_speed; 
-          pl_block->entry_speed_sqr = prep.exit_speed*prep.exit_speed; 
-        }
-        else { prep.current_speed = sqrt(pl_block->entry_speed_sqr); }
-      }
+//         if (sys.state & (STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR)) {
+//           // Override planner block entry speed and enforce deceleration during feed hold.
+//           // Переопределите скорость ввода блока планировщика и принудительно замедлите его во время задержки подачи.
+//           prep.current_speed = prep.exit_speed; 
+//           pl_block->entry_speed_sqr = prep.exit_speed*prep.exit_speed; 
+//         }
+//         else { prep.current_speed = sqrt(pl_block->entry_speed_sqr); }
+//       }
      
-      /* --------------------------------------------------------------------------------- 
-         Compute the velocity profile of a new planner block based on its entry and exit
-         speeds, or recompute the profile of a partially-completed planner block if the 
-         planner has updated it. For a commanded forced-deceleration, such as from a feed 
-         hold, override the planner velocities and decelerate to the target exit speed.
-      */
-     /* ---------------------------------------------------------------------------------
-      Вычислите профиль скорости нового блока планировщика на основе его входа и выхода
-              скорости, или повторно вычислите профиль частично завершенного блока
-      планирования, если планировщик обновил его. Для принудительного замедления по команде, например, при загрузке 
-              удерживайте, измените скорости планирования и снизьте скорость до заданной скорости на выходе.
-      */
-      prep.mm_complete = 0.0; // Default velocity profile complete at 0.0mm from end of block. // Профиль скорости по умолчанию завершен на расстоянии 0,0 мм от конца блока.
-      float inv_2_accel = 0.5/pl_block->acceleration;
-      if (sys.state & (STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR)) { // [Forced Deceleration to Zero Velocity] // [Принудительное замедление до нулевой скорости]
-        // Compute velocity profile parameters for a feed hold in-progress. This profile overrides // Вычислить параметры профиля скорости для текущей задержки подачи. Этот профиль переопределяет
-        // the planner block profile, enforcing a deceleration to zero speed. // планировщик блокирует профиль, принудительно снижая скорость до нуля.
-        prep.ramp_type = RAMP_DECEL;
-        // Compute decelerate distance relative to end of block. // Вычислить расстояние замедления относительно конца блока.
-        float decel_dist = pl_block->millimeters - inv_2_accel*pl_block->entry_speed_sqr;
-        if (decel_dist < 0.0) {
-          // Deceleration through entire planner block. End of feed hold is not in this block. // Замедление по всему блоку планирования. В этом блоке отсутствует время окончания задержки подачи.
-          prep.exit_speed = sqrt(pl_block->entry_speed_sqr-2*pl_block->acceleration*pl_block->millimeters);
-        } else {
-          prep.mm_complete = decel_dist; // End of feed hold. // Окончание удержания подачи.
-          prep.exit_speed = 0.0;
-        }
-      } else { // [Normal Operation]
-        // Compute or recompute velocity profile parameters of the prepped planner block.
-        // [Нормальная работа]
-        // Вычислите или повторно рассчитайте параметры профиля скорости для подготовленного блока планирования.
-        prep.ramp_type = RAMP_ACCEL; // Initialize as acceleration ramp. // Инициализировать как рампу ускорения.
-        prep.accelerate_until = pl_block->millimeters; 
-        prep.exit_speed = plan_get_exec_block_exit_speed();   
-        float exit_speed_sqr = prep.exit_speed*prep.exit_speed;
-        float intersect_distance =
-                0.5*(pl_block->millimeters+inv_2_accel*(pl_block->entry_speed_sqr-exit_speed_sqr));
-        if (intersect_distance > 0.0) {
-          if (intersect_distance < pl_block->millimeters) { // Either trapezoid or triangle types // Трапециевидного или треугольного типа
-            // NOTE: For acceleration-cruise and cruise-only types, following calculation will be 0.0. // ПРИМЕЧАНИЕ: Для типов "ускорение-круиз" и "только круиз" следующий расчет будет равен 0.0.
-            prep.decelerate_after = inv_2_accel*(pl_block->nominal_speed_sqr-exit_speed_sqr);
-            if (prep.decelerate_after < intersect_distance) { // Trapezoid type // Трапециевидный тип
-              prep.maximum_speed = sqrt(pl_block->nominal_speed_sqr);
-              if (pl_block->entry_speed_sqr == pl_block->nominal_speed_sqr) { 
-                // Cruise-deceleration or cruise-only type. // Круиз-торможение или только круиз-контроль.
-                prep.ramp_type = RAMP_CRUISE;
-              } else {
-                // Full-trapezoid or acceleration-cruise types // Полностью трапециевидный или ускоренно-круизный типы
-                prep.accelerate_until -= inv_2_accel*(pl_block->nominal_speed_sqr-pl_block->entry_speed_sqr); 
-              }
-            } else { // Triangle type // Треугольный тип
-              prep.accelerate_until = intersect_distance;
-              prep.decelerate_after = intersect_distance;
-              prep.maximum_speed = sqrt(2.0*pl_block->acceleration*intersect_distance+exit_speed_sqr);
-            }          
-          } else { // Deceleration-only type // Тип только для замедления
-            prep.ramp_type = RAMP_DECEL;
-            // prep.decelerate_after = pl_block->millimeters;
-            prep.maximum_speed = prep.current_speed;
-          }
-        } else { // Acceleration-only type // Тип только для ускорения
-          prep.accelerate_until = 0.0;
-          // prep.decelerate_after = 0.0;
-          prep.maximum_speed = prep.exit_speed;
-        }
-      }  
-    }
+//       /* --------------------------------------------------------------------------------- 
+//          Compute the velocity profile of a new planner block based on its entry and exit
+//          speeds, or recompute the profile of a partially-completed planner block if the 
+//          planner has updated it. For a commanded forced-deceleration, such as from a feed 
+//          hold, override the planner velocities and decelerate to the target exit speed.
+//       */
+//      /* ---------------------------------------------------------------------------------
+//       Вычислите профиль скорости нового блока планировщика на основе его входа и выхода
+//               скорости, или повторно вычислите профиль частично завершенного блока
+//       планирования, если планировщик обновил его. Для принудительного замедления по команде, например, при загрузке 
+//               удерживайте, измените скорости планирования и снизьте скорость до заданной скорости на выходе.
+//       */
+//       prep.mm_complete = 0.0; // Default velocity profile complete at 0.0mm from end of block. // Профиль скорости по умолчанию завершен на расстоянии 0,0 мм от конца блока.
+//       float inv_2_accel = 0.5/pl_block->acceleration;
+//       if (sys.state & (STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR)) { // [Forced Deceleration to Zero Velocity] // [Принудительное замедление до нулевой скорости]
+//         // Compute velocity profile parameters for a feed hold in-progress. This profile overrides // Вычислить параметры профиля скорости для текущей задержки подачи. Этот профиль переопределяет
+//         // the planner block profile, enforcing a deceleration to zero speed. // планировщик блокирует профиль, принудительно снижая скорость до нуля.
+//         prep.ramp_type = RAMP_DECEL;
+//         // Compute decelerate distance relative to end of block. // Вычислить расстояние замедления относительно конца блока.
+//         float decel_dist = pl_block->millimeters - inv_2_accel*pl_block->entry_speed_sqr;
+//         if (decel_dist < 0.0) {
+//           // Deceleration through entire planner block. End of feed hold is not in this block. // Замедление по всему блоку планирования. В этом блоке отсутствует время окончания задержки подачи.
+//           prep.exit_speed = sqrt(pl_block->entry_speed_sqr-2*pl_block->acceleration*pl_block->millimeters);
+//         } else {
+//           prep.mm_complete = decel_dist; // End of feed hold. // Окончание удержания подачи.
+//           prep.exit_speed = 0.0;
+//         }
+//       } else { // [Normal Operation]
+//         // Compute or recompute velocity profile parameters of the prepped planner block.
+//         // [Нормальная работа]
+//         // Вычислите или повторно рассчитайте параметры профиля скорости для подготовленного блока планирования.
+//         prep.ramp_type = RAMP_ACCEL; // Initialize as acceleration ramp. // Инициализировать как рампу ускорения.
+//         prep.accelerate_until = pl_block->millimeters; 
+//         prep.exit_speed = plan_get_exec_block_exit_speed();   
+//         float exit_speed_sqr = prep.exit_speed*prep.exit_speed;
+//         float intersect_distance =
+//                 0.5*(pl_block->millimeters+inv_2_accel*(pl_block->entry_speed_sqr-exit_speed_sqr));
+//         if (intersect_distance > 0.0) {
+//           if (intersect_distance < pl_block->millimeters) { // Either trapezoid or triangle types // Трапециевидного или треугольного типа
+//             // NOTE: For acceleration-cruise and cruise-only types, following calculation will be 0.0. // ПРИМЕЧАНИЕ: Для типов "ускорение-круиз" и "только круиз" следующий расчет будет равен 0.0.
+//             prep.decelerate_after = inv_2_accel*(pl_block->nominal_speed_sqr-exit_speed_sqr);
+//             if (prep.decelerate_after < intersect_distance) { // Trapezoid type // Трапециевидный тип
+//               prep.maximum_speed = sqrt(pl_block->nominal_speed_sqr);
+//               if (pl_block->entry_speed_sqr == pl_block->nominal_speed_sqr) { 
+//                 // Cruise-deceleration or cruise-only type. // Круиз-торможение или только круиз-контроль.
+//                 prep.ramp_type = RAMP_CRUISE;
+//               } else {
+//                 // Full-trapezoid or acceleration-cruise types // Полностью трапециевидный или ускоренно-круизный типы
+//                 prep.accelerate_until -= inv_2_accel*(pl_block->nominal_speed_sqr-pl_block->entry_speed_sqr); 
+//               }
+//             } else { // Triangle type // Треугольный тип
+//               prep.accelerate_until = intersect_distance;
+//               prep.decelerate_after = intersect_distance;
+//               prep.maximum_speed = sqrt(2.0*pl_block->acceleration*intersect_distance+exit_speed_sqr);
+//             }          
+//           } else { // Deceleration-only type // Тип только для замедления
+//             prep.ramp_type = RAMP_DECEL;
+//             // prep.decelerate_after = pl_block->millimeters;
+//             prep.maximum_speed = prep.current_speed;
+//           }
+//         } else { // Acceleration-only type // Тип только для ускорения
+//           prep.accelerate_until = 0.0;
+//           // prep.decelerate_after = 0.0;
+//           prep.maximum_speed = prep.exit_speed;
+//         }
+//       }  
+//     }
 
-    // Initialize new segment // Инициализировать новый сегмент
-    segment_t *prep_segment = &segment_buffer[segment_buffer_head];
+//     // Initialize new segment // Инициализировать новый сегмент
+//     segment_t *prep_segment = &segment_buffer[segment_buffer_head];
 
-    // Set new segment to point to the current segment data block. // Установите новый сегмент таким образом, чтобы он указывал на текущий блок данных сегмента.
-    prep_segment->st_block_index = prep.st_block_index;
+//     // Set new segment to point to the current segment data block. // Установите новый сегмент таким образом, чтобы он указывал на текущий блок данных сегмента.
+//     prep_segment->st_block_index = prep.st_block_index;
 
-    /*------------------------------------------------------------------------------------
-        Compute the average velocity of this new segment by determining the total distance
-      traveled over the segment time DT_SEGMENT. The following code first attempts to create 
-      a full segment based on the current ramp conditions. If the segment time is incomplete 
-      when terminating at a ramp state change, the code will continue to loop through the
-      progressing ramp states to fill the remaining segment execution time. However, if 
-      an incomplete segment terminates at the end of the velocity profile, the segment is 
-      considered completed despite having a truncated execution time less than DT_SEGMENT.
-        The velocity profile is always assumed to progress through the ramp sequence:
-      acceleration ramp, cruising state, and deceleration ramp. Each ramp's travel distance
-      may range from zero to the length of the block. Velocity profiles can end either at 
-      the end of planner block (typical) or mid-block at the end of a forced deceleration, 
-      such as from a feed hold.
-    */
+//     /*------------------------------------------------------------------------------------
+//         Compute the average velocity of this new segment by determining the total distance
+//       traveled over the segment time DT_SEGMENT. The following code first attempts to create 
+//       a full segment based on the current ramp conditions. If the segment time is incomplete 
+//       when terminating at a ramp state change, the code will continue to loop through the
+//       progressing ramp states to fill the remaining segment execution time. However, if 
+//       an incomplete segment terminates at the end of the velocity profile, the segment is 
+//       considered completed despite having a truncated execution time less than DT_SEGMENT.
+//         The velocity profile is always assumed to progress through the ramp sequence:
+//       acceleration ramp, cruising state, and deceleration ramp. Each ramp's travel distance
+//       may range from zero to the length of the block. Velocity profiles can end either at 
+//       the end of planner block (typical) or mid-block at the end of a forced deceleration, 
+//       such as from a feed hold.
+//     */
 
-/*------------------------------------------------------------------------------------
-        Вычислите среднюю скорость этого нового сегмента, определив общее расстояние
-        пройденный отрезок времени DT_SEGMENT. Следующий код сначала пытается создать
-        полный сегмент на основе текущих условий перехода. Если время выполнения сегмента
-        не завершено при изменении состояния ramp, код продолжит цикл по переходящим
-        состояниям ramp, чтобы заполнить оставшееся время выполнения сегмента. Однако, если 
-        незавершенный сегмент завершается в конце профиля скорости, сегмент
-        считается завершенным, несмотря на то, что время выполнения сокращенного сегмента меньше, чем DT_SEGMENT.
-        Предполагается, что профиль скорости всегда выполняется по нарастающей последовательности:
-        скорость разгона, режим движения в крейсерском режиме и скорость торможения. Расстояние прохождения каждой трассы
-        может варьироваться от нуля до длины квартала. Профили скорости могут заканчиваться либо в
-        конце блока планирования (как правило), либо в середине блока в конце принудительного торможения,
-        например, при задержке подачи.
-    */
+// /*------------------------------------------------------------------------------------
+//         Вычислите среднюю скорость этого нового сегмента, определив общее расстояние
+//         пройденный отрезок времени DT_SEGMENT. Следующий код сначала пытается создать
+//         полный сегмент на основе текущих условий перехода. Если время выполнения сегмента
+//         не завершено при изменении состояния ramp, код продолжит цикл по переходящим
+//         состояниям ramp, чтобы заполнить оставшееся время выполнения сегмента. Однако, если 
+//         незавершенный сегмент завершается в конце профиля скорости, сегмент
+//         считается завершенным, несмотря на то, что время выполнения сокращенного сегмента меньше, чем DT_SEGMENT.
+//         Предполагается, что профиль скорости всегда выполняется по нарастающей последовательности:
+//         скорость разгона, режим движения в крейсерском режиме и скорость торможения. Расстояние прохождения каждой трассы
+//         может варьироваться от нуля до длины квартала. Профили скорости могут заканчиваться либо в
+//         конце блока планирования (как правило), либо в середине блока в конце принудительного торможения,
+//         например, при задержке подачи.
+//     */
 
-    float dt_max = DT_SEGMENT; // Maximum segment time // Максимальное время работы сегмента
-    float dt = 0.0; // Initialize segment time // Инициализировать время сегмента
-    float time_var = dt_max; // Time worker variable // Переменная рабочего времени
-    float mm_var; // mm-Distance worker variable // мм-Переменная удаленности работника
-    float speed_var; // Speed worker variable   // Переменная скорости рабочего
-    float mm_remaining = pl_block->millimeters; // New segment distance from end of block. // Новое расстояние сегмента от конца блока.
-    float minimum_mm = mm_remaining-prep.req_mm_increment; // Guarantee at least one step. // Гарантируйте, по крайней мере, один шаг.
-    if (minimum_mm < 0.0) { minimum_mm = 0.0; }
+//     float dt_max = DT_SEGMENT; // Maximum segment time // Максимальное время работы сегмента
+//     float dt = 0.0; // Initialize segment time // Инициализировать время сегмента
+//     float time_var = dt_max; // Time worker variable // Переменная рабочего времени
+//     float mm_var; // mm-Distance worker variable // мм-Переменная удаленности работника
+//     float speed_var; // Speed worker variable   // Переменная скорости рабочего
+//     float mm_remaining = pl_block->millimeters; // New segment distance from end of block. // Новое расстояние сегмента от конца блока.
+//     float minimum_mm = mm_remaining-prep.req_mm_increment; // Guarantee at least one step. // Гарантируйте, по крайней мере, один шаг.
+//     if (minimum_mm < 0.0) { minimum_mm = 0.0; }
 
-    do {
-      switch (prep.ramp_type) {
-        case RAMP_ACCEL: 
-          // NOTE: Acceleration ramp only computes during first do-while loop. // ПРИМЕЧАНИЕ: Амплитуда ускорения вычисляется только во время первого цикла do-while.
-          speed_var = pl_block->acceleration*time_var;
-          mm_remaining -= time_var*(prep.current_speed + 0.5*speed_var);
-          if (mm_remaining < prep.accelerate_until) { // End of acceleration ramp. // Конец разгонной рампы.
-            // Acceleration-cruise, acceleration-deceleration ramp junction, or end of block. // Ускорение-круиз, ускорение-торможение на перекрестке с рампой или в конце квартала.
-            mm_remaining = prep.accelerate_until; // NOTE: 0.0 at EOB // ПРИМЕЧАНИЕ: 0,0 при EOB
-            time_var = 2.0*(pl_block->millimeters-mm_remaining)/(prep.current_speed+prep.maximum_speed);
-            if (mm_remaining == prep.decelerate_after) { prep.ramp_type = RAMP_DECEL; }
-            else { prep.ramp_type = RAMP_CRUISE; }
-            prep.current_speed = prep.maximum_speed;
-          } else { // Acceleration only.  // Только ускорение.
-            prep.current_speed += speed_var;
-          }
-          break;
-        case RAMP_CRUISE: 
-          // NOTE: mm_var used to retain the last mm_remaining for incomplete segment time_var calculations.
-          // NOTE: If maximum_speed*time_var value is too low, round-off can cause mm_var to not change. To 
-          //   prevent this, simply enforce a minimum speed threshold in the planner.
-          // ПРИМЕЧАНИЕ: mm_var используется для сохранения последнего значения mm_remaining для неполных вычислений time_var сегмента.
-          // ПРИМЕЧАНИЕ: Если значение maximum_speed*time_var слишком низкое, округление может привести к тому, что значение mm_var не изменится. Чтобы
-          // предотвратить это, просто установите минимальный порог скорости в планировщике.
-          mm_var = mm_remaining - prep.maximum_speed*time_var;
-          if (mm_var < prep.decelerate_after) { // End of cruise. 
-            // Cruise-deceleration junction or end of block.
-            // Конец маршрута. 
-            // Маршрут - переход для снижения скорости или конец квартала.
-            time_var = (mm_remaining - prep.decelerate_after)/prep.maximum_speed;
-            mm_remaining = prep.decelerate_after; // NOTE: 0.0 at EOB
-            prep.ramp_type = RAMP_DECEL;
-          } else { // Cruising only. // Только для круиза.    
-            mm_remaining = mm_var; 
-          } 
-          break;
-        default: // case RAMP_DECEL:
-          // NOTE: mm_var used as a misc worker variable to prevent errors when near zero speed. // ПРИМЕЧАНИЕ: mm_var используется как дополнительная рабочая переменная для предотвращения ошибок при скорости, близкой к нулю.
-          speed_var = pl_block->acceleration*time_var; // Used as delta speed (mm/min) // Используется в качестве дельта-скорости (мм/мин)
-          if (prep.current_speed > speed_var) { // Check if at or below zero speed. // Проверьте, находится ли скорость на нулевом уровне или ниже него.
-            // Compute distance from end of segment to end of block. // Вычислить расстояние от конца сегмента до конца блока.
-            mm_var = mm_remaining - time_var*(prep.current_speed - 0.5*speed_var); // (mm)
-            if (mm_var > prep.mm_complete) { // Deceleration only. // Только замедление.
-              mm_remaining = mm_var;
-              prep.current_speed -= speed_var;
-              break; // Segment complete. Exit switch-case statement. Continue do-while loop. // Сегмент завершен. Выйдите из инструкции switch-case. Продолжите цикл do-while.
-            }
-          } // End of block or end of forced-deceleration. // Сегмент завершен. Выйдите из инструкции switch-case. Продолжите цикл do-while.
-          time_var = 2.0*(mm_remaining-prep.mm_complete)/(prep.current_speed+prep.exit_speed);
-          mm_remaining = prep.mm_complete; 
-      }
-      dt += time_var; // Add computed ramp time to total segment time. // Добавьте вычисленное время нарастания к общему времени сегмента.
-      if (dt < dt_max) { time_var = dt_max - dt; } // **Incomplete** At ramp junction. // **Неполный** На перекрестке с пандусом.
-      else {
-        if (mm_remaining > minimum_mm) { // Check for very slow segments with zero steps.
-          // Increase segment time to ensure at least one step in segment. Override and loop
-          // through distance calculations until minimum_mm or mm_complete.
-          // Проверьте, нет ли очень медленных сегментов с нулевым шагом.
-          // Увеличьте время прохождения сегмента, чтобы обеспечить хотя бы один шаг в сегменте. Переопределите и выполните цикл
-          // выполняйте вычисления расстояния до тех пор, пока не будет достигнуто значение minimum_mm или mm_complete.
-          dt_max += DT_SEGMENT;
-          time_var = dt_max - dt;
-        } else { 
-          break; // **Complete** Exit loop. Segment execution time maxed. // **Завершить цикл** Exit. Время выполнения сегмента увеличено до максимального значения.
-        }
-      }
-    } while (mm_remaining > prep.mm_complete); // **Complete** Exit loop. Profile complete. // **Завершить** Цикл выхода. Профиль завершен.
+//     do {
+//       switch (prep.ramp_type) {
+//         case RAMP_ACCEL: 
+//           // NOTE: Acceleration ramp only computes during first do-while loop. // ПРИМЕЧАНИЕ: Амплитуда ускорения вычисляется только во время первого цикла do-while.
+//           speed_var = pl_block->acceleration*time_var;
+//           mm_remaining -= time_var*(prep.current_speed + 0.5*speed_var);
+//           if (mm_remaining < prep.accelerate_until) { // End of acceleration ramp. // Конец разгонной рампы.
+//             // Acceleration-cruise, acceleration-deceleration ramp junction, or end of block. // Ускорение-круиз, ускорение-торможение на перекрестке с рампой или в конце квартала.
+//             mm_remaining = prep.accelerate_until; // NOTE: 0.0 at EOB // ПРИМЕЧАНИЕ: 0,0 при EOB
+//             time_var = 2.0*(pl_block->millimeters-mm_remaining)/(prep.current_speed+prep.maximum_speed);
+//             if (mm_remaining == prep.decelerate_after) { prep.ramp_type = RAMP_DECEL; }
+//             else { prep.ramp_type = RAMP_CRUISE; }
+//             prep.current_speed = prep.maximum_speed;
+//           } else { // Acceleration only.  // Только ускорение.
+//             prep.current_speed += speed_var;
+//           }
+//           break;
+//         case RAMP_CRUISE: 
+//           // NOTE: mm_var used to retain the last mm_remaining for incomplete segment time_var calculations.
+//           // NOTE: If maximum_speed*time_var value is too low, round-off can cause mm_var to not change. To 
+//           //   prevent this, simply enforce a minimum speed threshold in the planner.
+//           // ПРИМЕЧАНИЕ: mm_var используется для сохранения последнего значения mm_remaining для неполных вычислений time_var сегмента.
+//           // ПРИМЕЧАНИЕ: Если значение maximum_speed*time_var слишком низкое, округление может привести к тому, что значение mm_var не изменится. Чтобы
+//           // предотвратить это, просто установите минимальный порог скорости в планировщике.
+//           mm_var = mm_remaining - prep.maximum_speed*time_var;
+//           if (mm_var < prep.decelerate_after) { // End of cruise. 
+//             // Cruise-deceleration junction or end of block.
+//             // Конец маршрута. 
+//             // Маршрут - переход для снижения скорости или конец квартала.
+//             time_var = (mm_remaining - prep.decelerate_after)/prep.maximum_speed;
+//             mm_remaining = prep.decelerate_after; // NOTE: 0.0 at EOB
+//             prep.ramp_type = RAMP_DECEL;
+//           } else { // Cruising only. // Только для круиза.    
+//             mm_remaining = mm_var; 
+//           } 
+//           break;
+//         default: // case RAMP_DECEL:
+//           // NOTE: mm_var used as a misc worker variable to prevent errors when near zero speed. // ПРИМЕЧАНИЕ: mm_var используется как дополнительная рабочая переменная для предотвращения ошибок при скорости, близкой к нулю.
+//           speed_var = pl_block->acceleration*time_var; // Used as delta speed (mm/min) // Используется в качестве дельта-скорости (мм/мин)
+//           if (prep.current_speed > speed_var) { // Check if at or below zero speed. // Проверьте, находится ли скорость на нулевом уровне или ниже него.
+//             // Compute distance from end of segment to end of block. // Вычислить расстояние от конца сегмента до конца блока.
+//             mm_var = mm_remaining - time_var*(prep.current_speed - 0.5*speed_var); // (mm)
+//             if (mm_var > prep.mm_complete) { // Deceleration only. // Только замедление.
+//               mm_remaining = mm_var;
+//               prep.current_speed -= speed_var;
+//               break; // Segment complete. Exit switch-case statement. Continue do-while loop. // Сегмент завершен. Выйдите из инструкции switch-case. Продолжите цикл do-while.
+//             }
+//           } // End of block or end of forced-deceleration. // Сегмент завершен. Выйдите из инструкции switch-case. Продолжите цикл do-while.
+//           time_var = 2.0*(mm_remaining-prep.mm_complete)/(prep.current_speed+prep.exit_speed);
+//           mm_remaining = prep.mm_complete; 
+//       }
+//       dt += time_var; // Add computed ramp time to total segment time. // Добавьте вычисленное время нарастания к общему времени сегмента.
+//       if (dt < dt_max) { time_var = dt_max - dt; } // **Incomplete** At ramp junction. // **Неполный** На перекрестке с пандусом.
+//       else {
+//         if (mm_remaining > minimum_mm) { // Check for very slow segments with zero steps.
+//           // Increase segment time to ensure at least one step in segment. Override and loop
+//           // through distance calculations until minimum_mm or mm_complete.
+//           // Проверьте, нет ли очень медленных сегментов с нулевым шагом.
+//           // Увеличьте время прохождения сегмента, чтобы обеспечить хотя бы один шаг в сегменте. Переопределите и выполните цикл
+//           // выполняйте вычисления расстояния до тех пор, пока не будет достигнуто значение minimum_mm или mm_complete.
+//           dt_max += DT_SEGMENT;
+//           time_var = dt_max - dt;
+//         } else { 
+//           break; // **Complete** Exit loop. Segment execution time maxed. // **Завершить цикл** Exit. Время выполнения сегмента увеличено до максимального значения.
+//         }
+//       }
+//     } while (mm_remaining > prep.mm_complete); // **Complete** Exit loop. Profile complete. // **Завершить** Цикл выхода. Профиль завершен.
 
    
-    /* -----------------------------------------------------------------------------------
-       Compute segment step rate, steps to execute, and apply necessary rate corrections.
-       NOTE: Steps are computed by direct scalar conversion of the millimeter distance 
-       remaining in the block, rather than incrementally tallying the steps executed per
-       segment. This helps in removing floating point round-off issues of several additions. 
-       However, since floats have only 7.2 significant digits, long moves with extremely 
-       high step counts can exceed the precision of floats, which can lead to lost steps.
-       Fortunately, this scenario is highly unlikely and unrealistic in CNC machines
-       supported by Grbl (i.e. exceeding 10 meters axis travel at 200 step/mm).
-    */
-   /* -----------------------------------------------------------------------------------
-       Вычислите частоту шагов сегмента, шаги для выполнения и примените необходимые корректировки скорости.
-       ПРИМЕЧАНИЕ: Шаги вычисляются путем прямого скалярного преобразования миллиметрового расстояния
-       , оставшегося в блоке, а не путем постепенного подсчета шагов, выполняемых за каждый сегмент.
-       сегмент. Это помогает устранить проблемы с округлением чисел с плавающей запятой при некоторых добавлениях. 
-       Однако, поскольку число с плавающей запятой состоит всего из 7,2 значащих цифр, long перемещается с чрезвычайно 
-       большое количество шагов может превысить точность поплавков, что может привести к потере шагов.
-       К счастью, этот сценарий крайне маловероятен и нереалистичен в станках с ЧПУ
-       поддерживается Grbl (например, перемещение оси превышает 10 метров при 200 шагах/мм).
-    */
-    float steps_remaining = prep.step_per_mm*mm_remaining; // Convert mm_remaining to steps // Преобразовать mm_remaining в шаги
-    float n_steps_remaining = ceil(steps_remaining); // Round-up current steps remaining // Подведение итогов оставшихся текущих шагов
-    float last_n_steps_remaining = ceil(prep.steps_remaining); // Round-up last steps remaining // Подведение итогов последних оставшихся шагов
-    prep_segment->n_step = last_n_steps_remaining-n_steps_remaining; // Compute number of steps to execute. // Вычислите количество шагов, которые необходимо выполнить.
+//     /* -----------------------------------------------------------------------------------
+//        Compute segment step rate, steps to execute, and apply necessary rate corrections.
+//        NOTE: Steps are computed by direct scalar conversion of the millimeter distance 
+//        remaining in the block, rather than incrementally tallying the steps executed per
+//        segment. This helps in removing floating point round-off issues of several additions. 
+//        However, since floats have only 7.2 significant digits, long moves with extremely 
+//        high step counts can exceed the precision of floats, which can lead to lost steps.
+//        Fortunately, this scenario is highly unlikely and unrealistic in CNC machines
+//        supported by Grbl (i.e. exceeding 10 meters axis travel at 200 step/mm).
+//     */
+//    /* -----------------------------------------------------------------------------------
+//        Вычислите частоту шагов сегмента, шаги для выполнения и примените необходимые корректировки скорости.
+//        ПРИМЕЧАНИЕ: Шаги вычисляются путем прямого скалярного преобразования миллиметрового расстояния
+//        , оставшегося в блоке, а не путем постепенного подсчета шагов, выполняемых за каждый сегмент.
+//        сегмент. Это помогает устранить проблемы с округлением чисел с плавающей запятой при некоторых добавлениях. 
+//        Однако, поскольку число с плавающей запятой состоит всего из 7,2 значащих цифр, long перемещается с чрезвычайно 
+//        большое количество шагов может превысить точность поплавков, что может привести к потере шагов.
+//        К счастью, этот сценарий крайне маловероятен и нереалистичен в станках с ЧПУ
+//        поддерживается Grbl (например, перемещение оси превышает 10 метров при 200 шагах/мм).
+//     */
+//     float steps_remaining = prep.step_per_mm*mm_remaining; // Convert mm_remaining to steps // Преобразовать mm_remaining в шаги
+//     float n_steps_remaining = ceil(steps_remaining); // Round-up current steps remaining // Подведение итогов оставшихся текущих шагов
+//     float last_n_steps_remaining = ceil(prep.steps_remaining); // Round-up last steps remaining // Подведение итогов последних оставшихся шагов
+//     prep_segment->n_step = last_n_steps_remaining-n_steps_remaining; // Compute number of steps to execute. // Вычислите количество шагов, которые необходимо выполнить.
     
-    // Bail if we are at the end of a feed hold and don't have a step to execute. // Внести залог, если у нас заканчивается задержка подачи и нам не нужно выполнять какой-либо шаг.
-    if (prep_segment->n_step == 0) {
-      if (sys.state & (STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR)) {
-        // Less than one step to decelerate to zero speed, but already very close. AMASS 
-        // requires full steps to execute. So, just bail.
-        // Менее одного шага до снижения скорости до нуля, но уже очень близко. накапливать 
-        // для выполнения требуется выполнить все шаги. Итак, просто выйдите из игры.
-        prep.current_speed = 0.0; // NOTE: (=0.0) Used to indicate completed segment calcs for hold. // ПРИМЕЧАНИЕ: (=0,0) Используется для обозначения завершенных расчетов сегмента для удержания.
-        prep.dt_remainder = 0.0;
-        prep.steps_remaining = n_steps_remaining;
-        pl_block->millimeters = prep.steps_remaining/prep.step_per_mm; // Update with full steps. // Обновите с полными шагами.
-        plan_cycle_reinitialize();         
-        return; // Segment not generated, but current step data still retained. // Сегмент не сгенерирован, но данные текущего шага все еще сохраняются.
-      }
-    }
+//     // Bail if we are at the end of a feed hold and don't have a step to execute. // Внести залог, если у нас заканчивается задержка подачи и нам не нужно выполнять какой-либо шаг.
+//     if (prep_segment->n_step == 0) {
+//       if (sys.state & (STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR)) {
+//         // Less than one step to decelerate to zero speed, but already very close. AMASS 
+//         // requires full steps to execute. So, just bail.
+//         // Менее одного шага до снижения скорости до нуля, но уже очень близко. накапливать 
+//         // для выполнения требуется выполнить все шаги. Итак, просто выйдите из игры.
+//         prep.current_speed = 0.0; // NOTE: (=0.0) Used to indicate completed segment calcs for hold. // ПРИМЕЧАНИЕ: (=0,0) Используется для обозначения завершенных расчетов сегмента для удержания.
+//         prep.dt_remainder = 0.0;
+//         prep.steps_remaining = n_steps_remaining;
+//         pl_block->millimeters = prep.steps_remaining/prep.step_per_mm; // Update with full steps. // Обновите с полными шагами.
+//         plan_cycle_reinitialize();         
+//         return; // Segment not generated, but current step data still retained. // Сегмент не сгенерирован, но данные текущего шага все еще сохраняются.
+//       }
+//     }
 
-    // Compute segment step rate. Since steps are integers and mm distances traveled are not,
-    // the end of every segment can have a partial step of varying magnitudes that are not 
-    // executed, because the stepper ISR requires whole steps due to the AMASS algorithm. To
-    // compensate, we track the time to execute the previous segment's partial step and simply
-    // apply it with the partial step distance to the current segment, so that it minutely
-    // adjusts the whole segment rate to keep step output exact. These rate adjustments are 
-    // typically very small and do not adversely effect performance, but ensures that Grbl
-    // outputs the exact acceleration and velocity profiles as computed by the planner.
-    // Вычислить скорость шага сегмента. Поскольку шаги являются целыми числами, а пройденные расстояния в миллиметрах - нет,
-    // в конце каждого сегмента может быть частичный шаг различной величины, который
-    // не выполняется, поскольку для пошагового ISR требуются целые шаги из-за алгоритма AMASS. Чтобы
-    // компенсировать это, мы отслеживаем время выполнения частичного шага предыдущего сегмента и просто
-    // применяем его с учетом расстояния частичного шага к текущему сегменту, чтобы оно было минимальным
-    // корректируем скорость всего сегмента для обеспечения точности вывода шага. Эти корректировки скорости являются 
-    // как правило, очень малы и не влияют отрицательно на производительность, но гарантируют, что Grbl
-    // выдает точные профили ускорения и скорости, рассчитанные планировщиком.
-    dt += prep.dt_remainder; // Apply previous segment partial step execute time // Применить время выполнения частичного шага предыдущего сегмента
+//     // Compute segment step rate. Since steps are integers and mm distances traveled are not,
+//     // the end of every segment can have a partial step of varying magnitudes that are not 
+//     // executed, because the stepper ISR requires whole steps due to the AMASS algorithm. To
+//     // compensate, we track the time to execute the previous segment's partial step and simply
+//     // apply it with the partial step distance to the current segment, so that it minutely
+//     // adjusts the whole segment rate to keep step output exact. These rate adjustments are 
+//     // typically very small and do not adversely effect performance, but ensures that Grbl
+//     // outputs the exact acceleration and velocity profiles as computed by the planner.
+//     // Вычислить скорость шага сегмента. Поскольку шаги являются целыми числами, а пройденные расстояния в миллиметрах - нет,
+//     // в конце каждого сегмента может быть частичный шаг различной величины, который
+//     // не выполняется, поскольку для пошагового ISR требуются целые шаги из-за алгоритма AMASS. Чтобы
+//     // компенсировать это, мы отслеживаем время выполнения частичного шага предыдущего сегмента и просто
+//     // применяем его с учетом расстояния частичного шага к текущему сегменту, чтобы оно было минимальным
+//     // корректируем скорость всего сегмента для обеспечения точности вывода шага. Эти корректировки скорости являются 
+//     // как правило, очень малы и не влияют отрицательно на производительность, но гарантируют, что Grbl
+//     // выдает точные профили ускорения и скорости, рассчитанные планировщиком.
+//     dt += prep.dt_remainder; // Apply previous segment partial step execute time // Применить время выполнения частичного шага предыдущего сегмента
 
-    float inv_rate = dt/(last_n_steps_remaining - steps_remaining); // Compute adjusted step rate inverse // Вычислить скорректированную скорость шага, обратную
-    prep.dt_remainder = (n_steps_remaining - steps_remaining)*inv_rate; // Update segment partial step time // Время частичного шага обновления сегмента
+//     float inv_rate = dt/(last_n_steps_remaining - steps_remaining); // Compute adjusted step rate inverse // Вычислить скорректированную скорость шага, обратную
+//     prep.dt_remainder = (n_steps_remaining - steps_remaining)*inv_rate; // Update segment partial step time // Время частичного шага обновления сегмента
 
-    // Compute CPU cycles per step for the prepped segment. // Вычислять циклы процессора за каждый шаг для подготовленного сегмента.
-    uint32_t cycles = ceil( (TICKS_PER_MICROSECOND*1000000*60)*inv_rate ); // (cycles/step)    
+//     // Compute CPU cycles per step for the prepped segment. // Вычислять циклы процессора за каждый шаг для подготовленного сегмента.
+//     uint32_t cycles = ceil( (TICKS_PER_MICROSECOND*1000000*60)*inv_rate ); // (cycles/step)    
 
-    #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING        
-      // Compute step timing and multi-axis smoothing level.
-      // NOTE: AMASS overdrives the timer with each level, so only one prescalar is required.
-      // Вычислите время выполнения шага и уровень многоосевого сглаживания.
-      // ПРИМЕЧАНИЕ: AMASS увеличивает время работы таймера с каждым уровнем, поэтому требуется только один предварительный масштаб.
-      if (cycles < AMASS_LEVEL1) { prep_segment->amass_level = 0; }
-      else {
-        if (cycles < AMASS_LEVEL2) { prep_segment->amass_level = 1; }
-        else if (cycles < AMASS_LEVEL3) { prep_segment->amass_level = 2; }
-        else { prep_segment->amass_level = 3; }    
-        cycles >>= prep_segment->amass_level; 
-        prep_segment->n_step <<= prep_segment->amass_level;
-      }
-      if (cycles < (1UL << 16)) { prep_segment->cycles_per_tick = cycles; } // < 65536 (4.1ms @ 16MHz)
-      else { prep_segment->cycles_per_tick = 0xffff; } // Just set the slowest speed possible. // Просто установите самую низкую скорость из возможных.
-    #else 
-      // Compute step timing and timer prescalar for normal step generation. // Вычислите время шага и предкаляр таймера для нормальной генерации шага.
-      if (cycles < (1UL << 16)) { // < 65536  (4.1ms @ 16MHz)
-        prep_segment->prescaler = 1; // prescaler: 0
-        prep_segment->cycles_per_tick = cycles;
-      } else if (cycles < (1UL << 19)) { // < 524288 (32.8ms@16MHz)
-        prep_segment->prescaler = 2; // prescaler: 8
-        prep_segment->cycles_per_tick = cycles >> 3;
-      } else { 
-        prep_segment->prescaler = 3; // prescaler: 64
-        if (cycles < (1UL << 22)) { // < 4194304 (262ms@16MHz)
-          prep_segment->cycles_per_tick =  cycles >> 6;
-        } else { // Just set the slowest speed possible. (Around 4 step/sec.) // Вычислите время шага и предкаляр таймера для нормальной генерации шага.
-          prep_segment->cycles_per_tick = 0xffff;
-        }
-      }
-    #endif
+//     #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING        
+//       // Compute step timing and multi-axis smoothing level.
+//       // NOTE: AMASS overdrives the timer with each level, so only one prescalar is required.
+//       // Вычислите время выполнения шага и уровень многоосевого сглаживания.
+//       // ПРИМЕЧАНИЕ: AMASS увеличивает время работы таймера с каждым уровнем, поэтому требуется только один предварительный масштаб.
+//       if (cycles < AMASS_LEVEL1) { prep_segment->amass_level = 0; }
+//       else {
+//         if (cycles < AMASS_LEVEL2) { prep_segment->amass_level = 1; }
+//         else if (cycles < AMASS_LEVEL3) { prep_segment->amass_level = 2; }
+//         else { prep_segment->amass_level = 3; }    
+//         cycles >>= prep_segment->amass_level; 
+//         prep_segment->n_step <<= prep_segment->amass_level;
+//       }
+//       if (cycles < (1UL << 16)) { prep_segment->cycles_per_tick = cycles; } // < 65536 (4.1ms @ 16MHz)
+//       else { prep_segment->cycles_per_tick = 0xffff; } // Just set the slowest speed possible. // Просто установите самую низкую скорость из возможных.
+//     #else 
+//       // Compute step timing and timer prescalar for normal step generation. // Вычислите время шага и предкаляр таймера для нормальной генерации шага.
+//       if (cycles < (1UL << 16)) { // < 65536  (4.1ms @ 16MHz)
+//         prep_segment->prescaler = 1; // prescaler: 0
+//         prep_segment->cycles_per_tick = cycles;
+//       } else if (cycles < (1UL << 19)) { // < 524288 (32.8ms@16MHz)
+//         prep_segment->prescaler = 2; // prescaler: 8
+//         prep_segment->cycles_per_tick = cycles >> 3;
+//       } else { 
+//         prep_segment->prescaler = 3; // prescaler: 64
+//         if (cycles < (1UL << 22)) { // < 4194304 (262ms@16MHz)
+//           prep_segment->cycles_per_tick =  cycles >> 6;
+//         } else { // Just set the slowest speed possible. (Around 4 step/sec.) // Вычислите время шага и предкаляр таймера для нормальной генерации шага.
+//           prep_segment->cycles_per_tick = 0xffff;
+//         }
+//       }
+//     #endif
 
-    // Segment complete! Increment segment buffer indices. // Сегмент завершен! Увеличьте индексы буфера сегмента.
-    segment_buffer_head = segment_next_head;
-    if ( ++segment_next_head == SEGMENT_BUFFER_SIZE ) { segment_next_head = 0; }
+//     // Segment complete! Increment segment buffer indices. // Сегмент завершен! Увеличьте индексы буфера сегмента.
+//     segment_buffer_head = segment_next_head;
+//     if ( ++segment_next_head == SEGMENT_BUFFER_SIZE ) { segment_next_head = 0; }
 
-    // Setup initial conditions for next segment. // Установите начальные условия для следующего сегмента.
-    if (mm_remaining > prep.mm_complete) { 
-      // Normal operation. Block incomplete. Distance remaining in block to be executed. // Нормальная работа. Блок не завершен. Расстояние, оставшееся в блоке для выполнения.
-      pl_block->millimeters = mm_remaining;      
-      prep.steps_remaining = steps_remaining;  
-    } else { 
-      // End of planner block or forced-termination. No more distance to be executed. // Завершение блока планирования или принудительное завершение. Больше не нужно выполнять дистанцию.
-      if (mm_remaining > 0.0) { // At end of forced-termination.
-        // Reset prep parameters for resuming and then bail. Allow the stepper ISR to complete
-        // the segment queue, where realtime protocol will set new state upon receiving the 
-        // cycle stop flag from the ISR. Prep_segment is blocked until then.
-        // В конце принудительного завершения.
-        // Сбросьте подготовительные параметры для возобновления, а затем сбросьте bail. Разрешите завершить пошаговый ISR
-        // очередь сегментов, в которой протокол реального времени установит новое состояние после получения
-        // флага остановки цикла от ISR. До тех пор Prep_segment заблокирован.
-        prep.current_speed = 0.0; // NOTE: (=0.0) Used to indicate completed segment calcs for hold. // ПРИМЕЧАНИЕ: (=0,0) Используется для обозначения завершенных расчетов сегмента для удержания.
-        prep.dt_remainder = 0.0;
-        prep.steps_remaining = ceil(steps_remaining);
-        pl_block->millimeters = prep.steps_remaining/prep.step_per_mm; // Update with full steps. // Обновите с полными шагами.
-        plan_cycle_reinitialize(); 
-        return; // Bail! // Залог!
-      } else { // End of planner block // Конец блока планирования
-        // The planner block is complete. All steps are set to be executed in the segment buffer. // Блок планирования завершен. Все шаги настроены на выполнение в буфере сегмента.
-        pl_block = NULL; // Set pointer to indicate check and load next planner block. // Установите указатель так, чтобы он указывал на проверку и загрузку следующего блока планировщика.
-        plan_discard_current_block();
-      }
-    }
+//     // Setup initial conditions for next segment. // Установите начальные условия для следующего сегмента.
+//     if (mm_remaining > prep.mm_complete) { 
+//       // Normal operation. Block incomplete. Distance remaining in block to be executed. // Нормальная работа. Блок не завершен. Расстояние, оставшееся в блоке для выполнения.
+//       pl_block->millimeters = mm_remaining;      
+//       prep.steps_remaining = steps_remaining;  
+//     } else { 
+//       // End of planner block or forced-termination. No more distance to be executed. // Завершение блока планирования или принудительное завершение. Больше не нужно выполнять дистанцию.
+//       if (mm_remaining > 0.0) { // At end of forced-termination.
+//         // Reset prep parameters for resuming and then bail. Allow the stepper ISR to complete
+//         // the segment queue, where realtime protocol will set new state upon receiving the 
+//         // cycle stop flag from the ISR. Prep_segment is blocked until then.
+//         // В конце принудительного завершения.
+//         // Сбросьте подготовительные параметры для возобновления, а затем сбросьте bail. Разрешите завершить пошаговый ISR
+//         // очередь сегментов, в которой протокол реального времени установит новое состояние после получения
+//         // флага остановки цикла от ISR. До тех пор Prep_segment заблокирован.
+//         prep.current_speed = 0.0; // NOTE: (=0.0) Used to indicate completed segment calcs for hold. // ПРИМЕЧАНИЕ: (=0,0) Используется для обозначения завершенных расчетов сегмента для удержания.
+//         prep.dt_remainder = 0.0;
+//         prep.steps_remaining = ceil(steps_remaining);
+//         pl_block->millimeters = prep.steps_remaining/prep.step_per_mm; // Update with full steps. // Обновите с полными шагами.
+//         plan_cycle_reinitialize(); 
+//         return; // Bail! // Залог!
+//       } else { // End of planner block // Конец блока планирования
+//         // The planner block is complete. All steps are set to be executed in the segment buffer. // Блок планирования завершен. Все шаги настроены на выполнение в буфере сегмента.
+//         pl_block = NULL; // Set pointer to indicate check and load next planner block. // Установите указатель так, чтобы он указывал на проверку и загрузку следующего блока планировщика.
+//         plan_discard_current_block();
+//       }
+//     }
 
-  } 
+//   } 
 }      
 
 
