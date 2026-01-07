@@ -70,22 +70,17 @@
 #define bit_istrue(x,mask) ((x & mask) != 0)
 // #define bit_isfalse(x,mask) ((x & mask) == 0)
 
-// class SysObj
-// {
-// private:
-//   void SystemClockConfig();
-//   void* machine_;
-// public:
-
-//    SysObj() = default;
-//   void Init(void* machine);
-//   void* GetMachine();
-// };
-
 GPIO_PinState ReadPin(GPIO_TypeDef *GPIO_x, HAL_PinsTypeDef pin);
 void PinInitInputIRQ(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull, HAL_GPIO_Line_Config irq_line);
 HAL_StatusTypeDef PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull);
+HAL_StatusTypeDef PinInitOutput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port);
 bool PinHightLevel(const HAL_PinsTypeDef pin, GPIO_TypeDef* port);
+
+// Функция для сброса произвольных линий прерываний
+void ClearGPIOInterrupts(uint8_t line_mask);
+
+// Функция для сброса конкретных линий прерываний, заданных через HAL_GPIO_Line
+void ClearGPIOInterruptLines(uint8_t mask);
 
 // Read a floating point value from a string. Line points to the input buffer, char_counter 
 // is the indexer pointing to the current character of the line, while float_ptr is 

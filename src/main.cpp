@@ -2,6 +2,7 @@
 #include "serial.h"
 #include "report.h"
 #include "machine.h"
+#include "stepper.h"
 
 void* machine_glb;
 
@@ -10,6 +11,11 @@ void* machine_glb;
       || HAL_GPIO_LineInterruptState(Y_LIMIT_LINE_IRQ)
       || HAL_GPIO_LineInterruptState(Z_LIMIT_LINE_IRQ)){
 
+      uint8_t mask;
+      mask |= 1 << (X_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S);
+      mask |= 1 << (Y_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S);
+      mask |= 1 << (Z_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S);
+      ClearGPIOInterruptLines(mask);
 //   // auto machine = sys_obj.GetMachine();
 //   // При смене pin нужно создать небольшую задержку.
 //   delay_ms(10);
@@ -42,13 +48,12 @@ extern "C"
         if (EPIC_CHECK_GPIO_IRQ())
         {
             CheckLimits();
-            HAL_GPIO_ClearInterrupts();
         }
 
         //   /* Сброс прерываний */
         //   // Денис рекомендовал следующую последовательность, сбросить флаг прерывания, затем его обрабатывать.
         //   // Чтобы было меньше багов
-        HAL_EPIC_Clear(0xFFFFFFFF);
+         HAL_EPIC_Clear(0xFFFFFFFF);
         // }
     }
 }
@@ -65,7 +70,7 @@ int main()
 
     machine_glb = &machine;
     report.SetMachine(&machine);
-
+    stepper_init();
     io_out(USER_LED);
 
     while (1)

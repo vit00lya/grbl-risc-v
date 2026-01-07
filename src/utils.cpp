@@ -108,6 +108,14 @@ HAL_StatusTypeDef PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HA
     GPIO_InitStruct.Pull = pull;
     return HAL_GPIO_Init(port, &GPIO_InitStruct);
 
+}
+
+HAL_StatusTypeDef PinInitOutput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port){
+
+    GPIO_InitTypeDef GPIO_InitStruct = {};
+    GPIO_InitStruct.Pin = pin;
+    GPIO_InitStruct.Mode = HAL_GPIO_MODE_GPIO_OUTPUT;
+    return HAL_GPIO_Init(port, &GPIO_InitStruct);
 
 }
 
@@ -257,3 +265,18 @@ void delay_us(uint32_t us)
 // Simple hypotenuse computation function.
 // Простая функция вычисления гипотенузы.
 float hypot_f(float x, float y) { return(sqrt(x*x + y*y)); }
+
+// Функция для сброса произвольных линий прерываний
+// lines - битовая маска, где каждый бит соответствует линии прерывания
+// Например, для сброса линий 0, 3 и 7 нужно передать
+// (1 << (X_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S)) |
+// (1 << (Y_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S)) |
+// (1 << (Z_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S))
+void ClearGPIOInterrupts(uint8_t line_mask) {
+    GPIO_IRQ->CLEAR = line_mask;
+}
+
+// Функция для сброса конкретных линий прерываний, заданных через HAL_GPIO_Line
+void ClearGPIOInterruptLines(uint8_t mask) {
+    GPIO_IRQ->CLEAR = mask;
+}
