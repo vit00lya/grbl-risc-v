@@ -43,6 +43,7 @@ extern "C" {
     #include <wakeup.h>
     #include "uart_lib.h"
     #include "xprintf.h"
+    #include "mik32_hal_timer16.h"
 }
 
 

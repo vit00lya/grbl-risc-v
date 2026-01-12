@@ -76,7 +76,7 @@ struct sys{
 // uint8_t sys_rt_exec_state;  // Global realtime executor bitflag variable for state management. See EXEC bitmasks. // Глобальная переменная bitflag executor в реальном времени для управления состоянием. Смотрите раздел Битовые маски EXEC.
 // uint8_t sys_rt_exec_alarm;  // Global realtime executor bitflag variable for setting various alarms. // Глобальная переменная bitflag исполнителя в реальном времени для установки различных сигналов тревоги.
 
-void SystemClockConfig();
+// void SystemClockConfig();
 
 // Initialize the serial protocol
 // Инициализируйте последовательный протокол

@@ -32,11 +32,40 @@
 //   return machine_;
 // }
 
-void SystemClockConfig()
+
+static void Timer16_StepInit(Timer16_HandleTypeDef& timer_step)
+{
+    timer_step.Instance = TIMER_STEP;
+
+    /* Настройка тактирования */
+    timer_step.Clock.Source = TIMER16_SOURCE_INTERNAL_SYSTEM;
+    timer_step.CountMode = TIMER16_COUNTMODE_INTERNAL; /* При тактировании от Input1 не имеет значения */
+    timer_step.Clock.Prescaler = TIMER16_PRESCALER_1;
+    timer_step.ActiveEdge = TIMER16_ACTIVEEDGE_RISING; /* Выбирается при тактировании от Input1 */
+
+    /* Настройка режима обновления регистра ARR и CMP */
+    timer_step.Preload = TIMER16_PRELOAD_AFTERWRITE;
+
+    /* Настройки фильтра */
+    timer_step.Filter.ExternalClock = TIMER16_FILTER_NONE;
+    timer_step.Filter.Trigger = TIMER16_FILTER_NONE;
+
+    /* Настройка режима энкодера */
+    timer_step.EncoderMode = TIMER16_ENCODER_DISABLE;
+
+    /* Выходной сигнал */
+    timer_step.Waveform.Enable = TIMER16_WAVEFORM_GENERATION_ENABLE;
+    timer_step.Waveform.Polarity = TIMER16_WAVEFORM_POLARITY_NONINVERTED;
+
+    HAL_Timer16_Init(&timer_step);
+}
+
+void SystemClockConfig(Timer16_HandleTypeDef& timer_step)
 {
 
     HAL_Init();
 
+    Timer16_StepInit(timer_step);
     PCC_InitTypeDef PCC_OscInit = {0};
 
     PCC_OscInit.OscillatorEnable = PCC_OSCILLATORTYPE_ALL;
@@ -65,6 +94,7 @@ void SystemClockConfig()
     HAL_IRQ_EnableInterrupts();
 
 }
+
 
 /**
  * @brief Считать текущее состояние выводов порта GPIO_x.

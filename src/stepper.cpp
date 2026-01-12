@@ -293,290 +293,6 @@ void st_go_idle()
   // else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
 }
 
-
-/* "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. Grbl employs
-   the venerable Bresenham line algorithm to manage and exactly synchronize multi-axis moves.
-   Unlike the popular DDA algorithm, the Bresenham algorithm is not susceptible to numerical
-   round-off errors and only requires fast integer counters, meaning low computational overhead
-   and maximizing the Arduino's capabilities. However, the downside of the Bresenham algorithm
-   is, for certain multi-axis motions, the non-dominant axes may suffer from un-smooth step 
-   pulse trains, or aliasing, which can lead to strange audible noises or shaking. This is 
-   particularly noticeable or may cause motion issues at low step frequencies (0-5kHz), but 
-   is usually not a physical problem at higher frequencies, although audible.
-     To improve Bresenham multi-axis performance, Grbl uses what we call an Adaptive Multi-Axis
-   Step Smoothing (AMASS) algorithm, which does what the name implies. At lower step frequencies,
-   AMASS artificially increases the Bresenham resolution without effecting the algorithm's 
-   innate exactness. AMASS adapts its resolution levels automatically depending on the step
-   frequency to be executed, meaning that for even lower step frequencies the step smoothing 
-   level increases. Algorithmically, AMASS is acheived by a simple bit-shifting of the Bresenham
-   step count for each AMASS level. For example, for a Level 1 step smoothing, we bit shift 
-   the Bresenham step event count, effectively multiplying it by 2, while the axis step counts 
-   remain the same, and then double the stepper ISR frequency. In effect, we are allowing the
-   non-dominant Bresenham axes step in the intermediate ISR tick, while the dominant axis is 
-   stepping every two ISR ticks, rather than every ISR tick in the traditional sense. At AMASS
-   Level 2, we simply bit-shift again, so the non-dominant Bresenham axes can step within any 
-   of the four ISR ticks, the dominant axis steps every four ISR ticks, and quadruple the 
-   stepper ISR frequency. And so on. This, in effect, virtually eliminates multi-axis aliasing 
-   issues with the Bresenham algorithm and does not significantly alter Grbl's performance, but 
-   in fact, more efficiently utilizes unused CPU cycles overall throughout all configurations.
-     AMASS retains the Bresenham algorithm exactness by requiring that it always executes a full
-   Bresenham step, regardless of AMASS Level. Meaning that for an AMASS Level 2, all four 
-   intermediate steps must be completed such that baseline Bresenham (Level 0) count is always 
-   retained. Similarly, AMASS Level 3 means all eight intermediate steps must be executed. 
-   Although the AMASS Levels are in reality arbitrary, where the baseline Bresenham counts can
-   be multiplied by any integer value, multiplication by powers of two are simply used to ease 
-   CPU overhead with bitshift integer operations. 
-     This interrupt is simple and dumb by design. All the computational heavy-lifting, as in
-   determining accelerations, is performed elsewhere. This interrupt pops pre-computed segments,
-   defined as constant velocity over n number of steps, from the step segment buffer and then 
-   executes them by pulsing the stepper pins appropriately via the Bresenham algorithm. This 
-   ISR is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port
-   after each pulse. The bresenham line tracer algorithm controls all stepper outputs
-   simultaneously with these two interrupts.
-   
-   NOTE: This interrupt must be as efficient as possible and complete before the next ISR tick, 
-   which for Grbl must be less than 33.3usec (@30kHz ISR rate). Oscilloscope measured time in 
-   ISR is 5usec typical and 25usec maximum, well below requirement.
-   NOTE: This ISR expects at least one step to be executed per segment.
-*/
-// TODO: Replace direct updating of the int32 position counters in the ISR somehow. Perhaps use smaller
-// int8 variables and update position counters only when a segment completes. This can get complicated 
-// with probing and homing cycles that require true real-time positions.
-/* "Прерывание шагового привода" - это прерывание по таймеру является рабочей лошадкой Grbl. В Grbl используется
-   знаменитый линейный алгоритм Брезенхэма для управления и точной синхронизации многоосевых перемещений.
-   В отличие от популярного алгоритма DDA, алгоритм Брезенхэма не подвержен ошибкам округления чисел
-   и требует только быстрого подсчета целых чисел, что означает низкую вычислительную нагрузку
-и максимизацию возможностей Arduino. Однако у алгоритма Брезенхэма есть и обратная сторона
-   заключается в том, что при определенных многоосевых перемещениях не доминирующие оси могут иметь неровный шаг 
-   последовательности импульсов или искажение, которые могут привести к появлению странных звуковых сигналов или дрожанию. Это
-особенно заметно или может вызвать проблемы с движением на низких ступенчатых частотах (0-5 кГц), но
-обычно не является физической проблемой на более высоких частотах, хотя и слышно.
-     Чтобы улучшить производительность многоосевого алгоритма Брезенхэма, Grbl использует так называемый адаптивный многоосевой алгоритм
-   Пошагового сглаживания (AMASS), который выполняет то, что следует из названия. При более низких частотах шага,
-   AMASS искусственно увеличивает разрешение по Брезенхэму, не влияя на эффективность алгоритма. 
-   врожденная точность. AMASS автоматически адаптирует свои уровни разрешения в зависимости от шага
-   частота, которую необходимо выполнить, означает, что при еще более низких частотах шага
-уровень сглаживания шага увеличивается. Алгоритмически НАКОПЛЕНИЕ достигается простым сдвигом количества
-шагов Брезенхэма в битах для каждого уровня накопления. Например, для сглаживания шага уровня 1 мы немного сдвигаем
-количество событий шага Брезенхэма, фактически умножая его на 2, в то время как количество шагов по оси 
-   остается неизменным, а затем удваиваем частоту ISR шагового устройства. По сути, мы разрешаем
-   недоминантные оси Брезенхэма делают шаг в промежуточном такте ISR, в то время как доминирующая ось
-делает шаг каждые два такта ISR, а не каждый такт ISR в традиционном смысле. В AMASS
-   На уровне 2 мы просто снова меняем битовый сдвиг, чтобы недоминантные оси Брезенхэма могли перемещаться в пределах любого
-из четырех тактов ISR, доминирующая ось перемещается каждые четыре такта ISR и увеличивает частоту шагового
-ISR в четыре раза. И так далее. Это, по сути, практически устраняет
-проблемы с многоосевым сглаживанием в алгоритме Брезенхэма и существенно не влияет на производительность Grbl, но 
-   фактически, более эффективно используются неиспользуемые циклы процессора в целом во всех конфигурациях.
-     AMASS сохраняет точность алгоритма Брезенхэма, требуя, чтобы он всегда выполнял полный
-   Шаг Брезенхэма, независимо от уровня накопления. Это означает, что для уровня накопления 2
-должны быть выполнены все четыре промежуточных шага, чтобы всегда сохранялся базовый показатель Брезенхэма (уровень 0)
-. Аналогично, уровень накопления 3 означает, что должны быть выполнены все восемь промежуточных шагов. 
-   Несмотря на то, что уровни накопления на самом деле произвольны, базовые значения Брезенхема могут
-   быть умноженным на любое целое значение, умножение на степени двойки просто используется для облегчения 
-   Нагрузка на процессор при выполнении целочисленных операций со сдвигом битов. 
-     Это прерывание является простым и немым по своей конструкции. Вся тяжелая вычислительная работа, как и при
-определении ускорений, выполняется в другом месте. Это прерывание извлекает предварительно вычисленные сегменты,
-определенные как сегменты с постоянной скоростью на протяжении n шагов, из буфера сегментов шага, а затем 
-   выполняет их, соответствующим образом активируя контакты шагового устройства с помощью алгоритма Брезенхэма. Этот 
-   ISR поддерживается прерыванием сброса шагового порта, которое используется для сброса шагового порта
-   после каждого импульса. Алгоритм трассировки линии Брезенхэма управляет всеми выходами шагового порта
-   одновременно с этими двумя прерываниями.
-   
-   ПРИМЕЧАНИЕ: Это прерывание должно быть максимально эффективным и завершиться до следующего тика ISR,
-который для Grbl должен составлять менее 33,3usec (при частоте ISR 30 кГц). Время, измеренное осциллографом в 
-   Стандартное значение ISR составляет 5 мкс, максимальное - 25 мкс, что значительно ниже требований.
-   ПРИМЕЧАНИЕ: В этом ISR предполагается выполнение как минимум одного шага на сегмент.
-*/
-// ЗАДАЧА: Каким-то образом заменить прямое обновление счетчиков местоположения int32 в ISR. Возможно, использовать переменные меньшего размера
-// int8 и обновлять счетчики местоположения только по завершении сегмента. Это может усложниться 
-// // с циклами зондирования и наведения, которые требуют точных данных о местоположении в реальном времени.
-// ISR(TIMER1_COMPA_vect)
-// {        
-// // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR // Debug: Используется для определения времени ISR
-//   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt // Флаг занятости используется для того, чтобы избежать повторного ввода этого прерывания
-  
-//   // Set the direction pins a couple of nanoseconds before we step the steppers // Установите направляющие штифты за пару наносекунд до того, как мы включим степперы
-//   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
-
-//   // Then pulse the stepping pins // Затем подайте импульс на шаговые штифты
-//   #ifdef STEP_PULSE_DELAY
-//     st.step_bits = (STEP_PORT & ~STEP_MASK) | st.step_outbits; // Store out_bits to prevent overwriting. // Сохраните out_bits, чтобы предотвратить перезапись.
-//   #else  // Normal operation // Нормальная работа
-//     STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
-//   #endif  
-
-//   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
-//   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
-//   // Включите таймер сброса шагового импульса, чтобы прерывание сброса шагового порта могло сбрасывать сигнал после
-//   // точных настроек.pulse_microseconds в микросекундах, независимо от основного таймера1.
-//   TCNT0 = st.step_pulse_time; // Reload Timer0 counter // Счетчик времени перезагрузки 0
-//   TCCR0B = (1<<CS01); // Begin Timer0. Full speed, 1/8 prescaler // Время начала 0. Полная скорость, предустановка на 1/8
-
-//   busy = true;
-//   sei(); // Re-enable interrupts to allow Stepper Port Reset Interrupt to fire on-time. 
-//          // NOTE: The remaining code in this ISR will finish before returning to main program.
-//          // Повторно включите прерывания, чтобы обеспечить своевременное срабатывание прерывания сброса шагового порта. 
-//          // ПРИМЕЧАНИЕ: Оставшийся код в этом ISR будет завершен до возврата к основной программе.
-    
-//   // If there is no step segment, attempt to pop one from the stepper buffer
-//   // Если сегмента step нет, попробуйте извлечь его из буфера stepper
-//   if (st.exec_segment == NULL) {
-//     // Anything in the buffer? If so, load and initialize next step segment.
-//     // Что-нибудь есть в буфере? Если да, загрузите и инициализируйте сегмент следующего шага.
-//     if (segment_buffer_head != segment_buffer_tail) {
-//       // Initialize new step segment and load number of steps to execute
-//       // Инициализируем новый сегмент шага и загружаем количество шагов для выполнения
-//       st.exec_segment = &segment_buffer[segment_buffer_tail];
-
-//       #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-//         // With AMASS is disabled, set timer prescaler for segments with slow step frequencies (< 250Hz).
-//         // Если функция AMASS отключена, установите предварительный масштабатор таймера для сегментов с низкой частотой шага (< 250 Гц).
-//         TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
-//       #endif
-
-//       // Initialize step segment timing per step and load number of steps to execute.
-//       // Инициализируйте синхронизацию сегмента шага для каждого шага и загрузите количество шагов для выполнения.
-//       OCR1A = st.exec_segment->cycles_per_tick;
-//       st.step_count = st.exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow. // ПРИМЕЧАНИЕ: Иногда может быть равно нулю при медленном движении.
-//       // If the new segment starts a new planner block, initialize stepper variables and counters.
-//       // NOTE: When the segment data index changes, this indicates a new planner block.
-//       // Если новый сегмент запускает новый блок планировщика, инициализируйте промежуточные переменные и счетчики.
-//       // ПРИМЕЧАНИЕ: Когда индекс данных сегмента изменяется, это указывает на новый блок планировщика.
-//       if ( st.exec_block_index != st.exec_segment->st_block_index ) {
-//         st.exec_block_index = st.exec_segment->st_block_index;
-//         st.exec_block = &st_block_buffer[st.exec_block_index];
-        
-//         // Initialize Bresenham line and distance counters
-//         // Инициализировать счетчики линий и расстояний Брезенхэма
-//         st.counter_x = st.counter_y = st.counter_z = (st.exec_block->step_event_count >> 1);
-//       }
-//       st.dir_outbits = st.exec_block->direction_bits ^ dir_port_invert_mask; 
-
-//       #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-//         // With AMASS enabled, adjust Bresenham axis increment counters according to AMASS level.
-//         // При включенном режиме НАКОПЛЕНИЯ отрегулируйте счетчики приращения по оси Брезенхэма в соответствии с уровнем НАКОПЛЕНИЯ.
-//         st.steps[X_AXIS] = st.exec_block->steps[X_AXIS] >> st.exec_segment->amass_level;
-//         st.steps[Y_AXIS] = st.exec_block->steps[Y_AXIS] >> st.exec_segment->amass_level;
-//         st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
-//       #endif
-      
-//     } else {
-//       // Segment buffer empty. Shutdown.
-//       // Буфер сегмента пуст. Выключение.
-//       st_go_idle();
-//       bit_true_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP); // Flag main program for cycle end // Помечает основную программу для завершения цикла
-//       return; // Nothing to do but exit. // Ничего не остается, как выйти.
-//     }  
-//   }
-  
-  
-//   // Check probing state. // Проверьте состояние зондирования.
-//   probe_state_monitor();
-   
-//   // Reset step out bits. // Сбросить биты вывода шага.
-//   st.step_outbits = 0; 
-
-//   // Execute step displacement profile by Bresenham line algorithm // Выполнить профиль ступенчатого смещения с помощью линейного алгоритма Брезенхема
-//   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-//     st.counter_x += st.steps[X_AXIS];
-//   #else
-//     st.counter_x += st.exec_block->steps[X_AXIS];
-//   #endif  
-//   if (st.counter_x > st.exec_block->step_event_count) {
-//     st.step_outbits |= (1<<X_STEP_BIT);
-//     st.counter_x -= st.exec_block->step_event_count;
-//     if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
-//     else { sys.position[X_AXIS]++; }
-//   }
-//   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-//     st.counter_y += st.steps[Y_AXIS];
-//   #else
-//     st.counter_y += st.exec_block->steps[Y_AXIS];
-//   #endif    
-//   if (st.counter_y > st.exec_block->step_event_count) {
-//     st.step_outbits |= (1<<Y_STEP_BIT);
-//     st.counter_y -= st.exec_block->step_event_count;
-//     if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
-//     else { sys.position[Y_AXIS]++; }
-//   }
-//   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-//     st.counter_z += st.steps[Z_AXIS];
-//   #else
-//     st.counter_z += st.exec_block->steps[Z_AXIS];
-//   #endif  
-//   if (st.counter_z > st.exec_block->step_event_count) {
-//     st.step_outbits |= (1<<Z_STEP_BIT);
-//     st.counter_z -= st.exec_block->step_event_count;
-//     if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
-//     else { sys.position[Z_AXIS]++; }
-//   }  
-
-//   // During a homing cycle, lock out and prevent desired axes from moving. // Во время цикла наведения на цель заблокируйте и предотвратите перемещение нужных осей.
-//   if (sys.state == STATE_HOMING) { st.step_outbits &= sys.homing_axis_lock; }   
-
-//   st.step_count--; // Decrement step events count // Уменьшить количество событий шага
-//   if (st.step_count == 0) {
-//     // Segment is complete. Discard current segment and advance segment indexing. // Сегмент завершен. Отменить текущий сегмент и продолжить индексацию сегмента.
-//     st.exec_segment = NULL;
-//     if ( ++segment_buffer_tail == SEGMENT_BUFFER_SIZE) { segment_buffer_tail = 0; }
-//   }
-
-//   st.step_outbits ^= step_port_invert_mask;  // Apply step port invert mask   // Применить пошаговую маску инвертирования порта  
-//   busy = false;
-// // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR // Debug: Используется для определения времени ISR
-// }
-
-
-/* The Stepper Port Reset Interrupt: Timer0 OVF interrupt handles the falling edge of the step
-   pulse. This should always trigger before the next Timer1 COMPA interrupt and independently
-   finish, if Timer1 is disabled after completing a move.
-   NOTE: Interrupt collisions between the serial and stepper interrupts can cause delays by
-   a few microseconds, if they execute right before one another. Not a big deal, but can
-   cause issues at high step rates if another high frequency asynchronous interrupt is 
-   added to Grbl.
-*/
-// This interrupt is enabled by ISR_TIMER1_COMPAREA when it sets the motor port bits to execute
-// a step. This ISR resets the motor port after a short period (settings.pulse_microseconds) 
-// completing one step cycle.
-
-/* Прерывание сброса шагового порта: прерывание Timer0 OVF обрабатывает спадающий край шага
-   пульс. Это всегда должно срабатывать перед следующим совместным прерыванием Timer1 и независимо от него
-   завершаться, если Timer1 отключен после завершения перемещения.
-   ПРИМЕЧАНИЕ: Конфликты прерываний между последовательным и шаговым прерываниями могут привести к задержкам на
-несколько микросекунд, если они выполняются непосредственно друг перед другом. Это не имеет большого значения, но может
-вызвать проблемы при высокой частоте выполнения, если
-к Grbl добавлено другое высокочастотное асинхронное прерывание.
-*/
-// Это прерывание включается с помощью ISR_TIMER1_COMPAREA, когда оно устанавливает биты порта двигателя для выполнения
-// шага. Это ISR сбрасывает порт двигателя через короткий промежуток времени (settings.pulse_microseconds) 
-// завершение одноэтапного цикла.
-// ISR(TIMER0_OVF_vect)
-// {
-//   // Сбросить шаговые штифты (оставить направляющие штифты)
-//   // Reset stepping pins (leave the direction pins)
-//   STEP_PORT = (STEP_PORT & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK); 
-//   TCCR0B = 0; // Disable Timer0 to prevent re-entering this interrupt when it's not needed. // Отключите таймер0, чтобы предотвратить повторный ввод этого прерывания, когда оно не требуется.
-// }
-// #ifdef STEP_PULSE_DELAY
-
-//   // This interrupt is used only when STEP_PULSE_DELAY is enabled. Here, the step pulse is
-//   // initiated after the STEP_PULSE_DELAY time period has elapsed. The ISR TIMER2_OVF interrupt
-//   // will then trigger after the appropriate settings.pulse_microseconds, as in normal operation.
-//   // The new timing between direction, step pulse, and step complete events are setup in the
-//   // st_wake_up() routine.
-
-//   // Это прерывание используется только тогда, когда включена функция STEP_PULSE_DELAY. В данном случае импульс step
-//   // инициируется по истечении периода времени STEP_PULSE_DELAY. Прерывание ISR TIMER2_OVF
-//   // затем активируется после соответствующих настроек.pulse_microseconds, как при нормальной работе.
-//   // Новый временной интервал между событиями direction, step pulse и step complete устанавливается в процедуре
-//   // st_wake_up().
-//   ISR(TIMER0_COMPA_vect) 
-//   { 
-//     STEP_PORT = st.step_bits; // Begin step pulse. // Запуск пошагового импульса.
-//   }
-// #endif
-
-
 // // Generates the step and direction port invert masks used in the Stepper Interrupt Driver.
 // // Генерирует маски инвертирования шага и направления порта, используемые в драйвере шагового прерывания.
 // void st_generate_step_dir_invert_masks()
@@ -631,26 +347,44 @@ void stepper_init()
   PinInitOutput(Z_DIRECTION_BIT, Z_DIRECTION_PORT);
 
   PinInitOutput(STEPPERS_DISABLE_BIT, STEPPERS_DISABLE_PORT);
-
+// TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
+// TCCR1B |= (1<<WGM12);
+// TCCR1A &= ~((1<<WGM11) | (1<<WGM10));
+// TCCR1A &= ~((1<<COM1A1) | (1<<COM1A0) | (1<<COM1B1) | (1<<COM1B0)); 
   // Configure step and direction interface pins // Настройка выводов интерфейса шага и направления
 //   STEP_DDR |= STEP_MASK;
 //   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
 //   DIRECTION_DDR |= DIRECTION_MASK;
 
-//   // Configure Timer 1: Stepper Driver Interrupt // Настройка таймера 1: Прерывание работы шагового драйвера
-//   TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
-//   TCCR1B |=  (1<<WGM12);
-//   TCCR1A &= ~((1<<WGM11) | (1<<WGM10)); 
-//   TCCR1A &= ~((1<<COM1A1) | (1<<COM1A0) | (1<<COM1B1) | (1<<COM1B0)); // Disconnect OC1 output // Отсоединить выход OC1
+  // Configure Timer 1: Stepper Driver Interrupt // Настройка таймера 1: Прерывание работы шагового драйвера
+  Timer16_HandleTypeDef htimer16;
   
-//   // Configure Timer 0: Stepper Port Reset Interrupt // Настройка таймера 0: Прерывание сброса шагового порта
-//   TIMSK0 &= ~((1<<OCIE0B) | (1<<OCIE0A) | (1<<TOIE0)); // Disconnect OC0 outputs and OVF interrupt. // Отключите выходы OC0 и прерывание OVF.
-//   TCCR0A = 0; // Normal operation // Нормальная работа
-//   TCCR0B = 0; // Disable Timer0 until needed // Отключите таймер0 до тех пор, пока это не потребуется
-//   TIMSK0 |= (1<<TOIE0); // Enable Timer0 overflow interrupt // Включить прерывание переполнения таймера 0
-//   #ifdef STEP_PULSE_DELAY
-//     TIMSK0 |= (1<<OCIE0A); // Enable Timer0 Compare Match A interrupt // Включить Таймер0 Для сравнения с прерыванием
-//   #endif
+  // Базовая конфигурация таймера
+  htimer16.Instance = TIMER16_0;
+  htimer16.Clock.Source = TIMER16_SOURCE_INTERNAL_SYSTEM;
+  htimer16.Clock.Prescaler = TIMER16_PRESCALER_8;
+  htimer16.CountMode = TIMER16_COUNTMODE_INTERNAL;
+  htimer16.ActiveEdge = TIMER16_ACTIVEEDGE_RISING;
+  htimer16.Preload = TIMER16_PRELOAD_AFTERWRITE;
+  
+  // Конфигурация триггера
+  htimer16.Trigger.Source = TIMER16_TRIGGER_TIM0_GPIO0_7;
+  htimer16.Trigger.ActiveEdge = TIMER16_TRIGGER_ACTIVEEDGE_SOFTWARE;
+  htimer16.Trigger.TimeOut = TIMER16_TIMEOUT_DISABLE;
+  
+  // Конфигурация фильтра
+  htimer16.Filter.ExternalClock = TIMER16_FILTER_NONE;
+  htimer16.Filter.Trigger = TIMER16_FILTER_NONE;
+  
+  // Конфигурация волновой формы
+  htimer16.Waveform.Enable = TIMER16_WAVEFORM_GENERATION_DISABLE;
+  htimer16.Waveform.Polarity = TIMER16_WAVEFORM_POLARITY_NONINVERTED;
+  
+  // Режим энкодера
+  htimer16.EncoderMode = TIMER16_ENCODER_DISABLE;
+  
+  // Инициализация таймера
+  HAL_Timer16_Init(&htimer16);
 }
 
 /* The Stepper Port Reset Interrupt: Timer0 OVF interrupt handles the falling edge of the step

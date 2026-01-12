@@ -53,6 +53,8 @@
 
 #define  USER_LED  2,7
 
+#define TIMER_STEP TIMER16_1
+
 // Define serial port pins and interrupt vectors.
 // Определите контакты последовательного порта и векторы прерываний.
 #define SERIAL_RX     USART_RX_vect

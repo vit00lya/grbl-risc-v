@@ -70,6 +70,8 @@
 #define bit_istrue(x,mask) ((x & mask) != 0)
 // #define bit_isfalse(x,mask) ((x & mask) == 0)
 
+void SystemClockConfig(Timer16_HandleTypeDef& timer_step);
+
 GPIO_PinState ReadPin(GPIO_TypeDef *GPIO_x, HAL_PinsTypeDef pin);
 void PinInitInputIRQ(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull, HAL_GPIO_Line_Config irq_line);
 HAL_StatusTypeDef PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull);

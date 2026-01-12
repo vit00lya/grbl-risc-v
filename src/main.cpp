@@ -5,6 +5,7 @@
 #include "stepper.h"
 
 void* machine_glb;
+Timer16_HandleTypeDef timer_step;
 
  void CheckLimits(){
   if (HAL_GPIO_LineInterruptState(X_LIMIT_LINE_IRQ)
@@ -16,21 +17,6 @@ void* machine_glb;
       mask |= 1 << (Y_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S);
       mask |= 1 << (Z_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S);
       ClearGPIOInterruptLines(mask);
-//   // auto machine = sys_obj.GetMachine();
-//   // При смене pin нужно создать небольшую задержку.
-//   delay_ms(10);
-        // io_set(USER_LED);
-        // HAL_DelayMs(500);
-        // io_clr(USER_LED);
-        // HAL_DelayMs(500);
-        // io_set(USER_LED);
-        // HAL_DelayMs(500);
-        // io_clr(USER_LED);
-        // HAL_DelayMs(500);
-        // io_set(USER_LED);
-        // HAL_DelayMs(500);
-        // io_clr(USER_LED);
-        // HAL_DelayMs(500);
         
         if (static_cast<Machine*>(machine_glb)->GetMachineState() != STATE_ALARM) {  // Ignore if already in alarm state. // Игнорировать, если он уже находится в состоянии тревоги.
            static_cast<Machine*>(machine_glb)->Reset();
@@ -50,6 +36,22 @@ extern "C"
             CheckLimits();
         }
 
+        if (EPIC_CHECK_TIMER16_1())
+        {
+            
+             if (__HAL_TIMER16_GET_FLAG_IT(&timer_step, TIMER16_FLAG_CMPM))
+             {
+                // HAL_GPIO_TogglePin(GPIO_2, GPIO_PIN_7); /* Смена сигнала PORT1_3 на противоположный */
+                __HAL_TIMER16_CLEAR_FLAG(&timer_step, TIMER16_FLAG_CMPM);
+                // HAL_GPIO_WritePin(STEP_PORT, X_STEP_BIT, GPIO_PIN_HIGH);
+                // HAL_DelayMs(10);
+                // HAL_GPIO_WritePin(STEP_PORT, X_STEP_BIT, GPIO_PIN_LOW);
+                // HAL_DelayMs(1000);                                                                                                    
+                // HAL_Timer16_StartSetOnes_IT(timer_step, 0xFFFF, 0xFFFF / 2);
+             }
+
+        }
+
         //   /* Сброс прерываний */
         //   // Денис рекомендовал следующую последовательность, сбросить флаг прерывания, затем его обрабатывать.
         //   // Чтобы было меньше багов
@@ -65,7 +67,7 @@ int main()
     Printer printer(serial);
     Report report(printer);
     Machine machine(report);
-    SystemClockConfig();
+    SystemClockConfig(timer_step);
     machine.Init();
 
     machine_glb = &machine;
