@@ -25,32 +25,122 @@ Timer16_HandleTypeDef timer_step;
     }
  }
 
+ void StepTimer(){
+     // Обработчик прерываний шагового двигателя
+                // if (busy) { return; } // Флаг занятости используется для избежания повторного входа в прерывание
+
+                // Установите направляющие штифты за пару наносекунд до того, как мы включим степперы
+                // DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
+                HAL_GPIO_WritePin(X_DIRECTION_PORT, X_DIRECTION_BIT, (st.dir_outbits & (1<<X_AXIS)) ? GPIO_PIN_HIGH : GPIO_PIN_LOW);
+                HAL_GPIO_WritePin(Y_DIRECTION_PORT, Y_DIRECTION_BIT, (st.dir_outbits & (1<<Y_AXIS)) ? GPIO_PIN_HIGH : GPIO_PIN_LOW);
+                HAL_GPIO_WritePin(Z_DIRECTION_PORT, Z_DIRECTION_BIT, (st.dir_outbits & (1<<Z_AXIS)) ? GPIO_PIN_HIGH : GPIO_PIN_LOW);
+
+                // Затем подайте импульс на шаговые штифты
+                #ifdef STEP_PULSE_DELAY
+                  st.step_bits = (STEP_PORT & ~STEP_MASK) | st.step_outbits; // Сохраните out_bits, чтобы предотвратить перезапись.
+                #else  // Нормальная работа
+                  // STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
+                  if (st.step_outbits & (1<<X_AXIS)) HAL_GPIO_WritePin(STEP_PORT, X_STEP_BIT, GPIO_PIN_HIGH);
+                  if (st.step_outbits & (1<<Y_AXIS)) HAL_GPIO_WritePin(STEP_PORT, Y_STEP_BIT, GPIO_PIN_HIGH);
+                  if (st.step_outbits & (1<<Z_AXIS)) HAL_GPIO_WritePin(STEP_PORT, Z_STEP_BIT, GPIO_PIN_HIGH);
+                #endif
+
+                // Включите таймер сброса шагового импульса, чтобы прерывание сброса шагового порта могло сбрасывать сигнал после
+                // точных настроек.pulse_microseconds в микросекундах, независимо от основного таймера1.
+                // TCNT0 = st.step_pulse_time; // Счетчик времени перезагрузки 0
+                // TCCR0B = (1<<CS01); // Время начала 0. Полная скорость, предустановка на 1/8
+
+                #ifndef STEP_PULSE_DELAY
+                  // Немедленный сброс импульсов
+                  HAL_GPIO_WritePin(STEP_PORT, X_STEP_BIT, GPIO_PIN_LOW);
+                  HAL_GPIO_WritePin(STEP_PORT, Y_STEP_BIT, GPIO_PIN_LOW);
+                  HAL_GPIO_WritePin(STEP_PORT, Z_STEP_BIT, GPIO_PIN_LOW);
+                #endif
+
+                busy = true;
+                // sei(); // Повторно включите прерывания, чтобы обеспечить своевременное срабатывание прерывания сброса шагового порта.
+                       // ПРИМЕЧАНИЕ: Оставшийся код в этом ISR будет завершен до возврата к основной программе.
+                
+                // Если сегмента step нет, попробуйте извлечь его из буфера stepper
+                if (st.exec_segment == NULL) {
+                  // Что-нибудь есть в буфере? Если да, загрузите и инициализируйте сегмент следующего шага.
+                  if (segment_buffer_head != segment_buffer_tail) {
+                    // Инициализируем новый сегмент шага и загружаем количество шагов для выполнения
+                    st.exec_segment = &segment_buffer[segment_buffer_tail];
+
+                    #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+                      // С AMASS отключена, установите предварительный масштабатор таймера для сегментов с низкой частотой шага (< 250 Гц).
+                      // TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
+                    #endif
+
+                    // Инициализируйте синхронизацию сегмента шага для каждого шага и загрузите количество шагов для выполнения.
+                    // OCR1A = st.exec_segment->cycles_per_tick;
+                    // Установим новое значение периода и сравнения для таймера
+                    HAL_Timer16_StartSetOnes_IT(timer_step, st.exec_segment->cycles_per_tick, st.exec_segment->cycles_per_tick/2);
+                    st.step_count = st.exec_segment->n_step; // ПРИМЕЧАНИЕ: Может быть равно нулю при медленном движении.
+                    
+                    // Если новый сегмент запускает новый блок планировщика, инициализируйте промежуточные переменные и счетчики.
+                    // ПРИМЕЧАНИЕ: Когда индекс данных сегмента изменяется, это указывает на новый блок планировщика.
+                    if ( st.exec_block_index != st.exec_segment->st_block_index ) {
+                      st.exec_block_index = st.exec_segment->st_block_index;
+                      st.exec_block = &st_block_buffer[st.exec_block_index];
+                      
+                      // Инициализировать счетчики линий и расстояний Брезенхэма
+                      st.counter_x = st.counter_y = st.counter_z = (st.exec_block->step_event_count >> 1);
+                    }
+                    st.dir_outbits = st.exec_block->direction_bits ^ dir_port_invert_mask;
+
+                    #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+                      // С AMASS включена, отрегулируйте счетчики приращения по оси Брезенхэма в соответствии с уровнем НАКОПЛЕНИЯ.
+                      st.steps[X_AXIS] = st.exec_block->steps[X_AXIS] >> st.exec_segment->amass_level;
+                      st.steps[Y_AXIS] = st.exec_block->steps[Y_AXIS] >> st.exec_segment->amass_level;
+                      st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
+                    #endif
+                    
+                  } else {
+                    // Буфер сегмента пуст. Выключение.
+                    st_go_idle();
+                    bit_true_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP); // Помечает основную программу для завершения цикла
+                    return; // Ничего не остается, как выйти.
+                  }
+                }
+                
+ }
+
 extern "C"
 {
     // Обработчик прерываний
     void trap_handler()
     {
+        if (EPIC_CHECK_TIMER16_1())
+        {
+             if (__HAL_TIMER16_GET_FLAG_IT(&timer_step, TIMER16_FLAG_CMPM))
+             {
+               StepTimer();
+                __HAL_TIMER16_CLEAR_FLAG(&timer_step, TIMER16_FLAG_CMPM);
+             }
+        }
 
         if (EPIC_CHECK_GPIO_IRQ())
         {
             CheckLimits();
         }
 
-        if (EPIC_CHECK_TIMER16_1())
-        {
+        // if (EPIC_CHECK_TIMER16_1())
+        // {
             
-             if (__HAL_TIMER16_GET_FLAG_IT(&timer_step, TIMER16_FLAG_CMPM))
-             {
-                // HAL_GPIO_TogglePin(GPIO_2, GPIO_PIN_7); /* Смена сигнала PORT1_3 на противоположный */
-                __HAL_TIMER16_CLEAR_FLAG(&timer_step, TIMER16_FLAG_CMPM);
-                // HAL_GPIO_WritePin(STEP_PORT, X_STEP_BIT, GPIO_PIN_HIGH);
-                // HAL_DelayMs(10);
-                // HAL_GPIO_WritePin(STEP_PORT, X_STEP_BIT, GPIO_PIN_LOW);
-                // HAL_DelayMs(1000);                                                                                                    
-                // HAL_Timer16_StartSetOnes_IT(timer_step, 0xFFFF, 0xFFFF / 2);
-             }
+        //      if (__HAL_TIMER16_GET_FLAG_IT(&timer_step, TIMER16_FLAG_CMPM))
+        //      {
+        //         // HAL_GPIO_TogglePin(GPIO_2, GPIO_PIN_7); /* Смена сигнала PORT1_3 на противоположный */
+        //         __HAL_TIMER16_CLEAR_FLAG(&timer_step, TIMER16_FLAG_CMPM);
+        //         // HAL_GPIO_WritePin(STEP_PORT, X_STEP_BIT, GPIO_PIN_HIGH);
+        //         // HAL_DelayMs(10);
+        //         // HAL_GPIO_WritePin(STEP_PORT, X_STEP_BIT, GPIO_PIN_LOW);
+        //         // HAL_DelayMs(1000);                                                                                                    
+        //         // HAL_Timer16_StartSetOnes_IT(timer_step, 0xFFFF, 0xFFFF / 2);
+        //      }
 
-        }
+        // }
 
         //   /* Сброс прерываний */
         //   // Денис рекомендовал следующую последовательность, сбросить флаг прерывания, затем его обрабатывать.
