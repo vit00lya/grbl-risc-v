@@ -7,6 +7,78 @@
 void* machine_glb;
 Timer16_HandleTypeDef timer_step;
 
+// Primary stepper segment ring buffer. Contains small, short line segments for the stepper 
+// algorithm to execute, which are "checked-out" incrementally from the first block in the
+// planner buffer. Once "checked-out", the steps in the segments buffer cannot be modified by 
+// the planner, where the remaining planner block steps still can.
+// Кольцевой буфер основного шагового сегмента. Содержит небольшие, короткие линейные сегменты для выполнения шагового алгоритма 
+//, которые "извлекаются" постепенно, начиная с первого блока в буфере
+// планировщика. После "извлечения" шаги в буфере сегментов не могут быть изменены с помощью 
+// планировщика, в то время как остальные шаги блока планировщика все еще могут быть изменены.
+typedef struct {
+  uint16_t n_step;          // Number of step events to be executed for this segment // Количество пошаговых событий, которые должны быть выполнены для этого сегмента
+  uint8_t st_block_index;   // Stepper block data index. Uses this information to execute this segment. // Индекс данных шагового блока. Эта информация используется для выполнения данного сегмента.
+  uint16_t cycles_per_tick; // Step distance traveled per ISR tick, aka step rate. // Расстояние, пройденное за такт ISR, или скорость шага.
+  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+    uint8_t amass_level;    // Indicates AMASS level for the ISR to execute this segment // Указывает уровень накопления для ISR для выполнения этого сегмента
+  #else
+    uint8_t prescaler;      // Without AMASS, a prescaler is required to adjust for slow timing. // Без НАКОПЛЕНИЯ требуется предварительный масштабатор для настройки на медленное время.
+  #endif
+} segment_t;
+static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
+
+// Stepper ISR data struct. Contains the running data for the main stepper ISR.
+// Структура данных / Stepper ISR. Содержит текущие данные для основного stepper ISR.
+typedef struct {
+  // Used by the bresenham line algorithm
+  // Используется линейным алгоритмом Брезенхэма
+  uint32_t counter_x,        // Counter variables for the bresenham line tracer // Переменные счетчика для трассировщика линии Брезенхэма
+           counter_y, 
+           counter_z;
+  #ifdef STEP_PULSE_DELAY
+    uint8_t step_bits;  // Stores out_bits output to complete the step pulse delay // Сохраняет выходные данные out_bits для завершения задержки пошагового импульса
+  #endif
+  
+  uint8_t execute_step;     // Flags step execution for each interrupt. // Помечает выполнение шага для каждого прерывания.
+  uint8_t step_pulse_time;  // Step pulse reset time after step rise // Время сброса ступенчатого импульса после повышения ступени
+  uint8_t step_outbits;         // The next stepping-bits to be output // Следующие шаговые биты, которые будут выведены
+  uint8_t dir_outbits;
+  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+    uint32_t steps[N_AXIS];
+  #endif
+
+  uint16_t step_count;       // Steps remaining in line segment motion  
+  uint8_t exec_block_index; // Tracks the current st_block index. Change indicates new block.
+  st_block_t *exec_block;   // Pointer to the block data for the segment being executed
+  segment_t *exec_segment;  // Pointer to the segment being executed
+} stepper_t;
+static stepper_t st;
+
+// Индексы кольцевого буфера ступенчатого сегмента
+// Step segment ring buffer indices
+static volatile uint8_t segment_buffer_tail;
+static uint8_t segment_next_head;
+static uint8_t segment_buffer_head;
+
+// Stores the planner block Bresenham algorithm execution data for the segments in the segment 
+// buffer. Normally, this buffer is partially in-use, but, for the worst case scenario, it will
+// never exceed the number of accessible stepper buffer segments (SEGMENT_BUFFER_SIZE-1).
+// NOTE: This data is copied from the prepped planner blocks so that the planner blocks may be
+// discarded when entirely consumed and completed by the segment buffer. Also, AMASS alters this
+// data for its own use. 
+// Хранит данные о выполнении алгоритма Брезенхэма блока планировщика для сегментов в сегменте 
+// buffer. Обычно этот буфер используется частично, но в худшем случае он будет
+// никогда не превышайте количество доступных сегментов шагового буфера (SEGMENT_BUFFER_SIZE-1).
+// ПРИМЕЧАНИЕ: Эти данные копируются из подготовленных блоков планировщика, чтобы блоки планировщика могли быть
+// отброшены, когда они будут полностью использованы и заполнены буфером сегмента. Кроме того, AMASS изменяет эти
+// данные для собственного использования.
+struct st_block_t{  
+  uint8_t direction_bits;
+  uint32_t steps[N_AXIS];
+  uint32_t step_event_count;
+};
+static st_block_t st_block_buffer[SEGMENT_BUFFER_SIZE-1];
+
  void CheckLimits(){
   if (HAL_GPIO_LineInterruptState(X_LIMIT_LINE_IRQ)
       || HAL_GPIO_LineInterruptState(Y_LIMIT_LINE_IRQ)
@@ -100,7 +172,7 @@ Timer16_HandleTypeDef timer_step;
                   } else {
                     // Буфер сегмента пуст. Выключение.
                     st_go_idle();
-                    bit_true_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP); // Помечает основную программу для завершения цикла
+                    static_cast<Machine*>(machine_glb)->SetMachineState(EXEC_CYCLE_STOP); // Помечает основную программу для завершения цикла
                     return; // Ничего не остается, как выйти.
                   }
                 }

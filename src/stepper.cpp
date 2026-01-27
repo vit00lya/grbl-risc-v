@@ -38,24 +38,7 @@ TIMER32_CHANNEL_HandleTypeDef htimer32_channel;
 #define AMASS_LEVEL3 (F_CPU/2000) // Over-drives ISR (x8) // Перегрузка ISR (x8)
 
 
-// Stores the planner block Bresenham algorithm execution data for the segments in the segment 
-// buffer. Normally, this buffer is partially in-use, but, for the worst case scenario, it will
-// never exceed the number of accessible stepper buffer segments (SEGMENT_BUFFER_SIZE-1).
-// NOTE: This data is copied from the prepped planner blocks so that the planner blocks may be
-// discarded when entirely consumed and completed by the segment buffer. Also, AMASS alters this
-// data for its own use. 
-// Хранит данные о выполнении алгоритма Брезенхэма блока планировщика для сегментов в сегменте 
-// buffer. Обычно этот буфер используется частично, но в худшем случае он будет
-// никогда не превышайте количество доступных сегментов шагового буфера (SEGMENT_BUFFER_SIZE-1).
-// ПРИМЕЧАНИЕ: Эти данные копируются из подготовленных блоков планировщика, чтобы блоки планировщика могли быть
-// отброшены, когда они будут полностью использованы и заполнены буфером сегмента. Кроме того, AMASS изменяет эти
-// данные для собственного использования.
-struct st_block_t{  
-  uint8_t direction_bits;
-  uint32_t steps[N_AXIS];
-  uint32_t step_event_count;
-};
-static st_block_t st_block_buffer[SEGMENT_BUFFER_SIZE-1];
+
 
 // Primary stepper segment ring buffer. Contains small, short line segments for the stepper 
 // algorithm to execute, which are "checked-out" incrementally from the first block in the
@@ -104,11 +87,7 @@ struct stepper_t {
 };
 static stepper_t st;
 
-// Индексы кольцевого буфера ступенчатого сегмента
-// Step segment ring buffer indices
-static volatile uint8_t segment_buffer_tail;
-static uint8_t segment_buffer_head;
-static uint8_t segment_next_head;
+
 
 // Порт шага и направления инвертирует маски.
 // Step and direction port invert masks. 
