@@ -1,8 +1,12 @@
+#pragma once
+
 /*
   grbl.h - main Grbl include file
   Part of Grbl
 
   Copyright (c) 2015 Sungeun K. Jeon
+  Copyright (c) 2025 Сандалов В.П. vit00lya@yandex.ru
+  Copyright (c) 2025 Порошин Д.
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,52 +22,50 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef grbl_h
-#define grbl_h
+// Значения индекса массива Axis. Должны начинаться с 0 и быть непрерывными.
+// Axis array index values. Must start with 0 and be continuous.
+#define N_AXIS 3 // Number of axes // Количество осей
+#define X_AXIS 0 // Axis indexing value.  // Значение индексации оси.
+#define Y_AXIS 1
+#define Z_AXIS 2
 
-// Grbl versioning system
+extern "C" {
+    #include "mik32_hal_pcc.h"
+    #include "mik32_hal_gpio.h"
+    #include "mik32_hal_eeprom.h"
+    #include "mik32_hal_timer32.h"
+    #include "mik32_hal_irq.h"
+    #include "mik32_hal.h"
+    #include <mik32_memory_map.h> 
+    #include <pad_config.h> 
+    #include <gpio.h> 
+    #include <power_manager.h> 
+    #include <wakeup.h>
+    #include "uart_lib.h"
+    #include "xprintf.h"
+    #include "mik32_hal_timer16.h"
+}
+
+
 #define GRBL_VERSION "0.9j"
 #define GRBL_VERSION_BUILD "20160726"
 
-// Define standard libraries used by Grbl.
-
-#include <mik32_memory_map.h>
-#include <pad_config.h>
-#include <gpio.h>
-#include <power_manager.h>
-#include <wakeup.h>
-//#include <avr/io.h>
-//#include <avr/pgmspace.h>
-//#include <avr/interrupt.h>
-//#include <avr/wdt.h>
-//#include <util/delay.h>
-#include <math.h>
-#include <inttypes.h>    
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdbool.h>
-
-
-// Define the Grbl system include files. NOTE: Do not alter organization.
 #include "config.h"
-#include "nuts_bolts.h"
-#include "settings.h"
-#include "system.h"
-#include "defaults.h"
 #include "cpu_map.h"
-#include "coolant_control.h"
-#include "eeprom.h"
-#include "gcode.h"
-#include "limits.h"
-#include "motion_control.h"
-#include "planner.h"
-#include "print.h"
-#include "probe.h"
-#include "protocol.h"
-#include "report.h"
-#include "serial.h"
-#include "spindle_control.h"
-#include "stepper.h"
+#include "utils.h"
+#include "defaults.h"
+// #include "settings.h"
+ #include "system.h"
+//  #include "limits.h"
+//  #include "machine.h"
+// #include "serial.h"
+// #include "report.h"
+// #include "print.h"
+// #include "gcode.h"
+// #include "planner.h"
+// #include "limits.h"
 
-#endif
+// #include "eeprom_utils.h"
+// #include "limits.h"
+
+

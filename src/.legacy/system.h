@@ -1,25 +1,4 @@
-/*
-  system.h - Header for system level commands and real-time processes
-  Part of Grbl
-
-  Copyright (c) 2014-2015 Sungeun K. Jeon  
-
-  Grbl is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Grbl is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-#ifndef system_h
-#define system_h
+#pragma once
 
 #include "grbl.h"
 
@@ -64,13 +43,13 @@
 // Grbl, чтобы управлять каждой из них без дублирования. Она также используется в качестве флага обмена сообщениями для
 // критических событий.
 #define STATE_IDLE          0      // Must be zero. No flags. // Должно быть равно нулю. Без флажков.
-#define STATE_ALARM         bit(0) // In alarm state. Locks out all g-code processes. Allows settings access. // В аварийном состоянии. Блокирует все процессы с использованием g-кода. Разрешает доступ к настройкам.
-#define STATE_CHECK_MODE    bit(1) // G-code check mode. Locks out planner and motion only. // Режим проверки G-кода. Блокирует только планировщик и движение.
-#define STATE_HOMING        bit(2) // Performing homing cycle // Выполнение цикла самонаведения
-#define STATE_CYCLE         bit(3) // Cycle is running or motions are being executed. // Цикл запущен или выполняются движения.
-#define STATE_HOLD          bit(4) // Active feed hold // Активное удержание подачи
-#define STATE_SAFETY_DOOR   bit(5) // Safety door is ajar. Feed holds and de-energizes system. // Защитная дверца приоткрыта. Система подачи задерживается и обесточивается.
-#define STATE_MOTION_CANCEL bit(6) // Motion cancel by feed hold and return to idle.  // Отмените движение, удерживая подачу, и вернитесь в режим ожидания.
+#define STATE_ALARM         1 // In alarm state. Locks out all g-code processes. Allows settings access. // В аварийном состоянии. Блокирует все процессы с использованием g-кода. Разрешает доступ к настройкам.
+#define STATE_CHECK_MODE    2 // G-code check mode. Locks out planner and motion only. // Режим проверки G-кода. Блокирует только планировщик и движение.
+#define STATE_HOMING        3 // Performing homing cycle // Выполнение цикла самонаведения
+#define STATE_CYCLE         4 // Cycle is running or motions are being executed. // Цикл запущен или выполняются движения.
+#define STATE_HOLD          5 // Active feed hold // Активное удержание подачи
+#define STATE_SAFETY_DOOR   6 // Safety door is ajar. Feed holds and de-energizes system. // Защитная дверца приоткрыта. Система подачи задерживается и обесточивается.
+#define STATE_MOTION_CANCEL 7 // Motion cancel by feed hold and return to idle.  // Отмените движение, удерживая подачу, и вернитесь в режим ожидания.
 
 // Define system suspend states. // Определите состояния приостановки работы системы.
 #define SUSPEND_DISABLE       0      // Must be zero. // Должно быть равно нулю.
@@ -79,9 +58,7 @@
 #define SUSPEND_ENERGIZE      bit(2) // Re-energizes output before resume. // Повторно активирует выход перед возобновлением работы.
 #define SUSPEND_MOTION_CANCEL bit(3) // Cancels resume motion. Used by probing routine. // Отменяет возобновление движения. Используется в процедуре зондирования.
 
-
-// Define global system variables
-typedef struct {
+struct sys{
   uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset. // Флаг системного прерывания. Принудительный выход обратно в основной цикл для сброса.
   uint8_t state;                 // Tracks the current state of Grbl. // Отслеживает текущее состояние Grbl.
   uint8_t suspend;               // System suspend bitflag variable that manages holds, cancels, and safety door. // Системная переменная suspend bitflag, управляющая задержками, отменами и защитной дверью.
@@ -93,13 +70,13 @@ typedef struct {
   int32_t probe_position[N_AXIS]; // Last probe position in machine coordinates and steps. // Последнее положение датчика в машинных координатах и шагах.
   uint8_t probe_succeeded;        // Tracks if last probing cycle was successful. // Отслеживает, был ли успешным последний цикл тестирования.
   uint8_t homing_axis_lock;       // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR. // Блокирует оси при включении ограничителей. Используется в качестве маски перемещения оси в шаговом режиме ISR.
-} system_t;
-extern system_t sys;
+};
 
-volatile uint8_t sys_probe_state;   // Probing state value.  Used to coordinate the probing cycle with stepper ISR. // Значение состояния зондирования.  Используется для согласования цикла зондирования с шаговым управлением ISR.
-volatile uint8_t sys_rt_exec_state;  // Global realtime executor bitflag variable for state management. See EXEC bitmasks. // Глобальная переменная bitflag executor в реальном времени для управления состоянием. Смотрите раздел Битовые маски EXEC.
-volatile uint8_t sys_rt_exec_alarm;  // Global realtime executor bitflag variable for setting various alarms. // Глобальная переменная bitflag исполнителя в реальном времени для установки различных сигналов тревоги.
+// uint8_t sys_probe_state;   // Probing state value.  Used to coordinate the probing cycle with stepper ISR. // Значение состояния зондирования.  Используется для согласования цикла зондирования с шаговым управлением ISR.
+// uint8_t sys_rt_exec_state;  // Global realtime executor bitflag variable for state management. See EXEC bitmasks. // Глобальная переменная bitflag executor в реальном времени для управления состоянием. Смотрите раздел Битовые маски EXEC.
+// uint8_t sys_rt_exec_alarm;  // Global realtime executor bitflag variable for setting various alarms. // Глобальная переменная bitflag исполнителя в реальном времени для установки различных сигналов тревоги.
 
+// void SystemClockConfig();
 
 // Initialize the serial protocol
 // Инициализируйте последовательный протокол
@@ -117,9 +94,10 @@ uint8_t system_execute_line(char *line);
 // Выполнить строки сценария запуска, сохраненные в EEPROM при инициализации
 void system_execute_startup(char *line);
 
+// Метод переехал в объект машина  
 // Returns machine position of axis 'idx'. Must be sent a 'step' array.
 // Returns machine position of axis 'idx'. Must be sent a 'step' array.
-float system_convert_axis_steps_to_mpos(int32_t *steps, uint8_t idx);
+//float system_convert_axis_steps_to_mpos(int32_t *steps, uint8_t idx);
 
 // Updates a machine 'position' array based on the 'step' array sent.
 // Обновляет массив "положение" машины на основе отправленного массива "шаг".
@@ -132,4 +110,4 @@ void system_convert_array_steps_to_mpos(float *position, int32_t *steps);
   int32_t system_convert_corexy_to_y_axis_steps(int32_t *steps);
 #endif
 
-#endif
+void SystemClockConfig();

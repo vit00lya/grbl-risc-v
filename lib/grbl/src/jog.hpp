@@ -1,10 +1,8 @@
-#pragma once
 /*
-  serial.c - Low level functions for sending and recieving bytes via the serial port
+  jog.h - Jogging methods
   Part of Grbl
 
-  Copyright (c) 2011-2015 Sungeun K. Jeon
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2016 Sungeun K. Jeon for Gnea Research LLC
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,18 +18,15 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "grbl.h"
+#ifndef jog_h
+#define jog_h
 
-class Serial
+#include "gcode.hpp"
 
-{
-public:
-  Serial();
-  void Write(uint8_t);
-  uint16_t Read();
-  void SerialResetReadBuffer();
-  uint8_t SerialGetRxBufferCount();
-  uint8_t SerialGetTxBufferCount();
+// System motion line numbers must be zero.
+#define JOG_LINE_NUMBER 0
 
-};
+// Sets up valid jog motion received from g-code parser, checks for soft-limits, and executes the jog.
+uint8_t jog_execute(plan_line_data_t *pl_data, parser_block_t *gc_block);
 
+#endif

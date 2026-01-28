@@ -1,3 +1,4 @@
+#pragma once
 /*
   config.h - compile time configuration
   Part of Grbl
@@ -18,7 +19,7 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-  
+
 // This file contains compile-time configurations for Grbl's internal system. For the most part,
 // users will not need to directly modify these, but they are here for specific needs, i.e.
 // performance tuning or adjusting to non-typical machines.
@@ -33,8 +34,9 @@
 
 #ifndef config_h
 #define config_h
-#include "grbl.h" // For Arduino IDE compatibility.
 
+  
+#define F_CPU 32000000 // Частота работы кварцевого резонатора процессора
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
 // Настройки по умолчанию. Используется при сбросе EEPROM. Измените название на желаемое в defaults.h
@@ -42,7 +44,7 @@
 
 // Serial baud rate
 // Скорость серийного порта
-#define BAUD_RATE 115200
+#define BAUD_RATE 9600
 
 // Default cpu mappings. Grbl officially supports the Arduino Uno only. Other processor types
 // may exist from user-supplied templates or directly user-defined in cpu_map.h
@@ -411,7 +413,7 @@
 // ПРИМЕЧАНИЕ: Все контакты, связанные с этой функцией, отключены, т.е. контакты ограничения XYZ, а не отдельные оси.
 // ВНИМАНИЕ: Если подтягивающие устройства отключены, для этого требуется дополнительная проводка с подтягивающими резисторами!
 
-//#define DISABLE_LIMIT_PIN_PULL_UP
+#define DISABLE_LIMIT_PIN_PULL_UP
 //#define DISABLE_PROBE_PIN_PULL_UP
 //#define DISABLE_CONTROL_PIN_PULL_UP
 
@@ -667,25 +669,6 @@
 // #define RX_BUFFER_SIZE 128 // Uncomment to override defaults in serial.h
 // #define TX_BUFFER_SIZE 64
   
-// Toggles XON/XOFF software flow control for serial communications. Not officially supported
-// due to problems involving the Atmega8U2 USB-to-serial chips on current Arduinos. The firmware
-// on these chips do not support XON/XOFF flow control characters and the intermediate buffer 
-// in the chips cause latency and overflow problems with standard terminal programs. However, 
-// using specifically-programmed UI's to manage this latency problem has been confirmed to work.
-// As well as, older FTDI FT232RL-based Arduinos(Duemilanove) are known to work with standard
-// terminal programs since their firmware correctly manage these XON/XOFF characters. In any
-// case, please report any successes to grbl administrators!
-
-// Переключает программное управление потоком XON/XOFF для последовательной связи. Официально не поддерживается
-// из-за проблем, связанных с чипами ATmega8U2 USB-to-serial в современных Arduino. Прошивка
-// в этих микросхемах не поддерживаются символы управления потоком XON/XOFF и промежуточный буфер 
-// в этих микросхемах возникают проблемы с задержкой и переполнением в стандартных программах терминала. Однако,
-// было подтверждено, что использование специально запрограммированного пользовательского интерфейса для решения этой проблемы с задержкой работает.
-// Кроме того, известно, что более старые Arduino на базе FTDI FT232RL (Duemilanove) работают со стандартными
-// терминальные программы, поскольку их встроенное ПО корректно управляет этими символами XON/XOFF. В любом
-// случае, пожалуйста, сообщайте о любых успехах администраторам grbl!
-
-// #define ENABLE_XONXOFF // Default disabled. Uncomment to enable.
 
 // A simple software debouncing feature for hard limit switches. When enabled, the interrupt 
 // monitoring the hard limit switch pins will enable the Arduino's watchdog timer to re-check 
@@ -737,9 +720,9 @@
   #error "USE_SPINDLE_DIR_AS_ENABLE_PIN may only be used with VARIABLE_SPINDLE enabled"
 #endif
 
-#if defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) && !defined(CPU_MAP_ATMEGA328P)
-  #error "USE_SPINDLE_DIR_AS_ENABLE_PIN may only be used with a 328p processor"
-#endif
+// #if defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) && !defined(CPU_MAP_ATMEGA328P)
+//   #error "USE_SPINDLE_DIR_AS_ENABLE_PIN may only be used with a 328p processor"
+// #endif
 
 // ---------------------------------------------------------------------------------------
 

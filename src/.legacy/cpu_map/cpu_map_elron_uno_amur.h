@@ -23,16 +23,6 @@
 #error "cpu_map already defined: GRBL_PLATFORM=" GRBL_PLATFORM
 #endif
 
-typedef  signed char         i8;
-typedef  signed short        i16;
-typedef  signed long         i32;
-typedef  signed long long    i64;
-
-typedef  unsigned char       u8;
-typedef  unsigned short      u16;
-typedef  unsigned long       u32;
-typedef  unsigned long long  u64;
-
 /* чтобы «протащить» через несколько макросов несколько аргументов как один аргумент */
 #define  _(...)  __VA_ARGS__
 
@@ -59,35 +49,47 @@ typedef  unsigned long long  u64;
 
 
 #define GRBL_PLATFORM "RiscV-Amur32"
+#define ELRON_ACE_UNO
+
+#define  USER_LED  2,7
+
+#define TIMER_STEP TIMER16_1
 
 // Define serial port pins and interrupt vectors.
 // Определите контакты последовательного порта и векторы прерываний.
 #define SERIAL_RX     USART_RX_vect
 #define SERIAL_UDRE   USART_UDRE_vect
 
+// #define axes 'X','Y','Z'
+
 // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
 // Определите выводы ступенчатого импульсного выхода. ПРИМЕЧАНИЕ: Все выводы ступенчатого разряда должны быть подключены к одному порту.
 //#define STEP_DDR        DDRD
-//#define STEP_PORT       PORTD
-#define X_STEP_BIT      0,10  // Uno Digital Pin 2
-#define Y_STEP_BIT      0,0  // Uno Digital Pin 3
-#define Z_STEP_BIT      0,8  // Uno Digital Pin 4
+#define STEP_PORT       GPIO_0
+#define X_STEP_BIT      GPIO_PIN_10  // Uno Digital Pin 2
+#define Y_STEP_BIT      GPIO_PIN_0  // Uno Digital Pin 3
+#define Z_STEP_BIT      GPIO_PIN_8  // Uno Digital Pin 4
 //#define STEP_MASK       ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
 
 // Define step direction output pins. NOTE: All direction pins must be on the same port.
 // Определите выходные контакты, указывающие направление шага. ПРИМЕЧАНИЕ: Все контакты, указывающие направление, должны быть подключены к одному порту.
 //#define DIRECTION_DDR     DDRD
 //#define DIRECTION_PORT    PORTD
-#define X_DIRECTION_BIT   0,1  // Uno Digital Pin 5
-#define Y_DIRECTION_BIT   0,2  // Uno Digital Pin 6
-#define Z_DIRECTION_BIT   1,8  // Uno Digital Pin 7
+#define X_DIRECTION_BIT   GPIO_PIN_1  // Uno Digital Pin 5
+#define X_DIRECTION_PORT   GPIO_0 
+#define Y_DIRECTION_BIT   GPIO_PIN_2  // Uno Digital Pin 6
+#define Y_DIRECTION_PORT   GPIO_0 
+#define Z_DIRECTION_BIT   GPIO_PIN_8  // Uno Digital Pin 7
+#define Z_DIRECTION_PORT   GPIO_1
 //#define DIRECTION_MASK    ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
 
 // Define stepper driver enable/disable output pin.
 // Определите, как драйвер шагового двигателя включает/отключает выходной вывод.
 //#define STEPPERS_DISABLE_DDR    DDRB
 //#define STEPPERS_DISABLE_PORT   PORTB
-#define STEPPERS_DISABLE_BIT    1,9  // Uno Digital Pin 8
+// #define STEPPERS_DISABLE_BIT    1,9  // Uno Digital Pin 8
+#define STEPPERS_DISABLE_BIT   GPIO_PIN_9  // Uno Digital Pin 7
+#define STEPPERS_DISABLE_PORT   GPIO_1
 //#define STEPPERS_DISABLE_MASK   (1<<STEPPERS_DISABLE_BIT)
 
 // Define homing/hard limit switch input pins and limit interrupt vectors. 
@@ -97,17 +99,44 @@ typedef  unsigned long long  u64;
 //#define LIMIT_DDR        DDRB
 //#define LIMIT_PIN        PINB
 //#define LIMIT_PORT       PORTB
-#define X_LIMIT_BIT      0,3  // Uno Digital Pin 9
-#define Y_LIMIT_BIT      1,3  // Uno Digital Pin 10
-#ifdef VARIABLE_SPINDLE // Z Limit pin and spindle enabled swapped to access hardware PWM on Pin 11.  
-  #define Z_LIMIT_BIT	   1,0 // Uno Digital Pin 12
+
+// #define X_LIMIT_BIT      0,3  // Uno Digital Pin 9
+// #define Y_LIMIT_BIT      1,3  // Uno Digital Pin 10
+// #ifdef VARIABLE_SPINDLE // Z Limit pin and spindle enabled swapped to access hardware PWM on Pin 11.  
+//   #define Z_LIMIT_BIT	   1,0 // Uno Digital Pin 12
+// #else
+//   #define Z_LIMIT_BIT    1,1  // Uno Digital Pin 11
+// #endif
+
+// Линия 3 - X
+// Линия 7 - Y
+// Линия 0 - Z
+#define X_LIMIT_BIT_PORT      GPIO_0
+#define X_LIMIT_BIT_PIN       GPIO_PIN_3
+#define X_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_3_PORT0_3
+#define X_LIMIT_LINE_IRQ      GPIO_LINE_3
+
+#define Y_LIMIT_BIT_PORT      GPIO_1
+#define Y_LIMIT_BIT_PIN       GPIO_PIN_3
+#define Y_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_7_PORT1_3
+#define Y_LIMIT_LINE_IRQ      GPIO_LINE_7
+
+#ifdef VARIABLE_SPINDLE
+  #define Z_LIMIT_BIT_PORT      GPIO_1
+  #define Z_LIMIT_BIT_PIN       GPIO_PIN_0
+  #define Z_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_0_PORT1_0
+  #define Z_LIMIT_LINE_IRQ      GPIO_LINE_0
 #else
-  #define Z_LIMIT_BIT    1,1  // Uno Digital Pin 11
+  #define Z_LIMIT_BIT_PORT      GPIO_1
+  #define Z_LIMIT_BIT_PIN       GPIO_PIN_1
+  #define Z_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_5_PORT1_1
+  #define Z_LIMIT_LINE_IRQ      GPIO_LINE_5
 #endif
-//#define LIMIT_MASK       ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
-#define LIMIT_INT        PCIE0  // Pin change interrupt enable pin
-#define LIMIT_INT_vect   PCINT0_vect 
-#define LIMIT_PCMSK      PCMSK0 // Pin change interrupt register
+
+// #define LIMIT_MASK       ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+// #define LIMIT_INT        PCIE0  // Pin change interrupt enable pin
+// #define LIMIT_INT_vect   PCINT0_vect 
+// #define LIMIT_PCMSK      PCMSK0 // Pin change interrupt register
 
 // Define spindle enable and spindle direction output pins.
 //#define SPINDLE_ENABLE_DDR    DDRB

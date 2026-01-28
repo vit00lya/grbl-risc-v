@@ -1,9 +1,7 @@
-#pragma once
 /*
-  serial.c - Low level functions for sending and recieving bytes via the serial port
+  eeprom.h - EEPROM methods
   Part of Grbl
 
-  Copyright (c) 2011-2015 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
@@ -20,18 +18,19 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "grbl.h"
+#ifndef eeprom_h
+#define eeprom_h
 
-class Serial
+#ifdef ESP8266
+//extern "C" {
+  #include <EEPROM.h>
+//}
+#endif
 
-{
-public:
-  Serial();
-  void Write(uint8_t);
-  uint16_t Read();
-  void SerialResetReadBuffer();
-  uint8_t SerialGetRxBufferCount();
-  uint8_t SerialGetTxBufferCount();
+void eeprom_init();
+unsigned char eeprom_get_char(unsigned int addr);
+void eeprom_put_char(unsigned int addr, unsigned char new_value);
+void memcpy_to_eeprom_with_checksum(unsigned int destination, char *source, unsigned int size);
+int memcpy_from_eeprom_with_checksum(char *destination, unsigned int source, unsigned int size);
 
-};
-
+#endif

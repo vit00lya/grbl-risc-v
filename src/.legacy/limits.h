@@ -1,46 +1,34 @@
-/*
-  limits.h - code pertaining to limit-switches and performing the homing cycle
-  Part of Grbl
+#pragma once
 
-  Copyright (c) 2012-2015 Sungeun K. Jeon  
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
-  
-  Grbl is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
+#include <array>
+#include "grbl.h"
 
-  Grbl is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+class Limits {
+private:
+    GPIO_TypeDef* limit_bit_port_;
+    HAL_PinsTypeDef limit_bit_pin_;
+    HAL_GPIO_Line_Config irq_config_;
 
-  You should have received a copy of the GNU General Public License
-  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
-*/
+public:
 
-#ifndef limits_h
-#define limits_h 
+  Limits() = default;
+  // Initialize the limits module
+  // Инициализируем модуль ограничений
+  void LimitsInit(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_Line_Config irq_line);
 
+  // Disables hard limits.
+  // Отключает жесткие ограничения.
+  void LimitsDisable();
 
-// Initialize the limits module
-// Инициализируем модуль ограничений
-void limits_init();
+  // Returns limit state as a bit-wise uint8 variable.
+  // Возвращает предельное состояние в виде побитовой переменной uint8.
+  bool LimitGetState();
 
-// Disables hard limits.
-// Отключает жесткие ограничения.
-void limits_disable();
+  // Perform one portion of the homing cycle based on the input settings.
+  // Выполните одну часть цикла самонаведения в соответствии с входными настройками.
+  void LimitsGoHome(uint8_t cycle_mask);
 
-// Returns limit state as a bit-wise uint8 variable.
-// Возвращает предельное состояние в виде побитовой переменной uint8.
-uint8_t limits_get_state();
-
-// Perform one portion of the homing cycle based on the input settings.
-// Выполните одну часть цикла самонаведения в соответствии с входными настройками.
-void limits_go_home(uint8_t cycle_mask);
-
-// Check for soft limit violations
-// Проверьте, нет ли нарушений мягкого лимита
-void limits_soft_check(float *target);
-
-#endif
+  // Check for soft limit violations
+  // Проверьте, нет ли нарушений мягкого лимита
+  void LimitsSoftCheck(float *target);
+};

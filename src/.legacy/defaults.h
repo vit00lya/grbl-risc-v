@@ -1,3 +1,4 @@
+#pragma once
 /*
   defaults.h - defaults settings configuration file
   Part of Grbl

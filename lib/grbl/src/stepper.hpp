@@ -2,7 +2,7 @@
   stepper.h - stepper motor driver: executes motion plans of planner.c using the stepper motors
   Part of Grbl
 
-  Copyright (c) 2011-2015 Sungeun K. Jeon
+  Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
@@ -20,48 +20,40 @@
 */
 
 #ifndef stepper_h
-#define stepper_h 
+#define stepper_h
 
 #ifndef SEGMENT_BUFFER_SIZE
   #define SEGMENT_BUFFER_SIZE 6
 #endif
 
-#include "planner.h"
-#include <math.h>
-#include "system.h"
-
 // Initialize and setup the stepper motor subsystem
-// Инициализация и настройка подсистемы шагового двигателя
 void stepper_init();
 
 // Enable steppers, but cycle does not start unless called by motion control or realtime command.
-// Включить степперы, но цикл не запускается, если он не вызван системой управления движением или командой реального времени.
 void st_wake_up();
 
 // Immediately disables steppers
-// Немедленно отключает степперы
 void st_go_idle();
 
 // Generate the step and direction port invert masks.
-// Сгенерируйте маски инвертирования шага и направления порта.
 void st_generate_step_dir_invert_masks();
 
-// Reset the stepper subsystem variables 
-// Сброс переменных шаговой подсистемы      
+// Reset the stepper subsystem variables
 void st_reset();
-             
+
+// Changes the run state of the step segment buffer to execute the special parking motion.
+void st_parking_setup_buffer();
+
+// Restores the step segment buffer to the normal run state after a parking motion.
+void st_parking_restore_buffer();
+
 // Reloads step segment buffer. Called continuously by realtime execution system.
-// Перезагружает буфер сегмента шага. Непрерывно вызывается системой выполнения в реальном времени.
 void st_prep_buffer();
 
 // Called by planner_recalculate() when the executing block is updated by the new plan.
-// Вызывается функцией planner_recalculate(), когда исполняемый блок обновляется в соответствии с новым планом.
 void st_update_plan_block_parameters();
 
 // Called by realtime status reporting if realtime rate reporting is enabled in config.h.
-// Вызывается с помощью realtime status reporting, если в config.h включена функция realtime rate reporting.
-#ifdef REPORT_REALTIME_RATE
 float st_get_realtime_rate();
-#endif
 
 #endif

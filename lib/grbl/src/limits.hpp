@@ -1,9 +1,8 @@
-#pragma once
 /*
-  serial.c - Low level functions for sending and recieving bytes via the serial port
+  limits.hpp - code pertaining to limit-switches and performing the homing cycle
   Part of Grbl
 
-  Copyright (c) 2011-2015 Sungeun K. Jeon
+  Copyright (c) 2012-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
@@ -20,18 +19,25 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "grbl.h"
+#ifndef limits_h
+#define limits_h
 
-class Serial
 
-{
-public:
-  Serial();
-  void Write(uint8_t);
-  uint16_t Read();
-  void SerialResetReadBuffer();
-  uint8_t SerialGetRxBufferCount();
-  uint8_t SerialGetTxBufferCount();
+// Initialize the limits module
+void limits_init();
 
-};
+// Disables hard limits.
+void limits_disable();
 
+// Returns limit state as a bit-wise uint8 variable.
+uint8_t limits_get_state();
+
+// Perform one portion of the homing cycle based on the input settings.
+void limits_go_home(uint8_t cycle_mask);
+
+// Check for soft limit violations
+void limits_soft_check(float *target);
+
+void pin_limit_vect();
+
+#endif
