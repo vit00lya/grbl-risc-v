@@ -25,7 +25,7 @@
 
 
 void delay(uint8_t ms){
-  delay_ms(ms)
+  delay_ms(ms);
 }
 
 

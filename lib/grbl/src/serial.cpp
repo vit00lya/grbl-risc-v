@@ -20,7 +20,7 @@
 */
 
 #include "grbl.hpp"
-#include <Ticker.h>
+// #include <Ticker.h>
 
 #define RX_RING_BUFFER (RX_BUFFER_SIZE+1)
 #define TX_RING_BUFFER (TX_BUFFER_SIZE+1)
@@ -29,7 +29,7 @@ uint8_t serial_rx_buffer[CLIENT_COUNT][RX_RING_BUFFER];
 uint8_t serial_rx_buffer_head[CLIENT_COUNT] = {0};
 volatile uint8_t serial_rx_buffer_tail[CLIENT_COUNT] = {0};
 
-Ticker serial_poll_task;
+// Ticker serial_poll_task;
 
 // Returns the number of bytes available in the RX serial buffer.
 uint8_t serial_get_rx_buffer_available(uint8_t client)
@@ -43,55 +43,32 @@ uint8_t serial_get_rx_buffer_available(uint8_t client)
 
 void serial_init()
 {
-  Serial.begin(BAUD_RATE);
+  UART_Init(UART_0, F_CPU/BAUD_RATE, UART_CONTROL1_TE_M | UART_CONTROL1_RE_M  | UART_CONTROL1_M_8BIT_M, 0, 0);
 
-  Serial.setDebugOutput(false);
-  Serial.setTimeout(10);
-  serial_poll_task.attach_ms(33, serial_poll_rx);
 }
 
 // Writes one byte to the TX serial buffer. Called by main program.
 void serial_write(uint8_t data) {
 
-  // Wait until there is space in the buffer
-  while (!Serial.availableForWrite()) {
-    // TODO: Restructure st_prep_buffer() calls to be executed here during a long print.
-    if (sys_rt_exec_state & EXEC_RESET) { return; } // Only check for abort to avoid an endless loop.
-  }
+  UART_WriteByte(UART_0, data);
+	UART_WaitTransmission(UART_0);
 
-  Serial.write((char)data);
 }
 
 // Fetches the first byte in the serial read buffer. Called by main program.
-uint8_t serial_read(uint8_t client)
+uint16_t serial_read(uint8_t client)
 {
-  uint8_t client_idx = client - 1;
-
-  uint8_t tail = serial_rx_buffer_tail[client_idx]; // Temporary serial_rx_buffer_tail (to optimize for volatile)
-  if (serial_rx_buffer_head[client_idx] == tail) {
-    return SERIAL_NO_DATA;
-  } else {
-    // enter mutex
-    cli();
-    uint8_t data = serial_rx_buffer[client_idx][tail];
-
-    tail++;
-    if (tail == RX_RING_BUFFER) { tail = 0; }
-    serial_rx_buffer_tail[client_idx] = tail;
-    // exit mutex
-    sei();
-    return data;
-  }
+   return UART_ReadByte(UART_0);
 }
 
 void serial_poll_rx()
 {
-  uint8_t data = 0;
+  uint16_t data = 0;
   uint8_t next_head;
   uint8_t client = CLIENT_SERIAL;  // who sent the data
   uint8_t client_idx = 0;  // index of data buffer
 
-  while (Serial.available() > 0
+  while (!UART_IsRxFifoEmpty(UART_0)
   #if (defined ENABLE_WIFI) && (defined ENABLE_WEBSOCKET)
     || Serial2Socket.available() > 0
   #endif
@@ -99,9 +76,9 @@ void serial_poll_rx()
     || telnetServer.available() > 0
   #endif
     ) {
-    if (Serial.available() > 0) {
+    if (!UART_IsRxFifoEmpty(UART_0)) {
       client = CLIENT_SERIAL;
-      data = Serial.read();
+      data = UART_ReadByte(UART_0);
     }
     #if (defined ENABLE_WIFI) && (defined ENABLE_WEBSOCKET)
     else if (Serial2Socket.available() > 0) {
@@ -158,7 +135,9 @@ void serial_poll_rx()
         // Throw away any unfound extended-ASCII character by not passing it to the serial buffer.
       } else { // Write character to buffer
         // enter mutex
-        cli();
+        // Необходимо отключить прерывания!
+        HAL_IRQ_DisableInterrupts();
+        //cli();
         next_head = serial_rx_buffer_head[client_idx] + 1;
         if (next_head == RX_RING_BUFFER) { next_head = 0; }
 
@@ -168,11 +147,13 @@ void serial_poll_rx()
           serial_rx_buffer_head[client_idx] = next_head;
         }
         // exit mutex
-        sei();
+        // Неоходимо включить прерывания.
+        HAL_IRQ_EnableInterrupts();
+        //sei();
       }
     }
   }
-  Serial.flush();
+  UART_ClearRxFifo(UART_0);
 #ifdef ENABLE_WIFI
   wifi_handle();
 #endif
