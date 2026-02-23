@@ -1,5 +1,0 @@
-(sym_lib_table
-  (version 7)
-  (lib (name "arduino-library")(type "KiCad")(uri "/home/vitasan/git/grbl-risc-v/schema/arduino-library.kicad_sym")(options "")(descr ""))
-  (lib (name "MIK32")(type "KiCad")(uri "/home/vitasan/git/grbl-risc-v/schema/KiCad_rev1/symbols/MIK32.kicad_sym")(options "")(descr ""))
-)

@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "elron")(type "KiCad")(uri "/home/vitasan/git/grbl-risc-v/schema/elron.kicad_sym")(options "")(descr ""))
+)
