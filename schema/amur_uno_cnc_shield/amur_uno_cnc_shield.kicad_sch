@@ -4820,7 +4820,7 @@
 				)
 			)
 		)
-		(property "Value" "C_Polarized"
+		(property "Value" "100mF 50v"
 			(at 251.079 95.25 90)
 			(effects
 				(font
@@ -5241,7 +5241,7 @@
 				)
 			)
 		)
-		(property "Value" "C_Polarized"
+		(property "Value" "100mF 50v"
 			(at 251.079 66.04 90)
 			(effects
 				(font
@@ -5495,7 +5495,7 @@
 				)
 			)
 		)
-		(property "Value" "C_Polarized"
+		(property "Value" "100mF 50v"
 			(at 171.069 113.03 90)
 			(effects
 				(font
@@ -5675,7 +5675,7 @@
 				)
 			)
 		)
-		(property "Value" "C_Polarized"
+		(property "Value" "100mF 50v"
 			(at 171.069 59.69 90)
 			(effects
 				(font
