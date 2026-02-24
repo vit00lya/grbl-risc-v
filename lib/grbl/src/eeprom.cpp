@@ -1,18 +1,32 @@
 // This file has been prepared for Doxygen automatic documentation generation.
 /*! \file ********************************************************************
-* Taken from ArduinoESP examples
+* EEPROM implementation for MIK32 platform (ELRON_ACE_UNO)
 ******************************************************************************/
 
-// #include <EEPROM.h>
+#include <mik32_hal_eeprom.h>
+#include <mik32_memory_map.h>
+#include "grbl.hpp"
 
-/*! \brief  Read byte from EEPROM.
+// EEPROM handle
+static HAL_EEPROM_HandleTypeDef heeprom;
+static bool eeprom_initialized = false;
+
+/*! \brief  Initialize EEPROM.
  *
  *  This function Initializes the EEPROM buffer.
  *
  */
 void eeprom_init()
 {
-	// EEPROM.begin(2048);
+	// Initialize EEPROM handle for MIK32
+	heeprom.Instance = EEPROM_REGS;
+	heeprom.Mode = HAL_EEPROM_MODE_TWO_STAGE;
+	heeprom.ErrorCorrection = HAL_EEPROM_ECC_ENABLE;
+	heeprom.EnableInterrupt = HAL_EEPROM_SERR_DISABLE;
+	
+	HAL_EEPROM_Init(&heeprom);
+	HAL_EEPROM_CalculateTimings(&heeprom, 32000000); // 32MHz system clock
+	eeprom_initialized = true;
 }
 
 /*! \brief  Read byte from EEPROM.
@@ -26,7 +40,15 @@ void eeprom_init()
  */
 unsigned char eeprom_get_char( unsigned int addr )
 {
-	// return EEPROM.read(addr); // Return the byte read from EEPROM.
+	if (!eeprom_initialized) {
+		return 0;
+	}
+	
+	uint32_t data;
+	if (HAL_EEPROM_Read(&heeprom, addr, &data, 1, 100000) == HAL_OK) {
+		return (unsigned char)data;
+	}
+	return 0; // Return 0 on error
 }
 
 /*! \brief  Write byte to EEPROM.
@@ -38,7 +60,12 @@ unsigned char eeprom_get_char( unsigned int addr )
  */
 void eeprom_put_char( unsigned int addr, unsigned char new_value )
 {
-	// EEPROM.write(addr, new_value);
+	if (!eeprom_initialized) {
+		return;
+	}
+	
+	uint32_t data = (uint32_t)new_value;
+	HAL_EEPROM_Write(&heeprom, addr, &data, 1, HAL_EEPROM_WRITE_ALL, 100000);
 }
 
 // Extensions added as part of Grbl
@@ -52,7 +79,6 @@ void memcpy_to_eeprom_with_checksum(unsigned int destination, char *source, unsi
     eeprom_put_char(destination++, *(source++));
   }
   eeprom_put_char(destination, checksum);
-    // EEPROM.commit();
 }
 
 int memcpy_from_eeprom_with_checksum(char *destination, unsigned int source, unsigned int size) {

@@ -186,6 +186,19 @@ decltype(regs) regs_tmp;
   #define STEPPERS_DISABLE_BIT   GPIO_PIN_9  // Uno Digital Pin 7
   #define STEPPERS_DISABLE_PORT   GPIO_1
 
+  #define LIMIT_PORT_INPUTS regs_tmp.LIMIT_PORT_OFFSET
+  #define LIMIT_PORT      regs.LIMIT_PORT_OFFSET
+  #define X_LIMIT_BIT     0
+  #define Y_LIMIT_BIT     1
+  #define Z_LIMIT_BIT	    2
+  #define A_LIMIT_BIT	    3
+  #define B_LIMIT_BIT	    4
+  #define C_LIMIT_BIT	    5
+  #define D_LIMIT_BIT	    6
+  #define E_LIMIT_BIT	    7
+  #define LIMIT_MASK      ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)|(1<<A_LIMIT_BIT)|(1<<B_LIMIT_BIT)|(1<<C_LIMIT_BIT)|(1<<D_LIMIT_BIT)|(1<<E_LIMIT_BIT)) // All limit bits
+
+
   #define X_LIMIT_BIT_PORT      GPIO_0
   #define X_LIMIT_BIT_PIN       GPIO_PIN_3
   #define X_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_3_PORT0_3
@@ -223,8 +236,10 @@ decltype(regs) regs_tmp;
     //#define SPINDLE_DIRECTION_PORT  PORTB
     #define SPINDLE_DIRECTION_BIT   1,2  // Uno Digital Pin 13 (NOTE: D13 can't be pulled-high input due to LED.) // Цифровой вывод Uno 13 (ПРИМЕЧАНИЕ: D13 не может быть извлечен - высокий вход из-за светодиода).
   #endif 
+  
+  #define COOLANT_FLOOD_PORT  GPIO_1
+  #define COOLANT_FLOOD_BIT   2
 
-  #define COOLANT_FLOOD_BIT   0,7  // Uno Analog Pin 3
     #ifdef ENABLE_M7 // Mist coolant disabled by default. See config.h to enable/disable.
     // #define COOLANT_MIST_DDR   DDRC
       //#define COOLANT_MIST_PORT  PORTC
