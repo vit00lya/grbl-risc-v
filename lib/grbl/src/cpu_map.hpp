@@ -199,27 +199,19 @@ decltype(regs) regs_tmp;
   #define LIMIT_MASK      ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)|(1<<A_LIMIT_BIT)|(1<<B_LIMIT_BIT)|(1<<C_LIMIT_BIT)|(1<<D_LIMIT_BIT)|(1<<E_LIMIT_BIT)) // All limit bits
 
 
-  #define X_LIMIT_BIT_PORT      GPIO_0
+  #define LIMIT_BIT_PORT        GPIO_1
   #define X_LIMIT_BIT_PIN       GPIO_PIN_3
   #define X_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_3_PORT0_3
   #define X_LIMIT_LINE_IRQ      GPIO_LINE_3
 
-  #define Y_LIMIT_BIT_PORT      GPIO_1
   #define Y_LIMIT_BIT_PIN       GPIO_PIN_3
   #define Y_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_7_PORT1_3
   #define Y_LIMIT_LINE_IRQ      GPIO_LINE_7
 
-  #ifdef VARIABLE_SPINDLE
-    #define Z_LIMIT_BIT_PORT      GPIO_1
-    #define Z_LIMIT_BIT_PIN       GPIO_PIN_0
-    #define Z_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_0_PORT1_0
-    #define Z_LIMIT_LINE_IRQ      GPIO_LINE_0
-  #else
-    #define Z_LIMIT_BIT_PORT      GPIO_1
-    #define Z_LIMIT_BIT_PIN       GPIO_PIN_1
-    #define Z_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_5_PORT1_1
-    #define Z_LIMIT_LINE_IRQ      GPIO_LINE_5
-  #endif
+  #define Z_LIMIT_BIT_PIN       GPIO_PIN_0
+  #define Z_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_0_PORT1_0
+  #define Z_LIMIT_LINE_IRQ      GPIO_LINE_0
+
 
   #ifdef VARIABLE_SPINDLE 
     #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN

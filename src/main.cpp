@@ -70,6 +70,48 @@ void setup(void){
   #endif
 }
 
+
+    // Обработчик прерываний
+void trap_handler()
+    {
+        // if (EPIC_CHECK_TIMER16_1())
+        // {
+        //      if (__HAL_TIMER16_GET_FLAG_IT(&timer_step, TIMER16_FLAG_CMPM))
+        //      {
+        //        StepTimer();
+        //         __HAL_TIMER16_CLEAR_FLAG(&timer_step, TIMER16_FLAG_CMPM);
+        //      }
+        // }
+
+        if (EPIC_CHECK_GPIO_IRQ())
+        {
+            pin_limit_vect();
+        }
+
+        // if (EPIC_CHECK_TIMER16_1())
+        // {
+            
+        //      if (__HAL_TIMER16_GET_FLAG_IT(&timer_step, TIMER16_FLAG_CMPM))
+        //      {
+        //         // HAL_GPIO_TogglePin(GPIO_2, GPIO_PIN_7); /* Смена сигнала PORT1_3 на противоположный */
+        //         __HAL_TIMER16_CLEAR_FLAG(&timer_step, TIMER16_FLAG_CMPM);
+        //         // HAL_GPIO_WritePin(STEP_PORT, X_STEP_BIT, GPIO_PIN_HIGH);
+        //         // HAL_DelayMs(10);
+        //         // HAL_GPIO_WritePin(STEP_PORT, X_STEP_BIT, GPIO_PIN_LOW);
+        //         // HAL_DelayMs(1000);                                                                                                    
+        //         // HAL_Timer16_StartSetOnes_IT(timer_step, 0xFFFF, 0xFFFF / 2);
+        //      }
+
+        // }
+
+        //   /* Сброс прерываний */
+        //   // Денис рекомендовал следующую последовательность, сбросить флаг прерывания, затем его обрабатывать.
+        //   // Чтобы было меньше багов
+         HAL_EPIC_Clear(0xFFFFFFFF);
+        // }
+    }
+
+
 void loop(void)
 {
   // Grbl initialization loop upon power-up or a system abort. For the latter, all processes

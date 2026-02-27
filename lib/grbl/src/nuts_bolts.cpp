@@ -23,11 +23,32 @@
 
 #define MAX_INT_DIGITS 8 // Maximum number of digits in int32 (and float)
 
+HAL_StatusTypeDef PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull){
+
+    GPIO_InitTypeDef GPIO_InitStruct = {};
+    GPIO_InitStruct.Pin = pin;
+    GPIO_InitStruct.Mode = HAL_GPIO_MODE_GPIO_INPUT;
+    GPIO_InitStruct.Pull = pull;
+    return HAL_GPIO_Init(port, &GPIO_InitStruct);
+
+}
+
+void PinInitInputIRQ(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull, HAL_GPIO_Line_Config irq_line){
+
+    PinInitInput(pin,port,pull);
+    HAL_GPIO_InterruptMode interrupt_mode = GPIO_INT_MODE_LOW;
+    if (pull == HAL_GPIO_PULL_UP){
+     interrupt_mode = GPIO_INT_MODE_FALLING;
+    }else if (pull == HAL_GPIO_PULL_DOWN) {
+      interrupt_mode = GPIO_INT_MODE_RISING;
+    }
+   HAL_GPIO_InitInterruptLine(irq_line, interrupt_mode);
+
+}
 
 void delay(uint8_t ms){
   delay_ms(ms);
 }
-
 
 // Extracts a floating point value from a string. The following code is based loosely on
 // the avr-libc strtod() function by Michael Stumpf and Dmitry Xmelkov and many freely
@@ -134,7 +155,7 @@ void delay_sec(float seconds, uint8_t mode)
 // which only accepts constants in future compiler releases.
 void delay_ms(uint16_t ms)
 {
-  while ( ms-- ) { ESP.wdtFeed(); delayMicroseconds(950); }
+  HAL_DelayMs(ms);
 }
 
 // Simple hypotenuse computation function.
@@ -163,7 +184,7 @@ float limit_value_by_axis_maximum(float *max_value, float *unit_vec)
   float limit_value = SOME_LARGE_VALUE;
   for (idx=0; idx<N_AXIS; idx++) {
     if (unit_vec[idx] != 0) {  // Avoid divide by zero.
-      limit_value = _min((double)limit_value,fabs(max_value[idx]/unit_vec[idx]));
+      limit_value = fmin((double)limit_value,fabs(max_value[idx]/unit_vec[idx]));
     }
   }
   return(limit_value);

@@ -22,6 +22,10 @@
 #include "grbl.hpp"
 // #include <SPI.h>
 
+#ifdef ELRON_ACE_UNO
+  #include "../src/.legacy/utils.cpp"
+#endif
+
 // Homing axis search distance multiplier. Computed by this value times the cycle travel.
 #ifndef HOMING_AXIS_SEARCH_SCALAR
   #define HOMING_AXIS_SEARCH_SCALAR  1.5 // Must be > 1 to ensure limit switch will be engaged.
@@ -32,6 +36,25 @@
 
 void limits_init()
 {
+  
+  HAL_GPIO_PullTypeDef pull = HAL_GPIO_PULL_NONE;
+
+  #ifdef DISABLE_LIMIT_PIN_PULL_UP
+      pull = HAL_GPIO_PULL_DOWN;
+  #else
+      pull = HAL_GPIO_PULL_UP;
+  #endif
+
+  // Инициализация пинов концевиков для ELRON_ACE_UNO
+  #ifdef ELRON_ACE_UNO
+    // X_LIMIT
+    PinInitInputIRQ(X_LIMIT_BIT_PIN, (GPIO_TypeDef*)LIMIT_BIT_PORT, pull, (HAL_GPIO_Line_Config)X_LIMIT_LINE_IRQ);
+    // Y_LIMIT
+    PinInitInputIRQ(Y_LIMIT_BIT_PIN, (GPIO_TypeDef*)LIMIT_BIT_PORT, pull, (HAL_GPIO_Line_Config)Y_LIMIT_LINE_IRQ);
+    // Z_LIMIT
+    PinInitInputIRQ(Z_LIMIT_BIT_PIN, (GPIO_TypeDef*)LIMIT_BIT_PORT, pull, (HAL_GPIO_Line_Config)Z_LIMIT_LINE_IRQ);
+  #endif
+
   // Turn off all limit inputs
   // LIMIT_PORT &= ~LIMIT_MASK;
   // SPI.write(regs.data);
@@ -55,17 +78,25 @@ uint8_t limits_get_state()
 {
   uint8_t limit_state = 0;
 
-  uint8_t pin = (LIMIT_PORT_INPUTS & LIMIT_MASK);
-  #ifdef INVERT_LIMIT_PIN_MASK
-    pin ^= INVERT_LIMIT_PIN_MASK;
-  #endif
-  if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { pin ^= LIMIT_MASK; }
-  if (pin) {
-    uint8_t idx;
-    for (idx=0; idx<N_AXIS; idx++) {
-      if (pin & get_limit_pin_mask(idx)) { limit_state |= (1 << idx); }
+  #ifdef ELRON_ACE_UNO
+    // Для ELRON_ACE_UNO читаем состояние пинов напрямую
+    if (HAL_GPIO_ReadPin((GPIO_TypeDef*)LIMIT_BIT_PORT, (HAL_PinsTypeDef)(1 << X_LIMIT_BIT)) == GPIO_PIN_LOW) limit_state |= bit(X_AXIS);
+    if (HAL_GPIO_ReadPin((GPIO_TypeDef*)LIMIT_BIT_PORT, (HAL_PinsTypeDef)(1 << Y_LIMIT_BIT)) == GPIO_PIN_LOW) limit_state |= bit(Y_AXIS);
+    if (HAL_GPIO_ReadPin((GPIO_TypeDef*)LIMIT_BIT_PORT, (HAL_PinsTypeDef)(1 << Z_LIMIT_BIT)) == GPIO_PIN_LOW) limit_state |= bit(Z_AXIS);
+  #else
+    uint8_t pin = (LIMIT_PORT_INPUTS & LIMIT_MASK);
+    #ifdef INVERT_LIMIT_PIN_MASK
+      pin ^= INVERT_LIMIT_PIN_MASK;
+    #endif
+    if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { pin ^= LIMIT_MASK; }
+    if (pin) {
+      uint8_t idx;
+      for (idx=0; idx<N_AXIS; idx++) {
+        if (pin & get_limit_pin_mask(idx)) { limit_state |= (1 << idx); }
+      }
     }
-  }
+  #endif
+
   return(limit_state);
 }
 
@@ -84,32 +115,44 @@ uint8_t limits_get_state()
 
 static uint8_t limit_input_pivot;
 
-IRAM_ATTR void pin_limit_vect() {
+void pin_limit_vect() {
   uint8_t limit_state = 0;
 
-  if (!limit_input_pivot && !LIMIT_PORT_INPUTS) {
-    cli();
-    // Go through all limit input pins, setting only one bit to 0 at a time
-    // and check if the physical pin is off for that combination
-    for (limit_input_pivot = 1; limit_input_pivot; limit_input_pivot <<= 1) {
-      if (LIMIT_MASK & limit_input_pivot) {
-        LIMIT_PORT |= LIMIT_MASK;
-        LIMIT_PORT &= ~limit_input_pivot;
-        SPI.write32(regs.data);
-        if (!GPIP(LIMIT_INPUT_GPIO_PIN)) {
-          limit_state |= limit_input_pivot;
+  #ifdef ELRON_ACE_UNO
+    // Для ELRON_ACE_UNO читаем состояние пинов напрямую
+    if (HAL_GPIO_ReadPin((GPIO_TypeDef*)LIMIT_BIT_PORT, (HAL_PinsTypeDef)(1 << X_LIMIT_BIT)) == GPIO_PIN_LOW) limit_state |= bit(X_AXIS);
+    if (HAL_GPIO_ReadPin((GPIO_TypeDef*)LIMIT_BIT_PORT, (HAL_PinsTypeDef)(1 << Y_LIMIT_BIT)) == GPIO_PIN_LOW) limit_state |= bit(Y_AXIS);
+    if (HAL_GPIO_ReadPin((GPIO_TypeDef*)LIMIT_BIT_PORT, (HAL_PinsTypeDef)(1 << Z_LIMIT_BIT)) == GPIO_PIN_LOW) limit_state |= bit(Z_AXIS);
+    
+    // Сброс прерываний для всех линий концевиков
+    ClearGPIOInterruptLines((1 << (X_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S)) |
+                               (1 << (Y_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S)) |
+                               (1 << (Z_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S)));
+  #else
+    if (!limit_input_pivot && !LIMIT_PORT_INPUTS) {
+      cli();
+      // Go through all limit input pins, setting only one bit to 0 at a time
+      // and check if the physical pin is off for that combination
+      for (limit_input_pivot = 1; limit_input_pivot; limit_input_pivot <<= 1) {
+        if (LIMIT_MASK & limit_input_pivot) {
+          LIMIT_PORT |= LIMIT_MASK;
+          LIMIT_PORT &= ~limit_input_pivot;
+          SPI.write32(regs.data);
+          if (!GPIP(LIMIT_INPUT_GPIO_PIN)) {
+            limit_state |= limit_input_pivot;
+          }
         }
       }
-    }
-    sei();
-    LIMIT_PORT_INPUTS = limit_state;
+      sei();
+      LIMIT_PORT_INPUTS = limit_state;
 
-    // Put all shift register inputs back to zero
-    LIMIT_PORT &= ~LIMIT_MASK;
-    SPI.write(regs.data);
-  } else {
-    LIMIT_PORT_INPUTS = 0;
-  }
+      // Put all shift register inputs back to zero
+      LIMIT_PORT &= ~LIMIT_MASK;
+      SPI.write(regs.data);
+    } else {
+      LIMIT_PORT_INPUTS = 0;
+    }
+  #endif
 
   // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
   // When in the alarm state, Grbl should have been reset or will force a reset, so any pending
@@ -268,7 +311,7 @@ void limits_go_home(uint8_t cycle_mask)
         }
       }
 
-    } while (STEP_MASK & axislock);
+    } while (LIMIT_MASK & axislock);
 
     st_reset(); // Immediately force kill steppers and reset step segment buffer.
     delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
