@@ -28,6 +28,121 @@
 
 #include "grbl.hpp"
 
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdarg.h>
+#ifdef ELRON_ACE_UNO
+static char *grbl_outptr = NULL;
+
+static void grbl_xputc(char c) {
+    if (grbl_outptr) {
+        *grbl_outptr++ = c;
+    }
+}
+
+static void grbl_xputs(const char *str) {
+    while (*str) grbl_xputc(*str++);
+}
+
+/*----------------------------------------------*/
+/* Formatted string output                      */
+/*----------------------------------------------*/
+/*  grbl_xvprintf - based on xvprintf from xprintf.c */
+static void grbl_xvprintf(const char *fmt, va_list arp) {
+    unsigned int r, i, j, w, f;
+    int n;
+    char s[32], c, d, *p;
+    long v;
+    unsigned long vs;
+
+    for (;;) {
+        c = *fmt++;
+        if (!c) break;
+        if (c != '%') {
+            grbl_xputc(c); continue;
+        }
+        f = w = 0;
+        c = *fmt++;
+        if (c == '0') {
+            f = 1; c = *fmt++;
+        } else {
+            if (c == '-') {
+                f = 2; c = *fmt++;
+            }
+        }
+        if (c == '*') {
+            n = va_arg(arp, int);
+            if (n < 0) {
+                n = 0 - n;
+                f = 2;
+            }
+            w = n; c = *fmt++;
+        } else {
+            while (c >= '0' && c <= '9') {
+                w = w * 10 + c - '0';
+                c = *fmt++;
+            }
+        }
+        if (c == 'l' || c == 'L') {
+            f |= 4; c = *fmt++;
+        }
+        if (!c) break;
+        d = c;
+        if (d >= 'a') d -= 0x20;
+        switch (d) {
+        case 'S' :
+            p = va_arg(arp, char*);
+            for (j = 0; p[j]; j++) ;
+            while (!(f & 2) && j++ < w) grbl_xputc(' ');
+            grbl_xputs(p);
+            while (j++ < w) grbl_xputc(' ');
+            continue;
+        case 'C' :
+            grbl_xputc((char)va_arg(arp, int)); continue;
+        case 'B' :
+            r = 2; break;
+        case 'O' :
+            r = 8; break;
+        case 'D' :
+        case 'U' :
+            r = 10; break;
+        case 'X' :
+            r = 16; break;
+        default:
+            grbl_xputc(c); continue;
+        }
+
+        /* Get an argument and put it in numeral */
+        if (f & 4) {
+            v = va_arg(arp, long);
+        } else {
+            v = (d == 'D') ? (long)va_arg(arp, int) : (long)va_arg(arp, unsigned int);
+        }
+        if (d == 'D' && v < 0) {
+            v = 0 - v; f |= 16;
+        }
+        i = 0; vs = v;
+        do {
+            d = (char)(vs % r); vs /= r;
+            if (d > 9) d += (c == 'x') ? 0x27 : 0x07;
+            s[i++] = d + '0';
+        } while (vs != 0 && i < sizeof s);
+        if (f & 16) s[i++] = '-';
+        j = i; d = (f & 1) ? '0' : ' ';
+        while (!(f & 2) && j++ < w) grbl_xputc(d);
+        do grbl_xputc(s[--i]); while (i != 0);
+        while (j++ < w) grbl_xputc(' ');
+    }
+}
+
+static void grbl_xvsprintf(char *buff, const char *fmt, va_list arp) {
+    grbl_outptr = buff;
+    grbl_xvprintf(fmt, arp);
+    *grbl_outptr = 0;
+    grbl_outptr = NULL;
+}
+#endif // ELRON_ACE_UNO
 // Taken from Grbl_Esp32
 // this is a generic send function that everything should use, so interfaces could be added (Bluetooth, etc)
 void grbl_send(uint8_t client, const char *text)
@@ -43,7 +158,7 @@ void grbl_send(uint8_t client, const char *text)
   }
 #endif
   if ( client == CLIENT_SERIAL || client == CLIENT_ALL ) {
-    Serial.print(text);
+    printString(text);
   }
 }
 
@@ -51,6 +166,15 @@ void grbl_send(uint8_t client, const char *text)
 // This is a formating version of the grbl_send(CLIENT_ALL,...) function that work like printf
 void grbl_sendf(uint8_t client, const char *format, ...)
 {
+#ifdef ELRON_ACE_UNO
+  char loc_buf[256];
+  char *temp = loc_buf;
+  va_list arg;
+  va_start(arg, format);
+  grbl_xvsprintf(temp, format, arg);
+  va_end(arg);
+  grbl_send(client, temp);
+#else
   char loc_buf[64];
   char * temp = loc_buf;
   va_list arg;
@@ -71,12 +195,22 @@ void grbl_sendf(uint8_t client, const char *format, ...)
   if(len > 64){
     delete[] temp;
   }
+#endif
 }
 
 // Use to send [MSG:xxxx] Type messages. The level allows messages to be easily suppressed
 void grbl_msg_sendf(uint8_t client, uint8_t level, const char *format, ...) {
 	if (level > GRBL_MSG_LEVEL) return;
 
+#ifdef ELRON_ACE_UNO
+    char loc_buf[256];
+    char * temp = loc_buf;
+    va_list arg;
+    va_start(arg, format);
+    grbl_xvsprintf(temp, format, arg);
+    va_end(arg);
+    grbl_sendf(client, "[MSG:%s]\r\n", temp);
+#else
     char loc_buf[64];
     char * temp = loc_buf;
     va_list arg;
@@ -97,6 +231,7 @@ void grbl_msg_sendf(uint8_t client, uint8_t level, const char *format, ...) {
     if(len > 64){
         delete[] temp;
     }
+#endif
 }
 
 // Internal report utilities to reduce flash with repetitive tasks turned into functions.
@@ -115,9 +250,9 @@ static void report_util_axis_values(float *axis_value, char *rpt) {
 
   for (idx=0; idx<N_AXIS; idx++) {
     if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-      sprintf(axisVal, "%4.4f", axis_value[idx] * unit_conv);  // Report inches to 4 decimals
+      xsprintf(axisVal, "%4.4f", axis_value[idx] * unit_conv);  // Report inches to 4 decimals
     } else {
-      sprintf(axisVal, "%4.3f", axis_value[idx] * unit_conv);  // Report mm to 3 decimals
+      xsprintf(axisVal, "%4.3f", axis_value[idx] * unit_conv);  // Report mm to 3 decimals
     }
     strcat(rpt, axisVal);
 
@@ -203,34 +338,34 @@ void report_grbl_settings(uint8_t client) {
   char rpt[1000];
 
   rpt[0] = '\0';
-  sprintf(setting, "$0=%d\r\n", settings.pulse_microseconds); strcat(rpt, setting);
-  sprintf(setting, "$1=%d\r\n", settings.stepper_idle_lock_time);  strcat(rpt, setting);
-  sprintf(setting, "$2=%d\r\n", settings.step_invert_mask);  strcat(rpt, setting);
-  sprintf(setting, "$3=%d\r\n", settings.dir_invert_mask);  strcat(rpt, setting);
-  sprintf(setting, "$4=%d\r\n", bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));  strcat(rpt, setting);
-  sprintf(setting, "$5=%d\r\n", bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS));  strcat(rpt, setting);
-  sprintf(setting, "$6=%d\r\n", bit_istrue(settings.flags,BITFLAG_INVERT_PROBE_PIN));  strcat(rpt, setting);
-  sprintf(setting, "$10=%d\r\n", settings.status_report_mask);  strcat(rpt, setting);
+  xsprintf(setting, "$0=%d\r\n", settings.pulse_microseconds); strcat(rpt, setting);
+  xsprintf(setting, "$1=%d\r\n", settings.stepper_idle_lock_time);  strcat(rpt, setting);
+  xsprintf(setting, "$2=%d\r\n", settings.step_invert_mask);  strcat(rpt, setting);
+  xsprintf(setting, "$3=%d\r\n", settings.dir_invert_mask);  strcat(rpt, setting);
+  xsprintf(setting, "$4=%d\r\n", bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));  strcat(rpt, setting);
+  xsprintf(setting, "$5=%d\r\n", bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS));  strcat(rpt, setting);
+  xsprintf(setting, "$6=%d\r\n", bit_istrue(settings.flags,BITFLAG_INVERT_PROBE_PIN));  strcat(rpt, setting);
+  xsprintf(setting, "$10=%d\r\n", settings.status_report_mask);  strcat(rpt, setting);
 
-  sprintf(setting, "$11=%4.3f\r\n", settings.junction_deviation);   strcat(rpt, setting);
-  sprintf(setting, "$12=%4.3f\r\n", settings.arc_tolerance);   strcat(rpt, setting);
+  xsprintf(setting, "$11=%4.3f\r\n", settings.junction_deviation);   strcat(rpt, setting);
+  xsprintf(setting, "$12=%4.3f\r\n", settings.arc_tolerance);   strcat(rpt, setting);
 
-  sprintf(setting, "$13=%d\r\n", bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));   strcat(rpt, setting);
-  sprintf(setting, "$20=%d\r\n", bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));   strcat(rpt, setting);
-  sprintf(setting, "$21=%d\r\n", bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));   strcat(rpt, setting);
-  sprintf(setting, "$22=%d\r\n", bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));   strcat(rpt, setting);
-  sprintf(setting, "$23=%d\r\n", settings.homing_dir_mask);   strcat(rpt, setting);
+  xsprintf(setting, "$13=%d\r\n", bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));   strcat(rpt, setting);
+  xsprintf(setting, "$20=%d\r\n", bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));   strcat(rpt, setting);
+  xsprintf(setting, "$21=%d\r\n", bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));   strcat(rpt, setting);
+  xsprintf(setting, "$22=%d\r\n", bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));   strcat(rpt, setting);
+  xsprintf(setting, "$23=%d\r\n", settings.homing_dir_mask);   strcat(rpt, setting);
 
-  sprintf(setting, "$24=%4.3f\r\n", settings.homing_feed_rate);   strcat(rpt, setting);
-  sprintf(setting, "$25=%4.3f\r\n", settings.homing_seek_rate);   strcat(rpt, setting);
-  sprintf(setting, "$26=%d\r\n", settings.homing_debounce_delay);   strcat(rpt, setting);
+  xsprintf(setting, "$24=%4.3f\r\n", settings.homing_feed_rate);   strcat(rpt, setting);
+  xsprintf(setting, "$25=%4.3f\r\n", settings.homing_seek_rate);   strcat(rpt, setting);
+  xsprintf(setting, "$26=%d\r\n", settings.homing_debounce_delay);   strcat(rpt, setting);
 
-  sprintf(setting, "$27=%4.3f\r\n", settings.homing_pulloff);   strcat(rpt, setting);
-  sprintf(setting, "$30=%4.3f\r\n", settings.rpm_max);   strcat(rpt, setting);
-  sprintf(setting, "$31=%4.3f\r\n", settings.rpm_min);   strcat(rpt, setting);
+  xsprintf(setting, "$27=%4.3f\r\n", settings.homing_pulloff);   strcat(rpt, setting);
+  xsprintf(setting, "$30=%4.3f\r\n", settings.rpm_max);   strcat(rpt, setting);
+  xsprintf(setting, "$31=%4.3f\r\n", settings.rpm_min);   strcat(rpt, setting);
 
 #ifdef VARIABLE_SPINDLE
-  sprintf(setting, "$32=%d\r\n", bit_istrue(settings.flags,BITFLAG_LASER_MODE));  strcat(rpt, setting);
+  xsprintf(setting, "$32=%d\r\n", bit_istrue(settings.flags,BITFLAG_LASER_MODE));  strcat(rpt, setting);
 #else
   strcat(rpt, "$32=0\r\n");
 #endif
@@ -241,10 +376,10 @@ void report_grbl_settings(uint8_t client) {
   for (set_idx=0; set_idx<AXIS_N_SETTINGS; set_idx++) {
     for (idx=0; idx<N_AXIS; idx++) {
       switch (set_idx) {
-        case 0: sprintf(setting, "$%d=%4.3f\r\n", val+idx, settings.steps_per_mm[idx]);   strcat(rpt, setting);	 break;
-        case 1: sprintf(setting, "$%d=%4.3f\r\n", val+idx, settings.max_rate[idx]);   strcat(rpt, setting);	 break;
-        case 2: sprintf(setting, "$%d=%4.3f\r\n", val+idx, settings.acceleration[idx]/(60*60));   strcat(rpt, setting);	 break;
-        case 3: sprintf(setting, "$%d=%4.3f\r\n", val+idx, -settings.max_travel[idx]);   strcat(rpt, setting);	 break;
+        case 0: xsprintf(setting, "$%d=%4.3f\r\n", val+idx, settings.steps_per_mm[idx]);   strcat(rpt, setting);	 break;
+        case 1: xsprintf(setting, "$%d=%4.3f\r\n", val+idx, settings.max_rate[idx]);   strcat(rpt, setting);	 break;
+        case 2: xsprintf(setting, "$%d=%4.3f\r\n", val+idx, settings.acceleration[idx]/(60*60));   strcat(rpt, setting);	 break;
+        case 3: xsprintf(setting, "$%d=%4.3f\r\n", val+idx, -settings.max_travel[idx]);   strcat(rpt, setting);	 break;
       }
     }
     val += AXIS_SETTINGS_INCREMENT;
@@ -271,7 +406,7 @@ void report_probe_parameters(uint8_t client)
   strcat(probe_rpt, temp);
 
   // add the success indicator and add closing characters
-  sprintf(temp, ":%d]\r\n", sys.probe_succeeded);
+  xsprintf(temp, ":%d]\r\n", sys.probe_succeeded);
   strcat(probe_rpt, temp);
 
   grbl_send(client, probe_rpt); // send the report
@@ -297,7 +432,7 @@ void report_ngc_parameters(uint8_t client)
       case 6: strcat(ngc_rpt, "28"); break;
       case 7: strcat(ngc_rpt, "30"); break;
       default:
-        sprintf(temp, "%d", coord_select+54);
+        xsprintf(temp, "%d", coord_select+54);
         strcat(ngc_rpt, temp);
         break; // G54-G59
     }
@@ -314,9 +449,9 @@ void report_ngc_parameters(uint8_t client)
   strcat(ngc_rpt, "[TLO:"); // Print tool length offset value
 
   if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-    sprintf(temp, "%4.3f]\r\n", gc_state.tool_length_offset * INCH_PER_MM);
+    xsprintf(temp, "%4.3f]\r\n", gc_state.tool_length_offset * INCH_PER_MM);
   } else {
-    sprintf(temp, "%4.3f]\r\n", gc_state.tool_length_offset);
+    xsprintf(temp, "%4.3f]\r\n", gc_state.tool_length_offset);
   }
   strcat(ngc_rpt, temp);
   grbl_send(client, ngc_rpt);
@@ -333,25 +468,25 @@ void report_gcode_modes(uint8_t client)
   strcpy(modes_rpt, "[GC:G");
 
   if (gc_state.modal.motion >= MOTION_MODE_PROBE_TOWARD) {
-    sprintf(temp, "38.%d", gc_state.modal.motion - (MOTION_MODE_PROBE_TOWARD-2));
+    xsprintf(temp, "38.%d", gc_state.modal.motion - (MOTION_MODE_PROBE_TOWARD-2));
   } else {
-    sprintf(temp, "%d", gc_state.modal.motion);
+    xsprintf(temp, "%d", gc_state.modal.motion);
   }
   strcat(modes_rpt, temp);
 
-  sprintf(temp, " G%d", gc_state.modal.coord_select+54);
+  xsprintf(temp, " G%d", gc_state.modal.coord_select+54);
   strcat(modes_rpt, temp);
 
-  sprintf(temp, " G%d", gc_state.modal.plane_select+17);
+  xsprintf(temp, " G%d", gc_state.modal.plane_select+17);
   strcat(modes_rpt, temp);
 
-  sprintf(temp, " G%d", 21-gc_state.modal.units);
+  xsprintf(temp, " G%d", 21-gc_state.modal.units);
   strcat(modes_rpt, temp);
 
-  sprintf(temp, " G%d", gc_state.modal.distance+90);
+  xsprintf(temp, " G%d", gc_state.modal.distance+90);
   strcat(modes_rpt, temp);
 
-  sprintf(temp, " G%d", 94-gc_state.modal.feed_rate);
+  xsprintf(temp, " G%d", 94-gc_state.modal.feed_rate);
   strcat(modes_rpt, temp);
 
   if (gc_state.modal.program_flow) {
@@ -360,7 +495,7 @@ void report_gcode_modes(uint8_t client)
       // case PROGRAM_FLOW_OPTIONAL_STOP: serial_write('1'); break; // M1 is ignored and not supported.
       case PROGRAM_FLOW_COMPLETED_M2:
       case PROGRAM_FLOW_COMPLETED_M30:
-        sprintf(temp, " M%d", gc_state.modal.program_flow);
+        xsprintf(temp, " M%d", gc_state.modal.program_flow);
         strcat(modes_rpt, temp);
         break;
     }
@@ -392,18 +527,18 @@ void report_gcode_modes(uint8_t client)
     }
   #endif
 
-  sprintf(temp, " T%d", gc_state.tool);
+  xsprintf(temp, " T%d", gc_state.tool);
   strcat(modes_rpt, temp);
 
   if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-    sprintf(temp, " F%.1f", gc_state.feed_rate);
+    xsprintf(temp, " F%.1f", gc_state.feed_rate);
   } else {
-    sprintf(temp, " F%.0f", gc_state.feed_rate);
+    xsprintf(temp, " F%.0f", gc_state.feed_rate);
   }
   strcat(modes_rpt, temp);
 
 #ifdef VARIABLE_SPINDLE
-  sprintf(temp, " S%4.3f", gc_state.spindle_speed);
+  xsprintf(temp, " S%4.3f", gc_state.spindle_speed);
   strcat(modes_rpt, temp);
 #endif
 
@@ -426,7 +561,7 @@ void report_execute_startup_message(char *line, uint8_t status_code, uint8_t cli
 }
 
 // Prints build info line
-void report_build_info(char *line, uint8 client)
+void report_build_info(char *line, uint8_t client)
 {
   char build_info[50];
 
@@ -588,7 +723,7 @@ void report_realtime_status(uint8_t client)
     } else {
       bufsize = serial_get_rx_buffer_available(client);
     }
-    sprintf(temp, "|Bf:%d,%d", plan_get_block_buffer_available(), bufsize);
+    xsprintf(temp, "|Bf:%d,%d", plan_get_block_buffer_available(), bufsize);
     strcat(status, temp);
   }
   #endif
@@ -600,7 +735,7 @@ void report_realtime_status(uint8_t client)
       if (cur_block != NULL) {
         uint32_t ln = cur_block->line_number;
         if (ln > 0) {
-					sprintf(temp, "|Ln:%d", ln);
+					xsprintf(temp, "|Ln:%d", ln);
 					strcat(status, temp);
         }
       }
@@ -611,16 +746,16 @@ void report_realtime_status(uint8_t client)
   #ifdef REPORT_FIELD_CURRENT_FEED_SPEED
     #ifdef VARIABLE_SPINDLE
       if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-        sprintf(temp, "|FS:%.1f,%.0f", st_get_realtime_rate(), sys.spindle_speed / MM_PER_INCH);
+        xsprintf(temp, "|FS:%.1f,%.0f", st_get_realtime_rate(), sys.spindle_speed / MM_PER_INCH);
       } else {
-        sprintf(temp, "|FS:%.0f,%.0f", st_get_realtime_rate(), sys.spindle_speed);
+        xsprintf(temp, "|FS:%.0f,%.0f", st_get_realtime_rate(), sys.spindle_speed);
       }
       strcat(status, temp);
     #else
       if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-        sprintf(temp, "|F:%.1f", st_get_realtime_rate() / MM_PER_INCH);
+        xsprintf(temp, "|F:%.1f", st_get_realtime_rate() / MM_PER_INCH);
       } else {
-        sprintf(temp, "|F:%.0f", st_get_realtime_rate());
+        xsprintf(temp, "|F:%.0f", st_get_realtime_rate());
       }
       strcat(status, temp);
     #endif
@@ -638,10 +773,10 @@ void report_realtime_status(uint8_t client)
         if (bit_istrue(lim_pin_state,bit(Y_AXIS))) { strcat(status, "Y"); }
         if (bit_istrue(lim_pin_state,bit(Z_AXIS))) { strcat(status, "Z"); }
         if (bit_istrue(lim_pin_state,bit(A_AXIS))) { strcat(status, "A"); }
-        if (bit_istrue(lim_pin_state,bit(B_AXIS))) { strcat(status, "B"); }
-        if (bit_istrue(lim_pin_state,bit(C_AXIS))) { strcat(status, "C"); }
-        if (bit_istrue(lim_pin_state,bit(D_AXIS))) { strcat(status, "D"); }
-        if (bit_istrue(lim_pin_state,bit(E_AXIS))) { strcat(status, "E"); }
+        // if (bit_istrue(lim_pin_state,bit(B_AXIS))) { strcat(status, "B"); }
+        // if (bit_istrue(lim_pin_state,bit(C_AXIS))) { strcat(status, "C"); }
+        // if (bit_istrue(lim_pin_state,bit(D_AXIS))) { strcat(status, "D"); }
+        // if (bit_istrue(lim_pin_state,bit(E_AXIS))) { strcat(status, "E"); }
       }
       if (ctrl_pin_state) {
         #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
@@ -673,7 +808,7 @@ void report_realtime_status(uint8_t client)
       if (sys.state & (STATE_HOMING | STATE_CYCLE | STATE_HOLD | STATE_JOG | STATE_SAFETY_DOOR)) {
         sys.report_ovr_counter = (REPORT_OVR_REFRESH_BUSY_COUNT-1); // Reset counter for slow refresh
       } else { sys.report_ovr_counter = (REPORT_OVR_REFRESH_IDLE_COUNT-1); }
-      sprintf(temp, "|Ov:%d,%d,%d", sys.f_override, sys.r_override, sys.spindle_speed_ovr);
+      xsprintf(temp, "|Ov:%d,%d,%d", sys.f_override, sys.r_override, sys.spindle_speed_ovr);
       strcat(status, temp);
 
       uint8_t sp_state = spindle_get_state();

@@ -138,7 +138,6 @@ void delay_sec(float seconds, uint8_t mode)
 {
  	uint16_t i = ceil(1000/DWELL_TIME_STEP*seconds);
 	while (i-- > 0) {
-    ESP.wdtFeed();
 		if (sys.abort) { return; }
 		if (mode == DELAY_MODE_DWELL) {
 			protocol_execute_realtime();

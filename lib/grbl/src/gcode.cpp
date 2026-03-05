@@ -298,11 +298,11 @@ uint8_t gc_execute_line(char *line, uint8_t client)
            words (I,J,K,L,P,R) have multiple connotations and/or depend on the issued commands. */
         switch(letter){
           case 'A': word_bit = WORD_A; gc_block.values.xyz[A_AXIS] = value; axis_words |= (1<<A_AXIS); break;
-          case 'B': word_bit = WORD_B; gc_block.values.xyz[B_AXIS] = value; axis_words |= (1<<B_AXIS); break;
-          case 'C': word_bit = WORD_C; gc_block.values.xyz[C_AXIS] = value; axis_words |= (1<<C_AXIS); break;
-          case 'D': word_bit = WORD_D; gc_block.values.xyz[D_AXIS] = value; axis_words |= (1<<D_AXIS); break;
-          case 'E': word_bit = WORD_E; gc_block.values.xyz[E_AXIS] = value; axis_words |= (1<<E_AXIS); break;
-          case 'F': word_bit = WORD_F; gc_block.values.f = value; break;
+          // case 'B': word_bit = WORD_B; gc_block.values.xyz[B_AXIS] = value; axis_words |= (1<<B_AXIS); break;
+          // case 'C': word_bit = WORD_C; gc_block.values.xyz[C_AXIS] = value; axis_words |= (1<<C_AXIS); break;
+          // case 'D': word_bit = WORD_D; gc_block.values.xyz[D_AXIS] = value; axis_words |= (1<<D_AXIS); break;
+          // case 'E': word_bit = WORD_E; gc_block.values.xyz[E_AXIS] = value; axis_words |= (1<<E_AXIS); break;
+           case 'F': word_bit = WORD_F; gc_block.values.f = value; break;
           // case 'H': // Not supported
           case 'I': word_bit = WORD_I; gc_block.values.ijk[X_AXIS] = value; ijk_words |= (1<<X_AXIS); break;
           case 'J': word_bit = WORD_J; gc_block.values.ijk[Y_AXIS] = value; ijk_words |= (1<<Y_AXIS); break;

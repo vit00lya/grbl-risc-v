@@ -22,42 +22,39 @@
 #include "grbl.hpp"
 
 
-/*void printString(const char *s)
+void printString(const char *s)
 {
-  while (*s)
-    serial_write(*s++);
-}*/
+  xprintf(s);
+}
 
 
 // Print a string stored in PGM-memory
-/*void printPgmString(const char *s)
+void printPgmString(const char *s)
 {
-  char c;
-  while ((c = pgm_read_byte_near(s++)))
-    serial_write(c);
-}*/
+  xprintf(s);
+}
 
 
-// void printIntegerInBase(unsigned long n, unsigned long base)
-// {
-// 	unsigned char buf[8 * sizeof(long)]; // Assumes 8-bit chars.
-// 	unsigned long i = 0;
-//
-// 	if (n == 0) {
-// 		serial_write('0');
-// 		return;
-// 	}
-//
-// 	while (n > 0) {
-// 		buf[i++] = n % base;
-// 		n /= base;
-// 	}
-//
-// 	for (; i > 0; i--)
-// 		serial_write(buf[i - 1] < 10 ?
-// 			'0' + buf[i - 1] :
-// 			'A' + buf[i - 1] - 10);
-// }
+void printIntegerInBase(unsigned long n, unsigned long base)
+{
+	unsigned char buf[8 * sizeof(long)]; // Assumes 8-bit chars.
+	unsigned long i = 0;
+
+	if (n == 0) {
+		serial_write('0');
+		return;
+	}
+
+	while (n > 0) {
+		buf[i++] = n % base;
+		n /= base;
+	}
+
+	for (; i > 0; i--)
+		serial_write(buf[i - 1] < 10 ?
+			'0' + buf[i - 1] :
+			'A' + buf[i - 1] - 10);
+}
 
 
 // Prints an uint8 variable in base 10.
