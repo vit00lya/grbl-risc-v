@@ -173,108 +173,92 @@ decltype(regs) regs_tmp;
 
 #endif
 #ifdef ELRON_ACE_UNO
+
   #define STEP_PORT       GPIO_0
-  #define X_STEP_BIT      GPIO_PIN_10  // Uno Digital Pin 2
-  #define Y_STEP_BIT      GPIO_PIN_0  // Uno Digital Pin 3
-  #define Z_STEP_BIT      GPIO_PIN_8  // Uno Digital Pin 4
-  #define X_DIRECTION_BIT   GPIO_PIN_1  // Uno Digital Pin 5
-  #define X_DIRECTION_PORT   GPIO_0 
-  #define Y_DIRECTION_BIT   GPIO_PIN_2  // Uno Digital Pin 6
-  #define Y_DIRECTION_PORT   GPIO_0 
-  #define Z_DIRECTION_BIT   GPIO_PIN_8  // Uno Digital Pin 7
-  #define Z_DIRECTION_PORT   GPIO_1
-  #define STEPPERS_DISABLE_BIT   GPIO_PIN_9  // Uno Digital Pin 7
+  #define X_STEP_BIT      GPIO_PIN_10  // Цифровой пин 2
+  #define Y_STEP_BIT      GPIO_PIN_0   // Цифровой пин 4
+  #define Z_STEP_BIT      GPIO_PIN_8   // Цифровой пин 5
+  #define A_STEP_BIT      GPIO_PIN_4   // Аналоговый пин 2  
+  #define STEP_MASK       ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)|(1<<A_STEP_BIT)) 
+
+  #define DIRECTION_PORT    GPIO_0
+  #define X_DIRECTION_BIT   GPIO_PIN_1  // Цифровой пин 5
+  #define Y_DIRECTION_BIT   GPIO_PIN_2  // Цифровой пин 6
+  #define Z_DIRECTION_BIT   GPIO_PIN_3  // Цифровой пин 9
+  #define A_DIRECTION_BIT   GPIO_PIN_7  // Аналоговый пин 3
+  #define DIRECTION_MASK  ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)|(1<<A_DIRECTION_BIT)) 
+
+  #define STEPPERS_DISABLE_BIT   GPIO_PIN_9  // Цифровой пин 8
   #define STEPPERS_DISABLE_PORT   GPIO_1
 
-  #define LIMIT_PORT_INPUTS regs_tmp.LIMIT_PORT_OFFSET
-  #define LIMIT_PORT      regs.LIMIT_PORT_OFFSET
-  #define X_LIMIT_BIT     0
-  #define Y_LIMIT_BIT     1
-  #define Z_LIMIT_BIT	    2
-  #define A_LIMIT_BIT	    3
-  #define B_LIMIT_BIT	    4
-  #define C_LIMIT_BIT	    5
-  #define D_LIMIT_BIT	    6
-  #define E_LIMIT_BIT	    7
-  #define LIMIT_MASK      ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)|(1<<A_LIMIT_BIT)|(1<<B_LIMIT_BIT)|(1<<C_LIMIT_BIT)|(1<<D_LIMIT_BIT)|(1<<E_LIMIT_BIT)) // All limit bits
-
-
   #define LIMIT_BIT_PORT        GPIO_1
-  #define X_LIMIT_BIT_PIN       GPIO_PIN_3
-  #define X_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_3_PORT0_3
-  #define X_LIMIT_LINE_IRQ      GPIO_LINE_3
+  #define X_LIMIT_BIT       GPIO_PIN_8 // Цифровой пин 7
+  #define X_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_4_PORT1_8
+  #define X_LIMIT_LINE_IRQ      GPIO_LINE_4
 
-  #define Y_LIMIT_BIT_PIN       GPIO_PIN_3
+  #define Y_LIMIT_BIT       GPIO_PIN_3 // Цифровой пин 10
   #define Y_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_7_PORT1_3
   #define Y_LIMIT_LINE_IRQ      GPIO_LINE_7
 
-  #define Z_LIMIT_BIT_PIN       GPIO_PIN_0
+  #define Z_LIMIT_BIT       GPIO_PIN_1 // Цифровой пин 11
   #define Z_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_0_PORT1_0
   #define Z_LIMIT_LINE_IRQ      GPIO_LINE_0
 
+  #define A_LIMIT_BIT       GPIO_PIN_0 // Цифровой пин 12
+  #define A_LIMIT_BIT_LINE_IRQ  GPIO_MUX_LINE_0_PORT0_0
+  #define A_LIMIT_LINE_IRQ      GPIO_LINE_0
 
-  #ifdef VARIABLE_SPINDLE 
-    #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
-      // If enabled, spindle direction pin now used as spindle enable, while PWM remains on D11.
-      #define SPINDLE_ENABLE_BIT    1,2  // Uno Digital Pin 13 (NOTE: D13 can't be pulled-high input due to LED.)
-    #else
-      #define SPINDLE_ENABLE_BIT    1,1  // Uno Digital Pin 11
-    #endif
-  #else
-    #define SPINDLE_ENABLE_BIT    1,0  // Uno Digital Pin 12
-  #endif
-  #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
-    //#define SPINDLE_DIRECTION_DDR   DDRB
-    //#define SPINDLE_DIRECTION_PORT  PORTB
-    #define SPINDLE_DIRECTION_BIT   1,2  // Uno Digital Pin 13 (NOTE: D13 can't be pulled-high input due to LED.) // Цифровой вывод Uno 13 (ПРИМЕЧАНИЕ: D13 не может быть извлечен - высокий вход из-за светодиода).
-  #endif 
+  #define LIMIT_MASK  ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)|(1<<A_LIMIT_BIT)) // All limit bits
+
+  #define SPINDLE_ENABLE_PORT   GPIO_1
+  #define SPINDLE_ENABLE_BIT    GPIO_PIN_12 
+  #define SPINDLE_DIRECTION_BIT GPIO_PIN_13
   
-  #define COOLANT_FLOOD_PORT  GPIO_1
-  #define COOLANT_FLOOD_BIT   2
+  #define COOLANT_FLOOD_PORT  GPIO_1 
+  #define COOLANT_FLOOD_BIT   GPIO_PIN_2 // Цифровой пин 13
 
-    #ifdef ENABLE_M7 // Mist coolant disabled by default. See config.h to enable/disable.
-    // #define COOLANT_MIST_DDR   DDRC
-      //#define COOLANT_MIST_PORT  PORTC
-      #define COOLANT_MIST_BIT   0,9 // Uno Analog Pin 4
-  #endif  
+  #define CONTROL_PORT            GPIO_1
+  #define FEED_HOLD_BIT           GPIO_PIN_7 // Аналоговый пин 1
+  #define FEED_HOLD_BIT_LINE_IRQ  GPIO_MUX_LINE_3_PORT1_7
+  #define FEED_HOLD_LINE_IRQ      GPIO_LINE_3
 
-  #define RESET_BIT         1,5  // Uno Analog Pin 0
-  #define FEED_HOLD_BIT     1,7  // Uno Analog Pin 1
-  #define CYCLE_START_BIT   0,4  // Uno Analog Pin 2
-  #define SAFETY_DOOR_BIT   1,7  // Uno Analog Pin 1 NOTE: Safety door is shared with feed hold. Enabled by config define.
-  #define CONTROL_INT       PCIE1  // Pin change interrupt enable pin
-  #define CONTROL_INT_vect  PCINT1_vect
-  #define CONTROL_PCMSK     PCMSK1 // Pin change interrupt register
-  #define CONTROL_MASK ((1<<RESET_BIT)|(1<<FEED_HOLD_BIT)|(1<<CYCLE_START_BIT)|(1<<SAFETY_DOOR_BIT))
-  #define CONTROL_INVERT_MASK CONTROL_MASK // May be re-defined to only invert certain control pins.
+  #define SAFETY_DOOR_BIT           GPIO_PIN_5 // Аналоговый пин 0
+  #define SAFETY_DOOR_BIT_LINE_IRQ  GPIO_MUX_LINE_5_PORT1_5
+  #define SAFETY_DOOR_LINE_IRQ      GPIO_LINE_5
+
+  #define CONTROL_MASK ((1<<FEED_HOLD_BIT)|(1<<SAFETY_DOOR_BIT))
+  #define CONTROL_INVERT_MASK   // May be re-defined to only invert certain control pins.
 
   // Определите входной контакт датчика высоты стола.
-  // Define probe switch input pin.
-  #define PROBE_DDR       DDRC
-  #define PROBE_PIN       PINC
-  #define PROBE_PORT      PORTC
-  #define PROBE_BIT       0,9  // Uno Analog Pin 5
+  #define PROBE_PORT      GPIO_0
+  #define PROBE_BIT       GPIO_PIN_9  // Uno Analog Pin 5
   #define PROBE_MASK      (1<<PROBE_BIT)
 
   // Запуск шпинделя с поддержкой ШИМ и шагового управления
   // Start of PWM & Stepper Enabled Spindle
   #ifdef VARIABLE_SPINDLE
+    #define SPINDLE_PWM_MAX_VALUE     255 // Don't change. 328p fast PWM mode fixes top value as 255.
+    #ifndef SPINDLE_PWM_MIN_VALUE
+      #define SPINDLE_PWM_MIN_VALUE   1   // Must be greater than zero.
+    #endif
+    #define SPINDLE_PWM_OFF_VALUE     0
+    #define SPINDLE_PWM_RANGE         (SPINDLE_PWM_MAX_VALUE-SPINDLE_PWM_MIN_VALUE)
     // Advanced Configuration Below You should not need to touch these variables
-    #define PWM_MAX_VALUE    255.0
-    #define TCCRA_REGISTER	 TCCR2A
-    #define TCCRB_REGISTER	 TCCR2B
-    #define OCR_REGISTER     OCR2A
+    // #define PWM_MAX_VALUE    255.0
+    // #define TCCRA_REGISTER	 TCCR2A
+    // #define TCCRB_REGISTER	 TCCR2B
+    // #define OCR_REGISTER     OCR2A
     
-    #define COMB_BIT	     COM2A1
-    #define WAVE0_REGISTER	 WGM20
-    #define WAVE1_REGISTER	 WGM21
-    #define WAVE2_REGISTER	 WGM22
-    #define WAVE3_REGISTER	 WGM23
+    // #define COMB_BIT	     COM2A1
+    // #define WAVE0_REGISTER	 WGM20
+    // #define WAVE1_REGISTER	 WGM21
+    // #define WAVE2_REGISTER	 WGM22
+    // #define WAVE3_REGISTER	 WGM23
         
-    // NOTE: On the 328p, these must be the same as the SPINDLE_ENABLE settings.
-    #define SPINDLE_PWM_DDR	  DDRB
-    #define SPINDLE_PWM_PORT  PORTB
-    #define SPINDLE_PWM_BIT	  1,1    // Uno Digital Pin 11
+    // // NOTE: On the 328p, these must be the same as the SPINDLE_ENABLE settings.
+    // #define SPINDLE_PWM_DDR	  DDRB
+    // #define SPINDLE_PWM_PORT  PORTB
+    // #define SPINDLE_PWM_BIT	  1,1    // Uno Digital Pin 11
   #endif // End of VARIABLE_SPINDLE
 
 #endif

@@ -28,6 +28,17 @@ uint8_t probe_invert_mask;
 // Probe pin initialization routine.
 void probe_init()
 {
+#ifdef ELRON_ACE_UNO
+  HAL_GPIO_PullTypeDef pull = HAL_GPIO_PULL_NONE;
+
+  #ifdef DISABLE_PROBE_PIN_PULL_UP
+      pull = HAL_GPIO_PULL_DOWN;
+  #else
+      pull = HAL_GPIO_PULL_UP;
+  #endif
+
+  PinInitInput((HAL_PinsTypeDef)PROBE_BIT, (GPIO_TypeDef*)PROBE_PORT, pull);
+#else
   /*PROBE_DDR &= ~(PROBE_MASK); // Configure as input pins
   #ifdef DISABLE_PROBE_PIN_PULL_UP
     PROBE_PORT &= ~(PROBE_MASK); // Normal low operation. Requires external pull-down.
@@ -35,6 +46,7 @@ void probe_init()
     PROBE_PORT |= PROBE_MASK;    // Enable internal pull-up resistors. Normal high operation.
   #endif
   */
+#endif
   probe_configure_invert_mask(false); // Initialize invert mask.
 }
 
@@ -52,7 +64,12 @@ void probe_configure_invert_mask(uint8_t is_probe_away)
 
 // Returns the probe pin state. Triggered = true. Called by gcode parser and probe state monitor.
 uint8_t probe_get_state() {
+#ifdef ELRON_ACE_UNO
+  uint8_t pin_state = (HAL_GPIO_ReadPin((GPIO_TypeDef*)PROBE_PORT, (HAL_PinsTypeDef)(1 << PROBE_BIT)) == GPIO_PIN_HIGH) ? PROBE_MASK : 0;
+  return pin_state ^ probe_invert_mask;
+#else
   return((PROBE_BIT & PROBE_MASK) ^ probe_invert_mask);
+#endif
 }
 
 

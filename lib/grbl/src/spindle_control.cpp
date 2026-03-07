@@ -28,27 +28,53 @@
 
 void spindle_init()
 {
-  #ifdef VARIABLE_SPINDLE
-
-    // Configure variable spindle PWM and enable pin, if requried. On the Uno, PWM and enable are
-    // combined unless configured otherwise.
-    //SPINDLE_PWM_DDR |= (1<<SPINDLE_PWM_BIT); // Configure as PWM output pin.
-    //SPINDLE_TCCRA_REGISTER = SPINDLE_TCCRA_INIT_MASK; // Configure PWM output compare timer
-    //SPINDLE_TCCRB_REGISTER = SPINDLE_TCCRB_INIT_MASK;
-    #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
-      //SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT); // Configure as output pin.
-    #else
-      //SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT); // Configure as output pin.
+  #ifdef ELRON_ACE_UNO
+    // Для ELRON_ACE_UNO используем HAL функции для настройки пинов шпинделя
+    GPIO_InitTypeDef GPIO_InitStruct = {};
+    
+    // Настройка пина enable шпинделя
+    GPIO_InitStruct.Pin = (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT);
+    GPIO_InitStruct.Mode = HAL_GPIO_MODE_GPIO_OUTPUT;
+    GPIO_InitStruct.Pull = HAL_GPIO_PULL_UP;
+    HAL_GPIO_Init((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, &GPIO_InitStruct);
+    
+    // Настройка пина direction шпинделя, если не используется как enable
+    #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
+      GPIO_InitStruct.Pin = (HAL_PinsTypeDef)(1 << SPINDLE_DIRECTION_BIT);
+      HAL_GPIO_Init((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, &GPIO_InitStruct);
     #endif
-
-    pwm_gradient = SPINDLE_PWM_RANGE/(settings.rpm_max-settings.rpm_min);
-
+    
+    #ifdef VARIABLE_SPINDLE
+      // Настройка PWM пина, если определен
+      #ifdef SPINDLE_PWM_BIT
+        GPIO_InitStruct.Pin = (HAL_PinsTypeDef)(1 << SPINDLE_PWM_BIT);
+        HAL_GPIO_Init((GPIO_TypeDef*)SPINDLE_PWM_PORT, &GPIO_InitStruct);
+      #endif
+      pwm_gradient = SPINDLE_PWM_RANGE/(settings.rpm_max-settings.rpm_min);
+    #endif
   #else
+    #ifdef VARIABLE_SPINDLE
 
-    // Configure no variable spindle and only enable pin.
-    //SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT); // Configure as output pin.
-    //SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT); // Configure as output pin.
+      // Configure variable spindle PWM and enable pin, if requried. On the Uno, PWM and enable are
+      // combined unless configured otherwise.
+      SPINDLE_PWM_DDR |= (1<<SPINDLE_PWM_BIT); // Configure as PWM output pin.
+      SPINDLE_TCCRA_REGISTER = SPINDLE_TCCRA_INIT_MASK; // Configure PWM output compare timer
+      SPINDLE_TCCRB_REGISTER = SPINDLE_TCCRB_INIT_MASK;
+      #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
+        SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT); // Configure as output pin.
+      #else
+        SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT); // Configure as output pin.
+      #endif
 
+      pwm_gradient = SPINDLE_PWM_RANGE/(settings.rpm_max-settings.rpm_min);
+
+    #else
+
+      // Configure no variable spindle and only enable pin.
+      SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT); // Configure as output pin.
+      SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT); // Configure as output pin.
+
+    #endif
   #endif
 
   spindle_stop();
@@ -57,6 +83,51 @@ void spindle_init()
 
 uint8_t spindle_get_state()
 {
+#ifdef ELRON_ACE_UNO
+  // Для ELRON_ACE_UNO используем HAL функции для чтения состояния пинов
+  #ifdef VARIABLE_SPINDLE
+    #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
+      #ifdef INVERT_SPINDLE_ENABLE_PIN
+        if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT)) == GPIO_PIN_LOW) {
+          return(SPINDLE_STATE_CW);
+        }
+      #else
+        if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT)) == GPIO_PIN_HIGH) {
+          return(SPINDLE_STATE_CW);
+        }
+      #endif
+    #else
+      // Проверка PWM и направления (упрощенно)
+      // Если PWM активен, определяем направление по direction пину
+      // Здесь предполагается, что PWM активен, если enable пин активен (или отдельный флаг)
+      // Для простоты считаем, что если enable пин активен, то шпиндель вращается
+      #ifdef INVERT_SPINDLE_ENABLE_PIN
+        if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT)) == GPIO_PIN_LOW) {
+      #else
+        if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT)) == GPIO_PIN_HIGH) {
+      #endif
+        if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_DIRECTION_BIT)) == GPIO_PIN_HIGH) {
+          return(SPINDLE_STATE_CCW);
+        } else {
+          return(SPINDLE_STATE_CW);
+        }
+      }
+    #endif
+  #else
+    #ifdef INVERT_SPINDLE_ENABLE_PIN
+      if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT)) == GPIO_PIN_LOW) {
+    #else
+      if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT)) == GPIO_PIN_HIGH) {
+    #endif
+      if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_DIRECTION_BIT)) == GPIO_PIN_HIGH) {
+        return(SPINDLE_STATE_CCW);
+      } else {
+        return(SPINDLE_STATE_CW);
+      }
+    }
+  #endif
+  return(SPINDLE_STATE_DISABLE);
+#else
 	#ifdef VARIABLE_SPINDLE
     #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
 		  // No spindle direction output pin.
@@ -82,6 +153,7 @@ uint8_t spindle_get_state()
     }
 	#endif
 	return(SPINDLE_STATE_DISABLE);
+#endif
 }
 
 
@@ -90,7 +162,27 @@ uint8_t spindle_get_state()
 // Called by spindle_init(), spindle_set_speed(), spindle_set_state(), and mc_reset().
 void spindle_stop()
 {
-  /*
+#ifdef ELRON_ACE_UNO
+  // Для ELRON_ACE_UNO используем HAL функции для отключения шпинделя
+  #ifdef VARIABLE_SPINDLE
+    // Отключение PWM (если используется) - здесь может потребоваться остановка таймера
+    // Пока просто выключаем enable пин
+  #endif
+  #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
+    #ifdef INVERT_SPINDLE_ENABLE_PIN
+      HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_HIGH);
+    #else
+      HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_LOW);
+    #endif
+  #else
+    #ifdef INVERT_SPINDLE_ENABLE_PIN
+      HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_HIGH);
+    #else
+      HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_LOW);
+    #endif
+  #endif
+#else
+  
   #ifdef VARIABLE_SPINDLE
     SPINDLE_TCCRA_REGISTER &= ~(1<<SPINDLE_COMB_BIT); // Disable PWM. Output voltage is zero.
     #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
@@ -107,7 +199,8 @@ void spindle_stop()
       SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT); // Set pin to low
     #endif
   #endif
-  */
+  
+#endif
 }
 
 
@@ -116,6 +209,28 @@ void spindle_stop()
   // and stepper ISR. Keep routine small and efficient.
   void spindle_set_speed(uint8_t pwm_value)
   {
+#ifdef ELRON_ACE_UNO
+    // Для ELRON_ACE_UNO управление PWM через HAL (если реализовано)
+    // Здесь можно установить duty cycle на соответствующем таймере
+    // Временно просто управляем enable пином в зависимости от значения PWM
+    #ifdef SPINDLE_ENABLE_OFF_WITH_ZERO_SPEED
+      if (pwm_value == SPINDLE_PWM_OFF_VALUE) {
+        spindle_stop();
+      } else {
+        #ifdef INVERT_SPINDLE_ENABLE_PIN
+          HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_LOW);
+        #else
+          HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_HIGH);
+        #endif
+      }
+    #else
+      if (pwm_value == SPINDLE_PWM_OFF_VALUE) {
+        // Отключение PWM (остановка таймера)
+      } else {
+        // Включение PWM (запуск таймера с заданным duty cycle)
+      }
+    #endif
+#else
     //SPINDLE_OCR_REGISTER = pwm_value; // Set PWM output level.
     #ifdef SPINDLE_ENABLE_OFF_WITH_ZERO_SPEED
       if (pwm_value == SPINDLE_PWM_OFF_VALUE) {
@@ -130,11 +245,12 @@ void spindle_stop()
       }
     #else
       if (pwm_value == SPINDLE_PWM_OFF_VALUE) {
-        //SPINDLE_TCCRA_REGISTER &= ~(1<<SPINDLE_COMB_BIT); // Disable PWM. Output voltage is zero.
+        SPINDLE_TCCRA_REGISTER &= ~(1<<SPINDLE_COMB_BIT); // Disable PWM. Output voltage is zero.
       } else {
-        //SPINDLE_TCCRA_REGISTER |= (1<<SPINDLE_COMB_BIT); // Ensure PWM output is enabled.
+        SPINDLE_TCCRA_REGISTER |= (1<<SPINDLE_COMB_BIT); // Ensure PWM output is enabled.
       }
     #endif
+#endif
   }
 
 
@@ -233,11 +349,38 @@ void spindle_stop()
 
   } else {
 
+#ifdef ELRON_ACE_UNO
     #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
       if (state == SPINDLE_ENABLE_CW) {
-        //SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
+        HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_DIRECTION_BIT), GPIO_PIN_LOW);
       } else {
-        //SPINDLE_DIRECTION_PORT |= (1<<SPINDLE_DIRECTION_BIT);
+        HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_DIRECTION_BIT), GPIO_PIN_HIGH);
+      }
+    #endif
+
+    #ifdef VARIABLE_SPINDLE
+      // NOTE: Assumes all calls to this function is when Grbl is not moving or must remain off.
+      if (settings.flags & BITFLAG_LASER_MODE) {
+        if (state == SPINDLE_ENABLE_CCW) { rpm = 0.0; } // TODO: May need to be rpm_min*(100/MAX_SPINDLE_SPEED_OVERRIDE);
+      }
+      spindle_set_speed(spindle_compute_pwm_value(rpm));
+    #endif
+    #if (defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) && \
+        !defined(SPINDLE_ENABLE_OFF_WITH_ZERO_SPEED)) || !defined(VARIABLE_SPINDLE)
+      // NOTE: Without variable spindle, the enable bit should just turn on or off, regardless
+      // if the spindle speed value is zero, as its ignored anyhow.
+      #ifdef INVERT_SPINDLE_ENABLE_PIN
+        HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_LOW);
+      #else
+        HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_HIGH);
+      #endif
+    #endif
+#else
+    #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
+      if (state == SPINDLE_ENABLE_CW) {
+        SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
+      } else {
+        SPINDLE_DIRECTION_PORT |= (1<<SPINDLE_DIRECTION_BIT);
       }
     #endif
 
@@ -258,6 +401,7 @@ void spindle_stop()
         SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
       #endif
     #endif
+#endif
 
   }
 
