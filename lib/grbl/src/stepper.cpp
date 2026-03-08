@@ -217,6 +217,7 @@ static st_prep_t prep;
 // enabled. Startup init and limits call this function but shouldn't start the cycle.
 void st_wake_up()
 {
+  #ifndef ELRON_ACE_UNO
   // Enable stepper drivers.
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
   else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
@@ -236,8 +237,15 @@ void st_wake_up()
   #endif
   // Enable Stepper Driver Interrupt
   //TIMSK1 |= (1<<OCIE1A);
-	T1C = (1 << TCTE) | ((TIM_EDGE & 1) << TCIT) | ((TIM_LOOP & 1) << TCAR) | (1<<TCPD);
-	T1I = 0;
+
+ T1C = (1 << TCTE) | ((TIM_EDGE & 1) << TCIT) | ((TIM_LOOP & 1) << TCAR) | (1<<TCPD);
+ T1I = 0;
+#else
+ // Для ELRON_ACE_UNO: включить прерывание таймера через HAL
+ // HAL_Timer16_EnableInterrupt(&htimer16);
+ // или просто установить флаг разрешения прерывания
+ // Реализация зависит от конкретного HAL.
+#endif
 }
 
 
@@ -248,7 +256,9 @@ void st_go_idle()
   /*TIMSK1 &= ~(1<<OCIE1A); // Disable Timer1 interrupt
   TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Reset clock to no prescaling.
   */
+#ifndef ELRON_ACE_UNO
   timer1_disable();
+
 #ifdef USE_DC_MOTORS
   STEP_PORT = step_port_invert_mask ^ DIRECTION_PORT;
 #else
@@ -270,6 +280,10 @@ void st_go_idle()
   if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
   else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
   SPI.write32(regs.data);
+  #else
+  // Для ELRON_ACE_UNO: отключить прерывание таймера через HAL
+  // HAL_Timer16_DisableInterrupt(&htimer16);
+#endif
 }
 
 
@@ -327,7 +341,8 @@ void st_go_idle()
 void TIMER1_COMPA_vect(void)
 {
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
-
+  
+#ifndef ELRON_ACE_UNO
   // Set the direction pins a couple of nanoseconds before we step the steppers
   DIRECTION_PORT = st.dir_outbits;
 
@@ -338,6 +353,7 @@ void TIMER1_COMPA_vect(void)
   STEP_PORT = st.step_outbits;
 #endif
 
+
   // Write regs
   SPI.write32(regs.data);
 
@@ -345,10 +361,19 @@ void TIMER1_COMPA_vect(void)
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
   //TCNT0 = st.step_pulse_time; // Reload Timer0 counter
   //TCCR0B = (1<<CS01); // Begin Timer0. Full speed, 1/8 prescaler
+
   timer0_write(ESP.getCycleCount() + st.step_pulse_time);
+#else
+  // Для ELRON_ACE_UNO: установить таймер 0 через HAL
+  // HAL_Timer0_SetCompare(...);
+#endif
 
   busy = true;
+#ifndef ELRON_ACE_UNO
   sei(); // Re-enable interrupts to allow Stepper Port Reset Interrupt to fire on-time.
+#else
+  // Для ELRON_ACE_UNO: разрешить прерывания (например, __enable_irq())
+#endif
          // NOTE: The remaining code in this ISR will finish before returning to main program.
 
   // If there is no step segment, attempt to pop one from the stepper buffer
@@ -360,13 +385,23 @@ void TIMER1_COMPA_vect(void)
 
       #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
         // With AMASS is disabled, set timer prescaler for segments with slow step frequencies (< 250Hz).
-				// TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
-				T1C |= (st.exec_segment->prescaler<<TCPD);
+    // TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
+        #ifndef ELRON_ACE_UNO
+    T1C |= (st.exec_segment->prescaler<<TCPD);
+        #else
+        // Для ELRON_ACE_UNO: установить предделитель таймера через HAL
+        // HAL_Timer16_SetPrescaler(&htimer16, st.exec_segment->prescaler);
+        #endif
       #endif
 
       // Initialize step segment timing per step and load number of steps to execute.
       //OCR1A = st.exec_segment->cycles_per_tick;
+      #ifndef ELRON_ACE_UNO
       timer1_write(st.exec_segment->cycles_per_tick);
+      #else
+      // Для ELRON_ACE_UNO: установить период таймера через HAL
+      // HAL_Timer16_SetCompare(&htimer16, st.exec_segment->cycles_per_tick);
+      #endif
 
       st.step_count = st.exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow.
       // If the new segment starts a new planner block, initialize stepper variables and counters.
@@ -535,6 +570,7 @@ void TIMER1_COMPA_vect(void)
 //ISR(TIMER0_OVF_vect)
 void TIMER0_OVF_vect(void)
 {
+  #ifndef ELRON_ACE_UNO
   // Reset stepping pins (leave the direction pins)
 #ifdef USE_DC_MOTORS
   STEP_PORT = step_port_invert_mask ^ DIRECTION_PORT;
@@ -545,7 +581,12 @@ void TIMER0_OVF_vect(void)
   SPI.write32(regs.data);
 
   // timer0 cannot be disabled. It needs to have some value in the future or wdt reset will happen
+
   timer0_write(ESP.getCycleCount()-1);
+#else
+  // Для ELRON_ACE_UNO: установить таймер 0 через HAL
+  // HAL_Timer0_SetCompare(...);
+#endif
 }
 
 #ifdef STEP_PULSE_DELAY
@@ -577,6 +618,7 @@ void st_generate_step_dir_invert_masks()
 // Reset and clear stepper subsystem variables
 void st_reset()
 {
+    #ifndef ELRON_ACE_UNO
   // Initialize stepper driver idle state.
   st_go_idle();
 
@@ -601,44 +643,91 @@ void st_reset()
   STEP_PORT = step_port_invert_mask;
 #endif
   SPI.write32(regs.data);
+  #else
+  // Для ELRON_ACE_UNO: установить таймер 0 через HAL
+  // HAL_Timer0_SetCompare(...);
+#endif
 }
 
 
 // Initialize and start the stepper motor subsystem
 void stepper_init()
 {
-  // Configure step and direction interface pins
-  //STEP_DDR |= STEP_MASK;
-  //STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
-  //DIRECTION_DDR |= DIRECTION_MASK;
+  #ifdef ELRON_ACE_UNO
+    PinInitOutput(X_STEP_BIT, STEP_PORT);
+    PinInitOutput(Y_STEP_BIT, STEP_PORT);
+    PinInitOutput(Z_STEP_BIT, STEP_PORT);
 
-  timer0_isr_init();
-  timer0_attachInterrupt(TIMER0_OVF_vect);
-  timer0_write(ESP.getCycleCount()-1);
+    PinInitOutput(X_DIRECTION_BIT, DIRECTION_PORT);
+    PinInitOutput(Y_DIRECTION_BIT, DIRECTION_PORT);
+    PinInitOutput(Z_DIRECTION_BIT, DIRECTION_PORT);
 
-  timer1_isr_init();
-  timer1_disable();
-  timer1_attachInterrupt(TIMER1_COMPA_vect);
-  timer1_write(1);
+    PinInitOutput(STEPPERS_DISABLE_BIT, STEPPERS_DISABLE_PORT);
 
-	//Serial.println(ESP.getCycleCount());
-  // Configure Timer 1: Stepper Driver Interrupt
-  /*TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
-  TCCR1B |=  (1<<WGM12);
-  TCCR1A &= ~((1<<WGM11) | (1<<WGM10));
-  TCCR1A &= ~((1<<COM1A1) | (1<<COM1A0) | (1<<COM1B1) | (1<<COM1B0)); // Disconnect OC1 output
-  // TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Set in st_go_idle().
-  // TIMSK1 &= ~(1<<OCIE1A);  // Set in st_go_idle().
+    // Configure Timer 1: Stepper Driver Interrupt // Настройка таймера 1: Прерывание работы шагового драйвера
+    Timer16_HandleTypeDef htimer16;
+    
+    // Базовая конфигурация таймера
+    htimer16.Instance = TIMER16_0;
+    htimer16.Clock.Source = TIMER16_SOURCE_INTERNAL_SYSTEM;
+    htimer16.Clock.Prescaler = TIMER16_PRESCALER_8;
+    htimer16.CountMode = TIMER16_COUNTMODE_INTERNAL;
+    htimer16.ActiveEdge = TIMER16_ACTIVEEDGE_RISING;
+    htimer16.Preload = TIMER16_PRELOAD_AFTERWRITE;
+    
+    // Конфигурация триггера
+    htimer16.Trigger.Source = TIMER16_TRIGGER_TIM0_GPIO0_7;
+    htimer16.Trigger.ActiveEdge = TIMER16_TRIGGER_ACTIVEEDGE_SOFTWARE;
+    htimer16.Trigger.TimeOut = TIMER16_TIMEOUT_DISABLE;
+    
+    // Конфигурация фильтра
+    htimer16.Filter.ExternalClock = TIMER16_FILTER_NONE;
+    htimer16.Filter.Trigger = TIMER16_FILTER_NONE;
+    
+    // Конфигурация волновой формы
+    htimer16.Waveform.Enable = TIMER16_WAVEFORM_GENERATION_DISABLE;
+    htimer16.Waveform.Polarity = TIMER16_WAVEFORM_POLARITY_NONINVERTED;
+    
+    // Режим энкодера
+    htimer16.EncoderMode = TIMER16_ENCODER_DISABLE;
+    
+    // Инициализация таймера
+    HAL_Timer16_Init(&htimer16);
+    #else
 
-  // Configure Timer 0: Stepper Port Reset Interrupt
-  TIMSK0 &= ~((1<<OCIE0B) | (1<<OCIE0A) | (1<<TOIE0)); // Disconnect OC0 outputs and OVF interrupt.
-  TCCR0A = 0; // Normal operation
-  TCCR0B = 0; // Disable Timer0 until needed
-  TIMSK0 |= (1<<TOIE0); // Enable Timer0 overflow interrupt
-  #ifdef STEP_PULSE_DELAY
-    TIMSK0 |= (1<<OCIE0A); // Enable Timer0 Compare Match A interrupt
-  #endif
-	*/
+      // Configure step and direction interface pins
+      //STEP_DDR |= STEP_MASK;
+      //STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
+      //DIRECTION_DDR |= DIRECTION_MASK;
+
+      timer0_isr_init();
+      timer0_attachInterrupt(TIMER0_OVF_vect);
+      timer0_write(ESP.getCycleCount()-1);
+
+      timer1_isr_init();
+      timer1_disable();
+      timer1_attachInterrupt(TIMER1_COMPA_vect);
+      timer1_write(1);
+
+      //Serial.println(ESP.getCycleCount());
+      // Configure Timer 1: Stepper Driver Interrupt
+      /*TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
+      TCCR1B |=  (1<<WGM12);
+      TCCR1A &= ~((1<<WGM11) | (1<<WGM10));
+      TCCR1A &= ~((1<<COM1A1) | (1<<COM1A0) | (1<<COM1B1) | (1<<COM1B0)); // Disconnect OC1 output
+      // TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Set in st_go_idle().
+      // TIMSK1 &= ~(1<<OCIE1A);  // Set in st_go_idle().
+
+      // Configure Timer 0: Stepper Port Reset Interrupt
+      TIMSK0 &= ~((1<<OCIE0B) | (1<<OCIE0A) | (1<<TOIE0)); // Disconnect OC0 outputs and OVF interrupt.
+      TCCR0A = 0; // Normal operation
+      TCCR0B = 0; // Disable Timer0 until needed
+      TIMSK0 |= (1<<TOIE0); // Enable Timer0 overflow interrupt
+      #ifdef STEP_PULSE_DELAY
+        TIMSK0 |= (1<<OCIE0A); // Enable Timer0 Compare Match A interrupt
+      #endif
+      */
+    #endif
 }
 
 
