@@ -133,10 +133,10 @@
 // define to force Grbl to always set the machine origin at the homed location despite switch orientation.
 // #define HOMING_FORCE_SET_ORIGIN // Uncomment to enable.
 
-// Number of blocks Grbl executes upon startup. These blocks are stored in EEPROM, where the size
-// and addresses are defined in settings.h. With the current settings, up to 2 startup blocks may
-// be stored and executed in order. These startup blocks would typically be used to set the g-code
-// parser state depending on user preferences.
+// Количество блоков, которые Grbl выполняет при запуске. Эти блоки сохраняются в EEPROM, где размер
+// и адреса определяются в настройках.h. При текущих настройках может быть сохранено и выполнено по порядку до 2 блоков запуска.
+// Эти блоки запуска обычно используются для настройки g-кода
+// состояния синтаксического анализатора в зависимости от предпочтений пользователя.
 #define N_STARTUP_LINE 2 // Integer (1-2)
 
 // Number of floating decimal points printed by Grbl for certain value types. These settings are
@@ -511,36 +511,34 @@
 #define ENABLE_RESTORE_EEPROM_DEFAULT_SETTINGS // '$RST=$' Default enabled. Comment to disable.
 #define ENABLE_RESTORE_EEPROM_CLEAR_PARAMETERS // '$RST=#' Default enabled. Comment to disable.
 
-// Defines the EEPROM data restored upon a settings version change and `$RST=*` command. Whenever the
-// the settings or other EEPROM data structure changes between Grbl versions, Grbl will automatically
-// wipe and restore the EEPROM. This macro controls what data is wiped and restored. This is useful
-// particularily for OEMs that need to retain certain data. For example, the BUILD_INFO string can be
-// written into the Arduino EEPROM via a seperate .INO sketch to contain product data. Altering this
-// macro to not restore the build info EEPROM will ensure this data is retained after firmware upgrades.
-// NOTE: Uncomment to override defaults in settings.h
+// Определяет данные EEPROM, которые восстанавливаются при изменении версии настроек и выполнении команды `$RST=*` . Всякий раз, когда
+// структура данных EEPROM или настройки Grbl меняются от версии к версии, Grbl автоматически
+// стирает и восстанавливает данные EEPROM. Этот макрос определяет, какие данные стираются и восстанавливаются. Это полезно
+// особенно для производителей, которым необходимо сохранять определенные данные. Например, строку BUILD_INFO можно
+// записать в EEPROM Arduino с помощью отдельной команды .Скетч INO для хранения данных о продукте. Изменение этого
+// макроса для исключения восстановления информации о сборке из EEPROM гарантирует сохранение этих данных после обновления прошивки. 
+// ПРИМЕЧАНИЕ. Раскомментируйте, чтобы переопределить настройки по умолчанию в файле settings.h
 // #define SETTINGS_RESTORE_ALL (SETTINGS_RESTORE_DEFAULTS | SETTINGS_RESTORE_PARAMETERS | SETTINGS_RESTORE_STARTUP_LINES | SETTINGS_RESTORE_BUILD_INFO)
 
-// Enable the '$I=(string)' build info write command. If disabled, any existing build info data must
-// be placed into EEPROM via external means with a valid checksum value. This macro option is useful
-// to prevent this data from being over-written by a user, when used to store OEM product data.
-// NOTE: If disabled and to ensure Grbl can never alter the build info line, you'll also need to enable
-// the SETTING_RESTORE_ALL macro above and remove SETTINGS_RESTORE_BUILD_INFO from the mask.
-// NOTE: See the included grblWrite_BuildInfo.ino example file to write this string seperately.
-#define ENABLE_BUILD_INFO_WRITE_COMMAND // '$I=' Default enabled. Comment to disable.
+// Включить параметр '$I=(строка)'
+// команда записи информации о сборке. Если этот параметр отключен, все существующие информационные данные о сборке
+// могут быть помещены в EEPROM с помощью внешних средств с действительным значением контрольной суммы. Этот параметр макроса полезен
+// чтобы предотвратить перезапись этих данных пользователем при их использовании для хранения данных о продукте OEM.
+// ПРИМЕЧАНИЕ: Если эта функция отключена, а также для того, чтобы Grbl никогда не смог изменить информационную строку сборки, вам также необходимо включить
+// макрос SETTING_RESTORE_ALL, указанный выше и/или удаление SETTINGS_RESTORE_BUILD_INFO из маски. 
+ // ПРИМЕЧАНИЕ. Чтобы записать эту строку отдельно, воспользуйтесь прилагаемым файлом примера grblWrite_BuildInfo.ino.
+//#define ENABLE_BUILD_INFO_WRITE_COMMAND // '$I=' Default enabled. Comment to disable.
 
-// AVR processors require all interrupts to be disabled during an EEPROM write. This includes both
-// the stepper ISRs and serial comm ISRs. In the event of a long EEPROM write, this ISR pause can
-// cause active stepping to lose position and serial receive data to be lost. This configuration
-// option forces the planner buffer to completely empty whenever the EEPROM is written to prevent
-// any chance of lost steps.
-// However, this doesn't prevent issues with lost serial RX data during an EEPROM write, especially
-// if a GUI is premptively filling up the serial RX buffer simultaneously. It's highly advised for
-// GUIs to flag these gcodes (G10,G28.1,G30.1) to always wait for an 'ok' after a block containing
-// one of these commands before sending more data to eliminate this issue.
-// NOTE: Most EEPROM write commands are implicitly blocked during a job (all '$' commands). However,
-// coordinate set g-code commands (G10,G28/30.1) are not, since they are part of an active streaming
-// job. At this time, this option only forces a planner buffer sync with these g-code commands.
-#define FORCE_BUFFER_SYNC_DURING_EEPROM_WRITE // Default enabled. Comment to disable.
+// Процессоры AVR требуют, чтобы все прерывания были отключены во время записи в EEPROM. Это включает в себя как
+// шаговый модуль ISRs и последовательный модуль связи ISRs. В случае длительной записи в EEPROM эта пауза ISR может привести к
+// приводит к потере позиции активного шага и потере данных последовательного приема. Эта конфигурация
+// опция приводит к полному опустошению буфера планировщика при каждой записи в EEPROM, чтобы предотвратить
+// возможность потери шагов.
+// ПРИМЕЧАНИЕ: Большинство команд записи в EEPROM неявно блокируются во время выполнения задания (все команды '$'). Однако команды 
+// набора координат в g-коде (G10,G28/30.1) не блокируются, поскольку они являются частью активной потоковой передачи
+// задание. На данный момент эта опция только принудительно синхронизирует буфер планировщика с этими командами g-кода.
+// одну из этих команд, прежде чем отправлять дополнительные данные, чтобы избежать этой проблемы.
+#define FORCE_BUFFER_SYNC_DURING_EEPROM_WRITE // По умолчанию включено. Коментарии отключены.
 
 // In Grbl v0.9 and prior, there is an old outstanding bug where the `WPos:` work position reported
 // may not correlate to what is executing, because `WPos:` is based on the g-code parser state, which

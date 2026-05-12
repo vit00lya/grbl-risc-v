@@ -25,11 +25,26 @@
 //extern "C" {
   #include <EEPROM.h>
 //}
+#else
+// For MIK32 platform
+extern "C" {
+#include <mik32_hal_eeprom.h>
+}
 #endif
 
 void eeprom_init();
 unsigned char eeprom_get_char(unsigned int addr);
-void eeprom_put_char(unsigned int addr, unsigned char new_value);
+//void eeprom_put_char(unsigned int addr, unsigned char new_value);
+HAL_StatusTypeDef eeprom_write_from_page(
+    uint8_t start_page,
+    uint8_t word_count
+);
+
+HAL_StatusTypeDef eeprom_erase_from_page(
+    uint8_t start_page,
+    uint8_t word_count
+);
+
 void memcpy_to_eeprom_with_checksum(unsigned int destination, char *source, unsigned int size);
 int memcpy_from_eeprom_with_checksum(char *destination, unsigned int source, unsigned int size);
 

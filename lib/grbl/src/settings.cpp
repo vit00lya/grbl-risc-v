@@ -23,7 +23,13 @@
 
 settings_t settings;
 
-// Method to store startup lines into EEPROM
+/**
+ * @brief Сохраняет строку запуска в EEPROM.
+ *
+ * @param n Номер строки запуска (0 или 1).
+ * @param line Указатель на строку для сохранения (должна быть длиной LINE_BUFFER_SIZE).
+ * @note При определении FORCE_BUFFER_SYNC_DURING_EEPROM_WRITE синхронизирует буфер протокола.
+ */
 void settings_store_startup_line(uint8_t n, char *line)
 {
   #ifdef FORCE_BUFFER_SYNC_DURING_EEPROM_WRITE
@@ -34,38 +40,56 @@ void settings_store_startup_line(uint8_t n, char *line)
 }
 
 
-// Method to store build info into EEPROM
-// NOTE: This function can only be called in IDLE state.
+/**
+ * @brief Сохраняет информацию о сборке в EEPROM.
+ *
+ * @param line Указатель на строку с информацией о сборке (длиной LINE_BUFFER_SIZE).
+ * @note Функция может быть вызвана только в состоянии IDLE.
+ */
 void settings_store_build_info(char *line)
 {
-  // Build info can only be stored when state is IDLE.
   memcpy_to_eeprom_with_checksum(EEPROM_ADDR_BUILD_INFO,(char*)line, LINE_BUFFER_SIZE);
 }
 
 
-// Method to store coord data parameters into EEPROM
+/**
+ * @brief Сохраняет координатные данные в EEPROM.
+ *
+ * @param coord_select Выбор координатной системы (0..SETTING_INDEX_NCOORD).
+ * @param coord_data Указатель на массив значений координат (размер N_AXIS).
+ * @note При определении FORCE_BUFFER_SYNC_DURING_EEPROM_WRITE синхронизирует буфер протокола.
+ */
 void settings_write_coord_data(uint8_t coord_select, float *coord_data)
 {
   #ifdef FORCE_BUFFER_SYNC_DURING_EEPROM_WRITE
     protocol_buffer_synchronize();
   #endif
   uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
-  memcpy_to_eeprom_with_checksum(addr,(char*)coord_data, sizeof(float)*N_AXIS);
+  memcpy_to_eeprom_with_checksum(addr, (char*)coord_data, sizeof(float)*N_AXIS);
 }
 
 
-// Method to store Grbl global settings struct and version number into EEPROM
-// NOTE: This function can only be called in IDLE state.
+/**
+ * @brief Сохраняет глобальные настройки Grbl и номер версии в EEPROM.
+ *
+ * @note Функция может быть вызвана только в состоянии IDLE.
+ */
 void write_global_settings()
 {
-  eeprom_put_char(0, SETTINGS_VERSION);
+  //eeprom_put_char(0, SETTINGS_VERSION);
   memcpy_to_eeprom_with_checksum(EEPROM_ADDR_GLOBAL, (char*)&settings, sizeof(settings_t));
 }
 
 
-// Method to restore EEPROM-saved Grbl global settings back to defaults.
+/**
+ * @brief Восстанавливает сохранённые в EEPROM настройки Grbl к значениям по умолчанию.
+ *
+ * @param restore_flag Флаг восстановления (битовая маска SETTINGS_RESTORE_*).
+ * @note Поддерживает восстановление параметров, строк запуска, информации о сборке.
+ */
 void settings_restore(uint8_t restore_flag) {
   if (restore_flag & SETTINGS_RESTORE_DEFAULTS) {
+    settings.settings_version = SETTINGS_VERSION;
     settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
     settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
     settings.step_invert_mask = DEFAULT_STEPPING_INVERT_MASK;
@@ -138,24 +162,33 @@ void settings_restore(uint8_t restore_flag) {
   }
 
   if (restore_flag & SETTINGS_RESTORE_STARTUP_LINES) {
-    #if N_STARTUP_LINE > 0
-      eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK, 0);
-      eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK+1, 0); // Checksum
-    #endif
-    #if N_STARTUP_LINE > 1
-      eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK+(LINE_BUFFER_SIZE+1), 0);
-      eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK+(LINE_BUFFER_SIZE+2), 0); // Checksum
-    #endif
+    eeprom_erase_from_page(EEPROM_ADDR_STARTUP_BLOCK_PAGE, 64); // Очищаем две страницы полностью
+    // #if N_STARTUP_LINE > 0
+    //   eeprom_erase_from_page()
+    //   eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK, 0);
+    //   eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK+1, 0); // Checksum
+    // #endif
+    // #if N_STARTUP_LINE > 1
+    //   eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK+(LINE_BUFFER_SIZE+1), 0);
+    //   eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK+(LINE_BUFFER_SIZE+2), 0); // Checksum
+    // #endif
   }
 
   if (restore_flag & SETTINGS_RESTORE_BUILD_INFO) {
-    eeprom_put_char(EEPROM_ADDR_BUILD_INFO , 0);
-    eeprom_put_char(EEPROM_ADDR_BUILD_INFO+1 , 0); // Checksum
+    //eeprom_put_char(EEPROM_ADDR_BUILD_INFO , 0);
+    //eeprom_put_char(EEPROM_ADDR_BUILD_INFO+1 , 0); // Checksum
+    eeprom_erase_from_page(EEPROM_ADDR_BUILD_INFO_PAGE, 64); // Очищаем две страницы полностью
   }
 }
 
 
-// Reads startup line from EEPROM. Updated pointed line string data.
+/**
+ * @brief Читает строку запуска из EEPROM.
+ *
+ * @param n Номер строки запуска (0 или 1).
+ * @param line Указатель на буфер для строки (должен быть размером LINE_BUFFER_SIZE).
+ * @return true если чтение успешно, false если данные повреждены (тогда строка сбрасывается в пустую).
+ */
 uint8_t settings_read_startup_line(uint8_t n, char *line)
 {
   uint32_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
@@ -169,7 +202,12 @@ uint8_t settings_read_startup_line(uint8_t n, char *line)
 }
 
 
-// Reads startup line from EEPROM. Updated pointed line string data.
+/**
+ * @brief Читает информацию о сборке из EEPROM.
+ *
+ * @param line Указатель на буфер для строки (размер LINE_BUFFER_SIZE).
+ * @return true если чтение успешно, false если данные повреждены (тогда строка сбрасывается в пустую).
+ */
 uint8_t settings_read_build_info(char *line)
 {
   if (!(memcpy_from_eeprom_with_checksum((char*)line, EEPROM_ADDR_BUILD_INFO, LINE_BUFFER_SIZE))) {
@@ -182,7 +220,13 @@ uint8_t settings_read_build_info(char *line)
 }
 
 
-// Read selected coordinate data from EEPROM. Updates pointed coord_data value.
+/**
+ * @brief Читает выбранные координатные данные из EEPROM.
+ *
+ * @param coord_select Выбор координатной системы (0..SETTING_INDEX_NCOORD).
+ * @param coord_data Указатель на массив для координат (размер N_AXIS).
+ * @return true если чтение успешно, false если данные повреждены (тогда координаты сбрасываются в нули).
+ */
 uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
 {
   uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
@@ -196,7 +240,11 @@ uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
 }
 
 
-// Reads Grbl global settings struct from EEPROM.
+/**
+ * @brief Читает глобальные настройки Grbl из EEPROM.
+ *
+ * @return true если чтение успешно и версия совпадает, false если данные повреждены или версия не совпадает.
+ */
 uint8_t read_global_settings() {
   // Check version-byte of eeprom
   uint8_t version = eeprom_get_char(0);
@@ -212,7 +260,14 @@ uint8_t read_global_settings() {
 }
 
 
-// A helper method to set settings from command line
+/**
+ * @brief Вспомогательный метод для установки настроек из командной строки.
+ *
+ * @param parameter Номер параметра (см. коды параметров в Grbl).
+ * @param value Значение параметра.
+ * @return Код статуса (STATUS_OK, STATUS_NEGATIVE_VALUE, STATUS_INVALID_STATEMENT и др.).
+ * @note Обновляет глобальные настройки и сохраняет их в EEPROM.
+ */
 uint8_t settings_store_global_setting(uint8_t parameter, float value) {
   if (value < 0.0) { return(STATUS_NEGATIVE_VALUE); }
   if (parameter >= AXIS_SETTINGS_START_VAL) {
@@ -325,6 +380,11 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
   return(STATUS_OK);
 }
 
+/**
+ * @brief Инициализирует настройки Grbl.
+ *
+ * @note Читает глобальные настройки из EEPROM; если чтение неудачно, восстанавливает настройки по умолчанию.
+ */
 void settings_init()
 {
   if(!read_global_settings()) {
@@ -334,7 +394,12 @@ void settings_init()
   }
 }
 
-// Returns step pin mask according to Grbl internal axis indexing.
+/**
+ * @brief Возвращает маску шагового пина в соответствии с внутренней индексацией осей Grbl.
+ *
+ * @param axis_idx Индекс оси (X_AXIS, Y_AXIS, Z_AXIS, A_AXIS и т.д.).
+ * @return Маска бита шагового пина для указанной оси.
+ */
 uint8_t get_step_pin_mask(uint8_t axis_idx)
 {
   if ( axis_idx == X_AXIS ) { return((1<<X_STEP_BIT)); }
@@ -349,7 +414,12 @@ uint8_t get_step_pin_mask(uint8_t axis_idx)
 }
 
 
-// Returns direction pin mask according to Grbl internal axis indexing.
+/**
+ * @brief Возвращает маску пина направления в соответствии с внутренней индексацией осей Grbl.
+ *
+ * @param axis_idx Индекс оси (X_AXIS, Y_AXIS, Z_AXIS, A_AXIS и т.д.).
+ * @return Маска бита пина направления для указанной оси.
+ */
 uint8_t get_direction_pin_mask(uint8_t axis_idx)
 {
   if ( axis_idx == X_AXIS ) { return((1<<X_DIRECTION_BIT)); }
@@ -364,7 +434,12 @@ uint8_t get_direction_pin_mask(uint8_t axis_idx)
 }
 
 
-// Returns limit pin mask according to Grbl internal axis indexing.
+/**
+ * @brief Возвращает маску пина лимита в соответствии с внутренней индексацией осей Grbl.
+ *
+ * @param axis_idx Индекс оси (X_AXIS, Y_AXIS, Z_AXIS, A_AXIS и т.д.).
+ * @return Маска бита пина лимита для указанной оси.
+ */
 uint8_t get_limit_pin_mask(uint8_t axis_idx)
 {
   if ( axis_idx == X_AXIS ) { return((1<<X_LIMIT_BIT)); }

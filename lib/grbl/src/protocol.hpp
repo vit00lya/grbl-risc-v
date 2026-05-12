@@ -22,12 +22,10 @@
 #ifndef protocol_h
 #define protocol_h
 
-// Line buffer size from the serial input stream to be executed.
-// NOTE: Not a problem except for extreme cases, but the line buffer size can be too small
-// and g-code blocks can get truncated. Officially, the g-code standards support up to 256
-// characters. In future versions, this will be increased, when we know how much extra
-// memory space we can invest into here or we re-write the g-code parser not to have this
-// buffer.
+// Размер буфера строк из потока последовательного ввода, который должен быть выполнен.
+// ПРИМЕЧАНИЕ: Это не проблема, за исключением крайних случаев, но размер буфера строк может быть слишком мал
+// и блоки g-кода могут быть обрезаны. Официально стандарты g-кода поддерживают до 256
+// символов. Возможно размер стоит увеличить.
 #ifndef LINE_BUFFER_SIZE
   #define LINE_BUFFER_SIZE 200
 #endif

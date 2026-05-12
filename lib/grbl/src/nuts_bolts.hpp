@@ -91,4 +91,11 @@ HAL_StatusTypeDef PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HA
 void PinInitInputIRQ(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull, HAL_GPIO_Line_Config irq_line);
 
 HAL_StatusTypeDef PinInitOutput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port);
+
+// Функция для сброса произвольных линий прерываний
+void ClearGPIOInterrupts(uint8_t line_mask);
+
+// Функция для сброса конкретных линий прерываний, заданных через HAL_GPIO_Line
+void ClearGPIOInterruptLines(uint8_t mask);
+
 #endif

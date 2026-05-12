@@ -61,14 +61,22 @@
   #define SETTINGS_RESTORE_ALL 0xFF // All bitflags
 #endif
 
-// Define EEPROM memory address location values for Grbl settings and parameters
-// NOTE: The Atmega328p has 1KB EEPROM. The upper half is reserved for parameters and
-// the startup script. The lower half contains the global settings and space for future
-// developments.
-#define EEPROM_ADDR_GLOBAL         1U
-#define EEPROM_ADDR_PARAMETERS     1024U
-#define EEPROM_ADDR_STARTUP_BLOCK  1536U
-#define EEPROM_ADDR_BUILD_INFO     1792U
+// Определение значений адресов памяти EEPROM для настроек и параметров Grbl
+// ПРИМЕЧАНИЕ. Объем EEPROM в Atmega328p составляет 1 КБ.  Верхняя половина зарезервирована для параметров и 
+// стартового скрипта.  Нижняя половина содержит глобальные настройки и место для будущих 
+// разработок.
+// Тут указана карта расположения данных EEPROM для ESP32, в ней памяти больше чем АТмега 328P
+// Комментарий указан из оригинальной GBRL 
+// 1 страница 128 байт - 32 слова
+#define EEPROM_ADDR_GLOBAL         1U     
+#define EEPROM_ADDR_PARAMETERS     1024U   
+#define EEPROM_ADDR_STARTUP_BLOCK  1536U  
+#define EEPROM_ADDR_BUILD_INFO     1792U  
+
+#define EEPROM_ADDR_GLOBAL_PAGE         1   // Для амура 1-8 страницы
+#define EEPROM_ADDR_PARAMETERS_PAGE     9   // Для амура 9-12 страницу  
+#define EEPROM_ADDR_STARTUP_BLOCK_PAGE  13  // Для амура 13-14 страница
+#define EEPROM_ADDR_BUILD_INFO_PAGE     15  // Для амура 15-16 страница
 
 // Define EEPROM address indexing for coordinate parameters
 #define N_COORDINATE_SYSTEM 6  // Number of supported work coordinate systems (from index 1)
@@ -110,6 +118,8 @@ typedef struct {
   float homing_seek_rate;
   uint16_t homing_debounce_delay;
   float homing_pulloff;
+  uint8_t settings_version;
+
 } settings_t;
 extern settings_t settings;
 

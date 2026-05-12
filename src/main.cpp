@@ -20,7 +20,7 @@
 */
 
 // #include <Arduino.h>
-#include "grbl.hpp"
+#include <grbl.hpp>
 
 // Declare system global variable structure
 system_t sys;
@@ -35,7 +35,7 @@ volatile uint8_t sys_rt_exec_accessory_override; // Global realtime executor bit
   volatile uint8_t sys_rt_exec_debug;
 #endif
 
-void setup(void){
+void setup(){
   // Initialize system upon power-up.
   serial_init();    // Setup serial connection
   eeprom_init();		// Initialize EEPROM
@@ -112,11 +112,11 @@ void trap_handler()
     }
 
 
-void loop(void)
+int main()
 {
   // Grbl initialization loop upon power-up or a system abort. For the latter, all processes
   // will return to this loop to be cleanly re-initialized.
-
+  setup();
   // Reset system variables.
   uint8_t prior_state = sys.state;
   memset(&sys, 0, sizeof(system_t)); // Clear system struct variable.

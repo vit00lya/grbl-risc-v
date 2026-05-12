@@ -35,29 +35,29 @@
 
 static void Timer16_StepInit(Timer16_HandleTypeDef& timer_step)
 {
-    timer_step.Instance = TIMER_STEP;
+    // timer_step.Instance = TIMER_STEP;
 
-    /* Настройка тактирования */
-    timer_step.Clock.Source = TIMER16_SOURCE_INTERNAL_SYSTEM;
-    timer_step.CountMode = TIMER16_COUNTMODE_INTERNAL; /* При тактировании от Input1 не имеет значения */
-    timer_step.Clock.Prescaler = TIMER16_PRESCALER_1;
-    timer_step.ActiveEdge = TIMER16_ACTIVEEDGE_RISING; /* Выбирается при тактировании от Input1 */
+    // /* Настройка тактирования */
+    // timer_step.Clock.Source = TIMER16_SOURCE_INTERNAL_SYSTEM;
+    // timer_step.CountMode = TIMER16_COUNTMODE_INTERNAL; /* При тактировании от Input1 не имеет значения */
+    // timer_step.Clock.Prescaler = TIMER16_PRESCALER_1;
+    // timer_step.ActiveEdge = TIMER16_ACTIVEEDGE_RISING; /* Выбирается при тактировании от Input1 */
 
-    /* Настройка режима обновления регистра ARR и CMP */
-    timer_step.Preload = TIMER16_PRELOAD_AFTERWRITE;
+    // /* Настройка режима обновления регистра ARR и CMP */
+    // timer_step.Preload = TIMER16_PRELOAD_AFTERWRITE;
 
-    /* Настройки фильтра */
-    timer_step.Filter.ExternalClock = TIMER16_FILTER_NONE;
-    timer_step.Filter.Trigger = TIMER16_FILTER_NONE;
+    // /* Настройки фильтра */
+    // timer_step.Filter.ExternalClock = TIMER16_FILTER_NONE;
+    // timer_step.Filter.Trigger = TIMER16_FILTER_NONE;
 
-    /* Настройка режима энкодера */
-    timer_step.EncoderMode = TIMER16_ENCODER_DISABLE;
+    // /* Настройка режима энкодера */
+    // timer_step.EncoderMode = TIMER16_ENCODER_DISABLE;
 
-    /* Выходной сигнал */
-    timer_step.Waveform.Enable = TIMER16_WAVEFORM_GENERATION_ENABLE;
-    timer_step.Waveform.Polarity = TIMER16_WAVEFORM_POLARITY_NONINVERTED;
+    // /* Выходной сигнал */
+    // timer_step.Waveform.Enable = TIMER16_WAVEFORM_GENERATION_ENABLE;
+    // timer_step.Waveform.Polarity = TIMER16_WAVEFORM_POLARITY_NONINVERTED;
 
-    HAL_Timer16_Init(&timer_step);
+    // HAL_Timer16_Init(&timer_step);
 }
 
 void SystemClockConfig(Timer16_HandleTypeDef& timer_step)
@@ -117,37 +117,6 @@ GPIO_PinState ReadPin(GPIO_TypeDef *GPIO_x, HAL_PinsTypeDef pin)
     return bitStatus;
 }
 
-void PinInitInputIRQ(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull, HAL_GPIO_Line_Config irq_line){
-
-    PinInitInput(pin,port,pull);
-    HAL_GPIO_InterruptMode interrupt_mode = GPIO_INT_MODE_LOW;
-    if (pull == HAL_GPIO_PULL_UP){
-     interrupt_mode = GPIO_INT_MODE_FALLING;
-    }else if (pull == HAL_GPIO_PULL_DOWN) {
-      interrupt_mode = GPIO_INT_MODE_RISING;
-    }
-   HAL_GPIO_InitInterruptLine(irq_line, interrupt_mode);
-
-}
-
-HAL_StatusTypeDef PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HAL_GPIO_PullTypeDef pull){
-
-    GPIO_InitTypeDef GPIO_InitStruct = {};
-    GPIO_InitStruct.Pin = pin;
-    GPIO_InitStruct.Mode = HAL_GPIO_MODE_GPIO_INPUT;
-    GPIO_InitStruct.Pull = pull;
-    return HAL_GPIO_Init(port, &GPIO_InitStruct);
-
-}
-
-HAL_StatusTypeDef PinInitOutput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port){
-
-    GPIO_InitTypeDef GPIO_InitStruct = {};
-    GPIO_InitStruct.Pin = pin;
-    GPIO_InitStruct.Mode = HAL_GPIO_MODE_GPIO_OUTPUT;
-    return HAL_GPIO_Init(port, &GPIO_InitStruct);
-
-}
 
 bool PinHightLevel(const HAL_PinsTypeDef pin, GPIO_TypeDef* port){
   
@@ -158,101 +127,6 @@ bool PinHightLevel(const HAL_PinsTypeDef pin, GPIO_TypeDef* port){
     return true;
     
 }
-
-// Extracts a floating point value from a string. The following code is based loosely on
-// the avr-libc strtod() function by Michael Stumpf and Dmitry Xmelkov and many freely
-// available conversion method examples, but has been highly optimized for Grbl. For known
-// CNC applications, the typical decimal value is expected to be in the range of E0 to E-4.
-// Scientific notation is officially not supported by g-code, and the 'E' character may
-// be a g-code word on some CNC systems. So, 'E' notation will not be recognized. 
-// NOTE: Thanks to Radu-Eosif Mihailescu for identifying the issues with using strtod().
-// Извлекает значение с плавающей запятой из строки. Приведенный ниже код в общих чертах основан на
-// функции avr-libc strtod() Михаэля Штумпфа и Дмитрия Хмелькова и многих других
-// доступных примерах методов преобразования, но был оптимизирован для Grbl. Для известных систем ЧПУ
-// типичное десятичное значение, как ожидается, будет находиться в диапазоне от E0 до E-4.
-// Научная нотация официально не поддерживается g-кодом, и символ "E" может
-// быть g-кодовым словом в некоторых системах ЧПУ. Таким образом, обозначение "E" распознаваться не будет. 
-// ПРИМЕЧАНИЕ: Спасибо Раду-Иосифу Михайлеску за выявление проблем с использованием strtod().
-uint8_t read_float(char *line, uint8_t *char_counter, float *float_ptr)                  
-{
-  char *ptr = line + *char_counter;
-  unsigned char c;
-    
-  // Grab first character and increment pointer. No spaces assumed in line.
-  // Захватите первый символ и увеличьте указатель. Пробелы в строке не допускаются.
-  c = *ptr++;
-  
-  // Capture initial positive/minus character
-  // Фиксировать начальный положительный/отрицательный символ
-  bool isnegative = false;
-  if (c == '-') {
-    isnegative = true;
-    c = *ptr++;
-  } else if (c == '+') {
-    c = *ptr++;
-  }
-  
-  // Extract number into fast integer. Track decimal in terms of exponent value.
-  // Преобразуйте число в быстрое целое число. Отследите десятичную дробь по значению экспоненты.
-  uint32_t intval = 0;
-  int8_t exp = 0;
-  uint8_t ndigit = 0;
-  bool isdecimal = false;
-  while(1) {
-    c -= '0';
-    if (c <= 9) {
-      ndigit++;
-      if (ndigit <= MAX_INT_DIGITS) {
-        if (isdecimal) { exp--; }
-        intval = (((intval << 2) + intval) << 1) + c; // intval*10 + c
-      } else {
-        if (!(isdecimal)) { exp++; }  // Drop overflow digits // Удалить цифры переполнения
-      }
-    } else if (c == (('.'-'0') & 0xff)  &&  !(isdecimal)) {
-      isdecimal = true;
-    } else {
-      break;
-    }
-    c = *ptr++;
-  }
-  
-  // Return if no digits have been read. // Возвращает, если ни одна цифра не была считана.
-  if (!ndigit) { return(false); };
-  
-  // Convert integer into floating point. // Преобразовать целое число в число с плавающей запятой.
-  float fval;
-  fval = (float)intval;
-  
-  // Apply decimal. Should perform no more than two floating point multiplications for the
-  // expected range of E0 to E-4.
-  // Примените десятичную дробь. Следует выполнить не более двух умножений с плавающей запятой для значения
-  // Ожидаемый диапазон от E0 до E-4.
-  if (fval != 0) {
-    while (exp <= -2) {
-      fval *= 0.01; 
-      exp += 2;
-    }
-    if (exp < 0) { 
-      fval *= 0.1; 
-    } else if (exp > 0) {
-      do {
-        fval *= 10.0;
-      } while (--exp > 0);
-    } 
-  }
-
-  // Assign floating point value with correct sign.   // Присвоить значение с плавающей запятой с правильным знаком.  
-  if (isnegative) {
-    *float_ptr = -fval;
-  } else {
-    *float_ptr = fval;
-  }
-
-  *char_counter = ptr - line - 1; // Set char_counter to next statement // Установите char_counter в значение следующего оператора
-  
-  return(true);
-}
-
 
 // Delays variable defined milliseconds. Compiler compatibility fix for _delay_ms(),
 // which only accepts constants in future compiler releases.

@@ -33,6 +33,21 @@ HAL_StatusTypeDef PinInitInput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port, HA
 
 }
 
+// Функция для сброса произвольных линий прерываний
+// lines - битовая маска, где каждый бит соответствует линии прерывания
+// Например, для сброса линий 0, 3 и 7 нужно передать
+// (1 << (X_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S)) |
+// (1 << (Y_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S)) |
+// (1 << (Z_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S))
+void ClearGPIOInterrupts(uint8_t line_mask) {
+    GPIO_IRQ->CLEAR = line_mask;
+}
+
+// Функция для сброса конкретных линий прерываний, заданных через HAL_GPIO_Line
+void ClearGPIOInterruptLines(uint8_t mask) {
+    GPIO_IRQ->CLEAR = mask;
+}
+
 HAL_StatusTypeDef PinInitOutput(const HAL_PinsTypeDef pin, GPIO_TypeDef* port){
 
     GPIO_InitTypeDef GPIO_InitStruct = {};

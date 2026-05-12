@@ -62,9 +62,10 @@ void protocol_main_loop()
     system_execute_startup(line); // Execute startup script.
   }
 
+  // 
   // ---------------------------------------------------------------------------------
-  // Primary loop! Upon a system abort, this exits back to main() to reset the system.
-  // This is also where Grbl idles while waiting for something to do.
+  // Основная петля. При прерывании работы возвращается к функции main.
+  // здесь станок находится в ождании до получения каких-либо команд.
   // ---------------------------------------------------------------------------------
 
   uint8_t line_flags = 0;
