@@ -1009,10 +1009,15 @@ uint8_t gc_execute_line(char *line, uint8_t client)
 
   // [18. Set retract mode ]: NOT SUPPORTED
 
-  // [19. Go to predefined position, Set G10, or Set axis offsets ]:
+
+  // [19. Перейдите в заданную позицию, установите G10 или задайте смещения осей]:
   switch(gc_block.non_modal_command) {
+      
+     // Используется для установки смещений инструмента и управления системами координат
+     // Эта команда позволяет программисту определять такие параметры, как значения коррекции инструмента или опорные точки для систем координат заготовки.
     case NON_MODAL_SET_COORDINATE_DATA:
-      settings_write_coord_data(coord_select,gc_block.values.ijk);
+      // Нужно ли эти данные записывать? Возможно это может привести к быстрому истиранию памяти. Временно закомментировал.
+      //settings_write_coord_data(coord_select,gc_block.values.ijk);
       // Update system coordinate system if currently active.
       if (gc_state.modal.coord_select == coord_select) {
         memcpy(gc_state.coord_system,gc_block.values.ijk,N_AXIS*sizeof(float));
@@ -1028,9 +1033,11 @@ uint8_t gc_execute_line(char *line, uint8_t client)
       memcpy(gc_state.position, gc_block.values.ijk, N_AXIS*sizeof(float));
       break;
     case NON_MODAL_SET_HOME_0:
+      //Это команда используется для сохранения координат нулевой позиции
       settings_write_coord_data(SETTING_INDEX_G28,gc_state.position);
       break;
     case NON_MODAL_SET_HOME_1:
+      //Это команда используется для сохранения координат второй нулевой позиции
       settings_write_coord_data(SETTING_INDEX_G30,gc_state.position);
       break;
     case NON_MODAL_SET_COORDINATE_OFFSET:

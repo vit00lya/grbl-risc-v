@@ -78,6 +78,11 @@
 #define EEPROM_ADDR_STARTUP_BLOCK_PAGE  13  // Для амура 13-14 страница
 #define EEPROM_ADDR_BUILD_INFO_PAGE     15  // Для амура 15-16 страница
 
+#define EEPROM_ADDR_GLOBAL_COUNT_PAGE         8   // Для амура 1-8 страницы
+#define EEPROM_ADDR_PARAMETERS_COUNT_PAGE     4   // Для амура 9-12 страницу  
+#define EEPROM_ADDR_STARTUP_BLOCK_COUNT_PAGE  2 // Для амура 13-14 страница
+#define EEPROM_ADDR_BUILD_INFO_COUNT_PAGE     2  // Для амура 15-16 страница
+
 // Define EEPROM address indexing for coordinate parameters
 #define N_COORDINATE_SYSTEM 6  // Number of supported work coordinate systems (from index 1)
 #define SETTING_INDEX_NCOORD N_COORDINATE_SYSTEM+1 // Total number of system stored (from index 0)

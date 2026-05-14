@@ -4,12 +4,15 @@
  * @brief EEPROM implementation for MIK32 platform (ELRON_ACE_UNO)
  */
 
+#include <cstdint>
+
 extern "C"{
 #include <mik32_hal_eeprom.h>
 #include <mik32_memory_map.h>
 }
 #include "grbl.hpp"
 
+// Настройки для АМУРА
 #define EEPROM_OP_TIMEOUT 100000
 #define EEPROM_PAGE_WORDS 32
 #define EEPROM_PAGE_COUNT 64
@@ -40,49 +43,6 @@ void eeprom_init()
     HAL_EEPROM_CalculateTimings(&heeprom, 32000000); // Настраиваем часы на 32MHz
     eeprom_initialized = true;
 }
-
-/**
- * @brief Чтение байта из EEPROM.
- *
- * Эта функция читает один байт по заданному адресу EEPROM.
- * Если EEPROM не инициализирована, возвращает 0.
- * Если операция чтения завершается ошибкой HAL, также возвращает 0.
- *
- * @param addr Адрес EEPROM для чтения (0‑EEPROM_SIZE‑1).
- * @return Прочитанный байт или 0 при ошибке/неинициализированной EEPROM.
- */
-unsigned char eeprom_get_char( unsigned int addr )
-{
-	if (!eeprom_initialized) {
-		return 0;
-	}
-	
-	uint32_t data;
-    if (HAL_EEPROM_Read(&heeprom, addr, &data, 1, EEPROM_OP_TIMEOUT) == HAL_OK) {
-	 	return (unsigned char)data;
-	 }
-	return 0; // Return 0 on error
-}
-
-/**
- * @brief Запись байта в EEPROM.
- *
- * Эта функция записывает один байт по заданному адресу EEPROM.
- * Если EEPROM не инициализирована, функция ничего не делает.
- * Операция записи использует таймаут 100 мс и записывает всё слово целиком.
- *
- * @param addr Адрес EEPROM для записи (0‑EEPROM_SIZE‑1).
- * @param new_value Новое значение байта для сохранения.
- */
-//void eeprom_put_char( unsigned int addr, unsigned char new_value )
-//{
-//	if (!eeprom_initialized) {
-//		return;
-//	}
-	
-//	uint32_t data = (uint32_t)new_value;
-//    HAL_EEPROM_Write(&heeprom, addr, &data, 1, HAL_EEPROM_WRITE_SINGLE, EEPROM_OP_TIMEOUT);
-//}
 
 
 /**
@@ -163,111 +123,267 @@ HAL_StatusTypeDef eeprom_write_from_page(
     return HAL_EEPROM_Write(&heeprom, start_address, data, word_count, HAL_EEPROM_WRITE_SINGLE, EEPROM_OP_TIMEOUT);
 }
 
+/**
+ * @brief Чтение страницы EEPROM.
+ *
+ * Эта функция читает одну страницу EEPROM (размером EEPROM_PAGE_WORDS слов) в буфер.
+ * Если EEPROM не инициализирована, функция ничего не делает (буфер остаётся неизменным).
+ * Если номер страницы некорректен, функция также ничего не делает.
+ *
+ * @param page_number Номер страницы (0..EEPROM_PAGE_COUNT-1)
+ * @param data Указатель на буфер размером EEPROM_PAGE_WORDS слов (uint32_t) для сохранения данных
+ */
+void read_eeprom_page(unsigned int page_number, uint32_t *data)
+{
+    if (!eeprom_initialized) {
+        return;
+    }
+    
+    // Проверка параметров
+    if (page_number >= EEPROM_PAGE_COUNT) {
+        return; // Некорректный номер страницы
+    }
+    
+    // Вычисление начального адреса в байтах
+    uint16_t start_address = page_number * EEPROM_PAGE_WORDS * 4;
+    
+    // Чтение всей страницы за один вызов HAL_EEPROM_Read
+    if (HAL_EEPROM_Read(&heeprom, start_address, data, EEPROM_PAGE_WORDS, EEPROM_OP_TIMEOUT) != HAL_OK) {
+        // При ошибке чтения заполняем буфер нулями
+        for (unsigned int i = 0; i < EEPROM_PAGE_WORDS; ++i) {
+            data[i] = 0;
+        }
+        return;
+    }
+}
+
 // Extensions added as part of Grbl
 
 /**
  * @brief Копирование данных в EEPROM с контрольной суммой.
  *
  * Эта функция копирует `size` байт из оперативной памяти `source` в EEPROM,
- * начиная с адреса `destination`. Во время копирования вычисляется 8‑битная
+ * начиная со страницы `destination`. Во время копирования вычисляется 8‑битная
  * циклическая контрольная сумма (вращение влево и сложение). После данных
- * контрольная сумма сохраняется в следующий байт EEPROM (по адресу `destination + size`).
- * Функция использует страничную запись через eeprom_write_from_page для выровненных блоков,
- * что повышает производительность.
+ * контрольная сумма сохраняется в следующий байт EEPROM.
  *
- * @param destination Начальный адрес EEPROM для данных.
+ * @param destination Начальная страница EEPROM для записи данных (0..EEPROM_PAGE_COUNT-1).
+ * @param count_page  Количество выделенных страниц для записи.
  * @param source Указатель на исходные данные в ОЗУ.
+ * @param offset смещение начала размещения исходных данных в странице 
  * @param size Количество байт для копирования.
  */
-void memcpy_to_eeprom_with_checksum(unsigned int destination, char *source, unsigned int size) {
-  unsigned char checksum = 0;
-  // Вычисляем контрольную сумму по исходным данным
-  for (unsigned int i = 0; i < size; i++) {
-    checksum = (checksum << 1) | (checksum >> 7);
-    checksum += (unsigned char)source[i];
-  }
+void memcpy_to_eeprom_with_checksum(unsigned int destination, unsigned int count_page, char *source, unsigned int offset, unsigned int size) {
 
-  // Определяем диапазон слов, которые нужно записать (данные + контрольная сумма)
-  unsigned int total_bytes = size + 1; // данные + checksum
-  unsigned int start_word = destination / 4;
-  unsigned int end_word = (destination + total_bytes + 3) / 4; // exclusive
-  unsigned int word_count = end_word - start_word;
-
-  if (word_count == 0) {
-    return; // нечего записывать
-  }
-
-  // Буфер для слов (максимум 256 слова, что соответствует 8 страницам)
-  uint32_t word_buffer[256];
-  if (word_count > 256) {
-    // На случай очень больших данных - упрощённо обработаем по частям (но в Grbl размеры небольшие)
-    // Для простоты ограничимся 256 словами (1024 байт)
-    word_count = 256;
-  }
-
-  // Заполняем буфер слов
-  for (unsigned int w = 0; w < word_count; w++) {
-    uint32_t word = 0;
-    unsigned int word_addr = (start_word + w) * 4; // начальный байтовый адрес слова
-    // Для каждого байта в слове (0..3)
-    for (unsigned int b = 0; b < 4; b++) {
-      unsigned int byte_addr = word_addr + b;
-      if (byte_addr >= destination && byte_addr < destination + size) {
-        // Байт принадлежит исходным данным
-        unsigned int src_idx = byte_addr - destination;
-        word |= (uint32_t)((unsigned char)source[src_idx]) << (b * 8);
-      } else if (byte_addr == destination + size) {
-        // Байт контрольной суммы
-        word |= (uint32_t)checksum << (b * 8);
-      } else {
-        // Байт не входит в наш диапазон, читаем существующее значение из EEPROM
-        word |= (uint32_t)eeprom_get_char(byte_addr) << (b * 8);
-      }
+   // Проверка на нулевой размер
+    if (size == 0) {
+        return;
     }
-    word_buffer[w] = word;
-  }
 
-  // Записываем слова через eeprom_write_from_page, разбивая по страницам
-  unsigned int page_size_words = EEPROM_PAGE_WORDS;
-  unsigned int current_page = start_word / page_size_words;
-  unsigned int offset_in_page = start_word % page_size_words;
-  unsigned int words_remaining = word_count;
-  unsigned int buffer_index = 0;
+    // Проверка, что EEPROM инициализирована
+    if (!eeprom_initialized) {
+        return;
+    }
 
-  while (words_remaining > 0) {
-    unsigned int words_in_page = page_size_words - offset_in_page;
-    unsigned int chunk = (words_remaining < words_in_page) ? words_remaining : words_in_page;
-    eeprom_write_from_page(current_page, &word_buffer[buffer_index], chunk);
-    buffer_index += chunk;
-    words_remaining -= chunk;
-    current_page++;
-    offset_in_page = 0;
-  }
+    // Проверка, что начальная страница допустима
+    if (destination >= EEPROM_PAGE_COUNT) {
+        return;
+    }
+
+    // Проверка, что выделено хотя бы одна страница
+    if (count_page == 0) {
+        return;
+    }
+
+    // Вычисляем общий размер данных с контрольной суммой
+    unsigned int total_size = size + 1; // данные + контрольная сумма
+    
+    // Вычисляем размер страницы в байтах
+    unsigned int page_size_bytes = EEPROM_PAGE_WORDS * 4;
+    
+    // Проверка, что не выходим за пределы EEPROM
+    if (destination + count_page > EEPROM_PAGE_COUNT) {
+        return;
+    }
+
+    // Проверка, что offset находится в пределах выделенных страниц
+    if (offset >= page_size_bytes * count_page) {
+        return; // Некорректное смещение
+    }
+    
+    // Максимальный размер данных, который можно записать в выделенные страницы с учетом offset
+    unsigned int max_data_size = count_page * page_size_bytes - offset - 1; // минус 1 байт для контрольной суммы
+    
+    // Проверка, что данные помещаются в выделенные страницы
+    if (size > max_data_size) {
+        // Данные слишком большие для выделенного пространства
+        return;
+    }
+
+    // Данные начинаются с указанного смещения внутри начальной страницы
+    unsigned int start_page = destination;
+    // offset_in_page теперь равен переданному параметру offset
+    
+    // Вычисляем количество затронутых страниц (данные могут занимать несколько страниц) с учетом offset
+    unsigned int needed_pages = (offset + total_size + page_size_bytes - 1) / page_size_bytes; // округление вверх
+    
+    // Ограничиваем needed_pages количеством выделенных страниц
+    if (needed_pages > count_page) {
+        needed_pages = count_page;
+    }
+    
+    // Статический буфер для затронутых страниц (в словах)
+    uint32_t buffer[needed_pages * EEPROM_PAGE_WORDS] = {0};
+
+
+    // 1. Чтение данных из EEPROM во временный буфер с использованием read_eeprom_page
+    for (unsigned int page = 0; page < needed_pages; ++page) {
+        unsigned int global_page = start_page + page;
+        read_eeprom_page(global_page, buffer + page * EEPROM_PAGE_WORDS);
+    }
+
+    // Вспомогательный байтовый буфер для работы с отдельными байтами
+    char *byte_buffer = (char*)buffer;
+
+    // 2. Модификация буфера новыми данными и вычисление контрольной суммы
+    uint8_t checksum = 0;
+    for (unsigned int i = 0; i < size; ++i) {
+        uint8_t byte = static_cast<uint8_t>(source[i]);
+        
+        // Циклический сдвиг влево на 1 бит (вращение)
+        checksum = (checksum << 1) | (checksum >> 7);
+        // Сложение с байтом (по модулю 256)
+        checksum += byte;
+
+        // Замена байта в буфере
+        unsigned int buffer_index = offset + i;
+        // Проверка границ буфера (на всякий случай)
+        if (buffer_index < needed_pages * page_size_bytes) {
+            byte_buffer[buffer_index] = byte;
+        }
+    }
+
+    // 3. Запись контрольной суммы в буфер
+    unsigned int checksum_index = offset + size;
+    if (checksum_index < needed_pages * page_size_bytes) {
+        byte_buffer[checksum_index] = checksum;
+    }
+
+    // 4. Запись буфера обратно в EEPROM по одной странице за проход
+    for (unsigned int page = 0; page < needed_pages; ++page) {
+        unsigned int global_page = start_page + page;
+        uint32_t *page_data = buffer + page * EEPROM_PAGE_WORDS;
+        
+        // Игнорируем возвращаемое значение, как в оригинальной реализации
+        eeprom_write_from_page(global_page, page_data, EEPROM_PAGE_WORDS);
+    }
 }
 
 /**
  * @brief Копирование данных из EEPROM с проверкой контрольной суммы.
  *
- * Эта функция читает `size` байт из EEPROM, начиная с адреса `source`,
- * в буфер оперативной памяти `destination`. Во время чтения вычисляется
- * такая же циклическая контрольная сумма, как в `memcpy_to_eeprom_with_checksum`.
- * После чтения данных функция читает сохранённую контрольную сумму из следующего
- * байта EEPROM и сравнивает её с вычисленной.
- *
  * @param destination Указатель на буфер назначения в ОЗУ.
- * @param source Начальный адрес данных в EEPROM.
+ * @param source_page Начальная страница EEPROM.
+ * @param count_page  Количество страниц для чтения.
+ * @param offset  Смещение для чтения.
  * @param size Количество байт для чтения.
  * @return 1 (истина), если контрольная сумма совпадает, иначе 0 (ложь).
  */
-int memcpy_from_eeprom_with_checksum(char *destination, unsigned int source, unsigned int size) {
-  unsigned char data, checksum = 0;
-  for(; size > 0; size--) {
-    data = eeprom_get_char(source++);
-    checksum = (checksum << 1) | (checksum >> 7);
-    checksum += data;
-    *(destination++) = data;
-  }
-  return(checksum == eeprom_get_char(source));
-}
+int memcpy_from_eeprom_with_checksum(char *destination, unsigned int source_page, unsigned int count_page, unsigned int offset, unsigned int size) {
+    //Проверка на нулевой размер
+    if (size == 0) {
+        return 0;
+    }
 
+    // Проверка, что EEPROM инициализирована
+    if (!eeprom_initialized) {
+        return 0;
+    }
+
+    // Проверка, что начальная страница допустима
+    if (source_page >= EEPROM_PAGE_COUNT) {
+        return 0;
+    }
+
+    // Проверка, что выделено хотя бы одна страница
+    if (count_page == 0) {
+        return 0;
+    }
+
+    // Вычисляем общий размер данных с контрольной суммой
+    unsigned int total_size = size + 1; // данные + контрольная сумма
+    
+    // Вычисляем размер страницы в байтах
+    unsigned int page_size_bytes = EEPROM_PAGE_WORDS * 4;
+    
+    // Проверка, что не выходим за пределы EEPROM
+    if (source_page + count_page > EEPROM_PAGE_COUNT) {
+        return 0;
+    }
+
+    // Проверка, что offset находится в пределах страниц
+    if (offset >= count_page * page_size_bytes) {
+        return 0; // Некорректное смещение
+    }
+    
+    // Максимальный размер данных, который можно прочитать из выделенных страниц с учетом offset
+    unsigned int max_data_size = count_page * page_size_bytes - offset - 1; // минус 1 байт для контрольной суммы
+    
+    // Проверка, что данные помещаются в выделенные страницы
+    if (size > max_data_size) {
+        // Данные слишком большие для выделенного пространства
+        return 0;
+    }
+
+    // Вычисляем количество затронутых страниц (данные могут занимать несколько страниц) с учетом offset
+    unsigned int needed_pages = (offset + total_size + page_size_bytes - 1) / page_size_bytes; // округление вверх
+    
+    // Ограничиваем needed_pages количеством выделенных страниц
+    if (needed_pages > count_page) {
+        needed_pages = count_page;
+    }
+
+
+    // Статический буфер для затронутых страниц (в словах)
+    uint32_t buffer[needed_pages * EEPROM_PAGE_WORDS] = {0};
+
+    // 1. Чтение данных из EEPROM во временный буфер с использованием read_eeprom_page
+    for (unsigned int page = 0; page < needed_pages; ++page) {
+        unsigned int global_page = source_page + page;
+        read_eeprom_page(global_page, buffer + page * EEPROM_PAGE_WORDS);
+    }
+
+    // Вспомогательный байтовый буфер для работы с отдельными байтами
+    char *byte_buffer = (char*)buffer;
+
+    // 2. Извлечение данных из буфера и вычисление контрольной суммы
+    uint8_t checksum = 0;
+    for (unsigned int i = 0; i < size; ++i) {
+        unsigned int buffer_index = offset + i;
+        // Проверка границ буфера (на всякий случай)
+        if (buffer_index >= needed_pages * page_size_bytes) {
+            return 0; // Ошибка: выход за границы буфера
+        }
+        uint8_t byte = static_cast<uint8_t>(byte_buffer[buffer_index]);
+        
+        // Циклический сдвиг влево на 1 бит (вращение)
+        checksum = (checksum << 1) | (checksum >> 7);
+        // Сложение с байтом (по модулю 256)
+        checksum += byte;
+
+        // Копирование байта в destination
+        destination[i] = byte;
+    }
+
+    // 3. Чтение сохранённой контрольной суммы из буфера
+    unsigned int checksum_index = offset + size;
+    if (checksum_index >= needed_pages * page_size_bytes) {
+        return 0; // Ошибка: контрольная сумма вне буфера
+    }
+    uint8_t stored_checksum = static_cast<uint8_t>(byte_buffer[checksum_index]);
+
+    // 4. Сравнение контрольных сумм
+    return (checksum == stored_checksum) ? 1 : 0;
+
+}
 // end of file

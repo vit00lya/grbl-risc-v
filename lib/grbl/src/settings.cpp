@@ -35,8 +35,9 @@ void settings_store_startup_line(uint8_t n, char *line)
   #ifdef FORCE_BUFFER_SYNC_DURING_EEPROM_WRITE
     protocol_buffer_synchronize(); // A startup line may contain a motion and be executing.
   #endif
-  uint32_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
-  memcpy_to_eeprom_with_checksum(addr,(char*)line, LINE_BUFFER_SIZE);
+  uint32_t addr = n*(LINE_BUFFER_SIZE+1);
+  //uint32_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
+  memcpy_to_eeprom_with_checksum(EEPROM_ADDR_STARTUP_BLOCK_PAGE, EEPROM_ADDR_STARTUP_BLOCK_COUNT_PAGE, (char*)line, addr, LINE_BUFFER_SIZE);
 }
 
 
@@ -48,12 +49,12 @@ void settings_store_startup_line(uint8_t n, char *line)
  */
 void settings_store_build_info(char *line)
 {
-  memcpy_to_eeprom_with_checksum(EEPROM_ADDR_BUILD_INFO,(char*)line, LINE_BUFFER_SIZE);
+  memcpy_to_eeprom_with_checksum(EEPROM_ADDR_BUILD_INFO, EEPROM_ADDR_BUILD_INFO_COUNT_PAGE, (char*)line, 0, LINE_BUFFER_SIZE);
 }
 
 
 /**
- * @brief Сохраняет координатные данные в EEPROM.
+ * @brief Сохраняет данные о координатах в EEPROM.
  *
  * @param coord_select Выбор координатной системы (0..SETTING_INDEX_NCOORD).
  * @param coord_data Указатель на массив значений координат (размер N_AXIS).
@@ -64,8 +65,9 @@ void settings_write_coord_data(uint8_t coord_select, float *coord_data)
   #ifdef FORCE_BUFFER_SYNC_DURING_EEPROM_WRITE
     protocol_buffer_synchronize();
   #endif
-  uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
-  memcpy_to_eeprom_with_checksum(addr, (char*)coord_data, sizeof(float)*N_AXIS);
+  uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1);
+  //uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
+  memcpy_to_eeprom_with_checksum(EEPROM_ADDR_PARAMETERS_PAGE, EEPROM_ADDR_PARAMETERS_COUNT_PAGE, (char*)coord_data, addr, sizeof(float)*N_AXIS);
 }
 
 
@@ -77,7 +79,7 @@ void settings_write_coord_data(uint8_t coord_select, float *coord_data)
 void write_global_settings()
 {
   //eeprom_put_char(0, SETTINGS_VERSION);
-  memcpy_to_eeprom_with_checksum(EEPROM_ADDR_GLOBAL, (char*)&settings, sizeof(settings_t));
+  memcpy_to_eeprom_with_checksum(EEPROM_ADDR_GLOBAL_PAGE, EEPROM_ADDR_GLOBAL_COUNT_PAGE, (char*)&settings, 0, sizeof(settings_t));
 }
 
 
@@ -191,8 +193,9 @@ void settings_restore(uint8_t restore_flag) {
  */
 uint8_t settings_read_startup_line(uint8_t n, char *line)
 {
-  uint32_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
-  if (!(memcpy_from_eeprom_with_checksum((char*)line, addr, LINE_BUFFER_SIZE))) {
+  //uint32_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
+  uint32_t addr = n*(LINE_BUFFER_SIZE+1);
+  if (!(memcpy_from_eeprom_with_checksum((char*)line, EEPROM_ADDR_STARTUP_BLOCK_PAGE, EEPROM_ADDR_STARTUP_BLOCK_COUNT_PAGE, addr, LINE_BUFFER_SIZE))) {
     // Reset line with default value
     line[0] = 0; // Empty line
     settings_store_startup_line(n, line);
@@ -210,7 +213,7 @@ uint8_t settings_read_startup_line(uint8_t n, char *line)
  */
 uint8_t settings_read_build_info(char *line)
 {
-  if (!(memcpy_from_eeprom_with_checksum((char*)line, EEPROM_ADDR_BUILD_INFO, LINE_BUFFER_SIZE))) {
+  if (!(memcpy_from_eeprom_with_checksum((char*)line, EEPROM_ADDR_BUILD_INFO_PAGE, EEPROM_ADDR_BUILD_INFO_COUNT_PAGE, 0, LINE_BUFFER_SIZE))) {
     // Reset line with default value
     line[0] = 0; // Empty line
     settings_store_build_info(line);
@@ -229,8 +232,9 @@ uint8_t settings_read_build_info(char *line)
  */
 uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
 {
-  uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
-  if (!(memcpy_from_eeprom_with_checksum((char*)coord_data, addr, sizeof(float)*N_AXIS))) {
+  //uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
+  uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1);
+  if (!(memcpy_from_eeprom_with_checksum((char*)coord_data, EEPROM_ADDR_BUILD_INFO_PAGE, EEPROM_ADDR_BUILD_INFO_COUNT_PAGE, addr, sizeof(float)*N_AXIS))) {
     // Reset with default zero vector
     clear_vector_float(coord_data);
     settings_write_coord_data(coord_select,coord_data);
@@ -246,13 +250,13 @@ uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
  * @return true если чтение успешно и версия совпадает, false если данные повреждены или версия не совпадает.
  */
 uint8_t read_global_settings() {
-  // Check version-byte of eeprom
-  uint8_t version = eeprom_get_char(0);
-  if (version == SETTINGS_VERSION) {
     // Read settings-record and check checksum
-    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, EEPROM_ADDR_GLOBAL, sizeof(settings_t)))) {
+    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, EEPROM_ADDR_GLOBAL_PAGE, EEPROM_ADDR_GLOBAL_COUNT_PAGE, 0, sizeof(settings_t)))) {
       return(false);
     }
+    else 
+      if (settings.settings_version != SETTINGS_VERSION) {
+        return(false);
   } else {
     return(false);
   }

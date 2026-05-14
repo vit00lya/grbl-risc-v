@@ -22,6 +22,9 @@
 // #include <Arduino.h>
 #include <grbl.hpp>
 
+char line[LINE_BUFFER_SIZE] = "3388HELLO";
+char line_result[LINE_BUFFER_SIZE] = "";
+
 // Declare system global variable structure
 system_t sys;
 int32_t sys_position[N_AXIS];      // Real-time machine (aka home) position vector in steps.
@@ -114,40 +117,46 @@ void trap_handler()
 
 int main()
 {
+    eeprom_init();
+
+    memcpy_to_eeprom_with_checksum(EEPROM_ADDR_STARTUP_BLOCK_PAGE, EEPROM_ADDR_STARTUP_BLOCK_COUNT_PAGE, (char*)line, 0, LINE_BUFFER_SIZE);
+    memcpy_from_eeprom_with_checksum((char*)line_result, EEPROM_ADDR_STARTUP_BLOCK_PAGE, EEPROM_ADDR_STARTUP_BLOCK_COUNT_PAGE, 0, LINE_BUFFER_SIZE);
+
   // Grbl initialization loop upon power-up or a system abort. For the latter, all processes
   // will return to this loop to be cleanly re-initialized.
-  setup();
+  // setup();
   // Reset system variables.
-  uint8_t prior_state = sys.state;
-  memset(&sys, 0, sizeof(system_t)); // Clear system struct variable.
-  sys.state = prior_state;
-  sys.f_override = DEFAULT_FEED_OVERRIDE;  // Set to 100%
-  sys.r_override = DEFAULT_RAPID_OVERRIDE; // Set to 100%
-  sys.spindle_speed_ovr = DEFAULT_SPINDLE_SPEED_OVERRIDE; // Set to 100%
-	memset(sys_probe_position,0,sizeof(sys_probe_position)); // Clear probe position.
-  sys_probe_state = 0;
-  sys_rt_exec_state = 0;
-  sys_rt_exec_alarm = 0;
-  sys_rt_exec_motion_override = 0;
-  sys_rt_exec_accessory_override = 0;
+  // uint8_t prior_state = sys.state;
+  // memset(&sys, 0, sizeof(system_t)); // Clear system struct variable.
+  // sys.state = prior_state;
+  // sys.f_override = DEFAULT_FEED_OVERRIDE;  // Set to 100%
+  // sys.r_override = DEFAULT_RAPID_OVERRIDE; // Set to 100%
+  // sys.spindle_speed_ovr = DEFAULT_SPINDLE_SPEED_OVERRIDE; // Set to 100%
+	// memset(sys_probe_position,0,sizeof(sys_probe_position)); // Clear probe position.
+  // sys_probe_state = 0;
+  // sys_rt_exec_state = 0;
+  // sys_rt_exec_alarm = 0;
+  // sys_rt_exec_motion_override = 0;
+  // sys_rt_exec_accessory_override = 0;
 
   // Reset Grbl primary systems.
-  serial_reset_read_buffer(CLIENT_ALL); // Clear serial read buffer
-  gc_init(); // Set g-code parser to default state
-  spindle_init();
-  coolant_init();
-  limits_init();
-  probe_init();
-  plan_reset(); // Clear block buffer and planner variables
-  st_reset(); // Clear stepper subsystem variables.
+  // serial_reset_read_buffer(CLIENT_ALL); // Clear serial read buffer
+  // gc_init(); // Set g-code parser to default state
+  // spindle_init();
+  // coolant_init();
+  // limits_init();
+  // probe_init();
+  // plan_reset(); // Clear block buffer and planner variables
+  // st_reset(); // Clear stepper subsystem variables.
 
   // Sync cleared gcode and planner positions to current system position.
-  plan_sync_position();
-  gc_sync_position();
+  // plan_sync_position();
+  // gc_sync_position();
 
   // Print welcome message. Indicates an initialization has occured at power-up or with a reset.
-  report_init_message(CLIENT_ALL);
+  // report_init_message(CLIENT_ALL);
 
   // Start Grbl main loop. Processes program inputs and executes them.
-  protocol_main_loop();
+  // protocol_main_loop();
+  return 0;
 }

@@ -37,6 +37,7 @@ unsigned char eeprom_get_char(unsigned int addr);
 //void eeprom_put_char(unsigned int addr, unsigned char new_value);
 HAL_StatusTypeDef eeprom_write_from_page(
     uint8_t start_page,
+    uint32_t *data,
     uint8_t word_count
 );
 
@@ -45,7 +46,9 @@ HAL_StatusTypeDef eeprom_erase_from_page(
     uint8_t word_count
 );
 
-void memcpy_to_eeprom_with_checksum(unsigned int destination, char *source, unsigned int size);
-int memcpy_from_eeprom_with_checksum(char *destination, unsigned int source, unsigned int size);
+void read_eeprom_page(unsigned int page_number, uint32_t *data);
+
+void memcpy_to_eeprom_with_checksum(unsigned int destination, unsigned int count_page, char *source, unsigned int offset, unsigned int size);
+int memcpy_from_eeprom_with_checksum(char *destination, unsigned int source_page, unsigned int count_page, unsigned int offset, unsigned int size);
 
 #endif

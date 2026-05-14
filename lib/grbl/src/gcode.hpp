@@ -46,12 +46,12 @@
 #define MODAL_GROUP_M8 13 // [M7,M8,M9] Coolant control
 #define MODAL_GROUP_M9 14 // [M56] Override control
 
-// Define command actions for within execution-type modal groups (motion, stopping, non-modal). Used
-// internally by the parser to know which command to execute.
-// NOTE: Some macro values are assigned specific values to make g-code state reporting and parsing
-// compile a little smaller. Necessary due to being completely out of flash on the 328p. Although not
-// ideal, just be careful with values that state 'do not alter' and check both report.c and gcode.c
-// to see how they are used, if you need to alter them.
+// Определение командных действий для внутримодальных групп типов выполнения (движение, остановка, немодальные). Используется
+// внутренним парсером для определения того, какую команду нужно выполнить. 
+// ПРИМЕЧАНИЕ. Некоторым значениям макросов присвоены конкретные значения, чтобы упростить составление отчетов о состоянии и синтаксический анализ g-кода. 
+// Это необходимо из-за нехватки флэш-памяти на плате 328p.
+// Будьте осторожны со значениями, которые не подлежат изменению, и проверьте оба файла: report.c и gcode.c.
+// Посмотрите, как они используются, если вам нужно их изменить.
 
 // Modal Group G0: Non-modal actions
 #define NON_MODAL_NO_ACTION 0 // (Default: Must be zero)
