@@ -269,13 +269,17 @@ void memcpy_to_eeprom_with_checksum(unsigned int destination, unsigned int count
         byte_buffer[checksum_index] = checksum;
     }
 
+    HAL_StatusTypeDef result;
+
     // 4. Запись буфера обратно в EEPROM по одной странице за проход
     for (unsigned int page = 0; page < needed_pages; ++page) {
-        unsigned int global_page = start_page + page;
-        uint32_t *page_data = buffer + page * EEPROM_PAGE_WORDS;
-        
-        // Игнорируем возвращаемое значение, как в оригинальной реализации
-        eeprom_write_from_page(global_page, page_data, EEPROM_PAGE_WORDS);
+       unsigned int global_page = start_page + page;
+       uint32_t *page_data = buffer + page * EEPROM_PAGE_WORDS;
+       result = eeprom_write_from_page(global_page, page_data, EEPROM_PAGE_WORDS);
+       if (result == HAL_OK)
+       {
+        delay_ms(1);
+       }
     }
 }
 

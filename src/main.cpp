@@ -119,8 +119,8 @@ int main()
 {
     eeprom_init();
 
-    memcpy_to_eeprom_with_checksum(EEPROM_ADDR_STARTUP_BLOCK_PAGE, EEPROM_ADDR_STARTUP_BLOCK_COUNT_PAGE, (char*)line, 0, LINE_BUFFER_SIZE);
-    memcpy_from_eeprom_with_checksum((char*)line_result, EEPROM_ADDR_STARTUP_BLOCK_PAGE, EEPROM_ADDR_STARTUP_BLOCK_COUNT_PAGE, 0, LINE_BUFFER_SIZE);
+    memcpy_to_eeprom_with_checksum(0, 1, (char*)line, 0, 10);
+    memcpy_from_eeprom_with_checksum((char*)line_result, 0, 1, 0, 10);
 
   // Grbl initialization loop upon power-up or a system abort. For the latter, all processes
   // will return to this loop to be cleanly re-initialized.
