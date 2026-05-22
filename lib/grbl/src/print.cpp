@@ -28,7 +28,7 @@ void printString(const char *s)
 }
 
 
-// Print a string stored in PGM-memory
+// Печатает строку, хранящуюся в PGM-памяти
 void printPgmString(const char *s)
 {
   xprintf(s);
@@ -37,7 +37,7 @@ void printPgmString(const char *s)
 
 void printIntegerInBase(unsigned long n, unsigned long base)
 {
-	unsigned char buf[8 * sizeof(long)]; // Assumes 8-bit chars.
+	unsigned char buf[8 * sizeof(long)]; // Предполагается 8-битные символы.
 	unsigned long i = 0;
 
 	if (n == 0) {
@@ -57,7 +57,7 @@ void printIntegerInBase(unsigned long n, unsigned long base)
 }
 
 
-// Prints an uint8 variable in base 10.
+// Печатает переменную uint8 в десятичной системе.
 void print_uint8_base10(uint8_t n)
 {
   uint8_t digit_a = 0;
@@ -76,7 +76,7 @@ void print_uint8_base10(uint8_t n)
 }
 
 
-// Prints an uint8 variable in base 2 with desired number of desired digits.
+// Печатает переменную uint8 в двоичной системе с заданным количеством цифр.
 void print_uint8_base2_ndigit(uint8_t n, uint8_t digits) {
   unsigned char buf[digits];
   uint8_t i = 0;
@@ -122,11 +122,11 @@ void printInteger(long n)
 }
 
 
-// Convert float to string by immediately converting to a long integer, which contains
-// more digits than a float. Number of decimal places, which are tracked by a counter,
-// may be set by the user. The integer is then efficiently converted to a string.
-// NOTE: AVR '%' and '/' integer operations are very efficient. Bitshifting speed-up
-// techniques are actually just slightly slower. Found this out the hard way.
+// Преобразует float в строку, немедленно конвертируя в long integer, который содержит
+// больше цифр, чем float. Количество десятичных знаков, отслеживаемое счётчиком,
+// может быть задано пользователем. Затем целое число эффективно преобразуется в строку.
+// ПРИМЕЧАНИЕ: Целочисленные операции '%' и '/' на AVR очень эффективны. Техники ускорения
+// с помощью битовых сдвигов на самом деле немного медленнее. Узнали это на горьком опыте.
 void printFloat(float n, uint8_t decimal_places)
 {
   if (n < 0) {
@@ -135,40 +135,40 @@ void printFloat(float n, uint8_t decimal_places)
   }
 
   uint8_t decimals = decimal_places;
-  while (decimals >= 2) { // Quickly convert values expected to be E0 to E-4.
+  while (decimals >= 2) { // Быстрое преобразование значений, ожидаемых от E0 до E-4.
     n *= 100;
     decimals -= 2;
   }
   if (decimals) { n *= 10; }
-  n += 0.5; // Add rounding factor. Ensures carryover through entire value.
+  n += 0.5; // Добавляет коэффициент округления. Обеспечивает перенос по всему значению.
 
-  // Generate digits backwards and store in string.
+  // Генерирует цифры в обратном порядке и сохраняет в строку.
   unsigned char buf[13];
   uint8_t i = 0;
   uint32_t a = (long)n;
   while(a > 0) {
-    buf[i++] = (a % 10) + '0'; // Get digit
+    buf[i++] = (a % 10) + '0'; // Получает цифру
     a /= 10;
   }
   while (i < decimal_places) {
-     buf[i++] = '0'; // Fill in zeros to decimal point for (n < 1)
+     buf[i++] = '0'; // Заполняет нулями до десятичной точки для (n < 1)
   }
-  if (i == decimal_places) { // Fill in leading zero, if needed.
+  if (i == decimal_places) { // Заполняет ведущий ноль, если нужно.
     buf[i++] = '0';
   }
 
-  // Print the generated string.
+  // Печатает сгенерированную строку.
   for (; i > 0; i--) {
-    if (i == decimal_places) { serial_write('.'); } // Insert decimal point in right place.
+    if (i == decimal_places) { serial_write('.'); } // Вставляет десятичную точку в нужное место.
     serial_write(buf[i-1]);
   }
 }
 
 
-// Floating value printing handlers for special variables types used in Grbl and are defined
-// in the config.h.
-//  - CoordValue: Handles all position or coordinate values in inches or mm reporting.
-//  - RateValue: Handles feed rate and current velocity in inches or mm reporting.
+// Обработчики печати значений с плавающей точкой для специальных типов переменных,
+// используемых в Grbl и определённых в config.h.
+//  - CoordValue: Обрабатывает все позиционные или координатные значения в дюймах или мм.
+//  - RateValue: Обрабатывает скорость подачи и текущую скорость в дюймах или мм.
 void printFloat_CoordValue(float n) {
   if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
     printFloat(n*INCH_PER_MM,N_DECIMAL_COORDVALUE_INCH);
@@ -185,12 +185,12 @@ void printFloat_RateValue(float n) {
   }
 }
 
-// Debug tool to print free memory in bytes at the called point.
-// NOTE: Keep commented unless using. Part of this function always gets compiled in.
+// Инструмент отладки для печати свободной памяти в байтах в точке вызова.
+// ПРИМЕЧАНИЕ: Держите закомментированным, если не используется. Часть этой функции всегда компилируется.
 // void printFreeMemory()
 // {
 //   extern int __heap_start, *__brkval;
-//   uint16_t free;  // Up to 64k values.
+//   uint16_t free;  // До 64k значений.
 //   free = (int) &free - (__brkval == 0 ? (int) &__heap_start : (int) __brkval);
 //   printInteger((int32_t)free);
 //   printString(" ");

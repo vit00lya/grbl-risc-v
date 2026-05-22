@@ -62,21 +62,22 @@ HAL_StatusTypeDef eeprom_erase_from_page(
     uint8_t start_page,
     uint8_t word_count
 ) {
-    if (!eeprom_initialized) {
-        return HAL_ERROR;
-    }
+    return HAL_OK;
+    // if (!eeprom_initialized) {
+    //     return HAL_ERROR;
+    // }
     
-    // Проверка параметров
-    if (start_page >= EEPROM_PAGE_COUNT) {
-        return HAL_ERROR; // Некорректный номер страницы
-    }
+    // // Проверка параметров
+    // if (start_page >= EEPROM_PAGE_COUNT) {
+    //     return HAL_ERROR; // Некорректный номер страницы
+    // }
     
-    if (word_count == 0) {
-        return HAL_OK; // Ничего не нужно записывать
-    }
+    // if (word_count == 0) {
+    //     return HAL_OK; // Ничего не нужно записывать
+    // }
     
-    // Вызов стандартной функции очистки HAL
-    return HAL_EEPROM_Erase(&heeprom, start_page, word_count, HAL_EEPROM_WRITE_SINGLE, EEPROM_OP_TIMEOUT);
+    // // Вызов стандартной функции очистки HAL
+    // return HAL_EEPROM_Erase(&heeprom, start_page, word_count, HAL_EEPROM_WRITE_SINGLE, EEPROM_OP_TIMEOUT);
 }
 
 /**
@@ -175,112 +176,113 @@ void read_eeprom_page(unsigned int page_number, uint32_t *data)
  */
 void memcpy_to_eeprom_with_checksum(unsigned int destination, unsigned int count_page, char *source, unsigned int offset, unsigned int size) {
 
+    // Закомменировал, пока не работает.
    // Проверка на нулевой размер
-    if (size == 0) {
-        return;
-    }
+    // if (size == 0) {
+    //     return;
+    // }
 
-    // Проверка, что EEPROM инициализирована
-    if (!eeprom_initialized) {
-        return;
-    }
+    // // Проверка, что EEPROM инициализирована
+    // if (!eeprom_initialized) {
+    //     return;
+    // }
 
-    // Проверка, что начальная страница допустима
-    if (destination >= EEPROM_PAGE_COUNT) {
-        return;
-    }
+    // // Проверка, что начальная страница допустима
+    // if (destination >= EEPROM_PAGE_COUNT) {
+    //     return;
+    // }
 
-    // Проверка, что выделено хотя бы одна страница
-    if (count_page == 0) {
-        return;
-    }
+    // // Проверка, что выделено хотя бы одна страница
+    // if (count_page == 0) {
+    //     return;
+    // }
 
-    // Вычисляем общий размер данных с контрольной суммой
-    unsigned int total_size = size + 1; // данные + контрольная сумма
+    // // Вычисляем общий размер данных с контрольной суммой
+    // unsigned int total_size = size + 1; // данные + контрольная сумма
     
-    // Вычисляем размер страницы в байтах
-    unsigned int page_size_bytes = EEPROM_PAGE_WORDS * 4;
+    // // Вычисляем размер страницы в байтах
+    // unsigned int page_size_bytes = EEPROM_PAGE_WORDS * 4;
     
-    // Проверка, что не выходим за пределы EEPROM
-    if (destination + count_page > EEPROM_PAGE_COUNT) {
-        return;
-    }
+    // // Проверка, что не выходим за пределы EEPROM
+    // if (destination + count_page > EEPROM_PAGE_COUNT) {
+    //     return;
+    // }
 
-    // Проверка, что offset находится в пределах выделенных страниц
-    if (offset >= page_size_bytes * count_page) {
-        return; // Некорректное смещение
-    }
+    // // Проверка, что offset находится в пределах выделенных страниц
+    // if (offset >= page_size_bytes * count_page) {
+    //     return; // Некорректное смещение
+    // }
     
-    // Максимальный размер данных, который можно записать в выделенные страницы с учетом offset
-    unsigned int max_data_size = count_page * page_size_bytes - offset - 1; // минус 1 байт для контрольной суммы
+    // // Максимальный размер данных, который можно записать в выделенные страницы с учетом offset
+    // unsigned int max_data_size = count_page * page_size_bytes - offset - 1; // минус 1 байт для контрольной суммы
     
-    // Проверка, что данные помещаются в выделенные страницы
-    if (size > max_data_size) {
-        // Данные слишком большие для выделенного пространства
-        return;
-    }
+    // // Проверка, что данные помещаются в выделенные страницы
+    // if (size > max_data_size) {
+    //     // Данные слишком большие для выделенного пространства
+    //     return;
+    // }
 
-    // Данные начинаются с указанного смещения внутри начальной страницы
-    unsigned int start_page = destination;
-    // offset_in_page теперь равен переданному параметру offset
+    // // Данные начинаются с указанного смещения внутри начальной страницы
+    // unsigned int start_page = destination;
+    // // offset_in_page теперь равен переданному параметру offset
     
-    // Вычисляем количество затронутых страниц (данные могут занимать несколько страниц) с учетом offset
-    unsigned int needed_pages = (offset + total_size + page_size_bytes - 1) / page_size_bytes; // округление вверх
+    // // Вычисляем количество затронутых страниц (данные могут занимать несколько страниц) с учетом offset
+    // unsigned int needed_pages = (offset + total_size + page_size_bytes - 1) / page_size_bytes; // округление вверх
     
-    // Ограничиваем needed_pages количеством выделенных страниц
-    if (needed_pages > count_page) {
-        needed_pages = count_page;
-    }
+    // // Ограничиваем needed_pages количеством выделенных страниц
+    // if (needed_pages > count_page) {
+    //     needed_pages = count_page;
+    // }
     
-    // Статический буфер для затронутых страниц (в словах)
-    uint32_t buffer[needed_pages * EEPROM_PAGE_WORDS] = {0};
+    // // Статический буфер для затронутых страниц (в словах)
+    // uint32_t buffer[needed_pages * EEPROM_PAGE_WORDS] = {0};
 
 
-    // 1. Чтение данных из EEPROM во временный буфер с использованием read_eeprom_page
-    for (unsigned int page = 0; page < needed_pages; ++page) {
-        unsigned int global_page = start_page + page;
-        read_eeprom_page(global_page, buffer + page * EEPROM_PAGE_WORDS);
-    }
+    // // 1. Чтение данных из EEPROM во временный буфер с использованием read_eeprom_page
+    // for (unsigned int page = 0; page < needed_pages; ++page) {
+    //     unsigned int global_page = start_page + page;
+    //     read_eeprom_page(global_page, buffer + page * EEPROM_PAGE_WORDS);
+    // }
 
-    // Вспомогательный байтовый буфер для работы с отдельными байтами
-    char *byte_buffer = (char*)buffer;
+    // // Вспомогательный байтовый буфер для работы с отдельными байтами
+    // char *byte_buffer = (char*)buffer;
 
-    // 2. Модификация буфера новыми данными и вычисление контрольной суммы
-    uint8_t checksum = 0;
-    for (unsigned int i = 0; i < size; ++i) {
-        uint8_t byte = static_cast<uint8_t>(source[i]);
+    // // 2. Модификация буфера новыми данными и вычисление контрольной суммы
+    // uint8_t checksum = 0;
+    // for (unsigned int i = 0; i < size; ++i) {
+    //     uint8_t byte = static_cast<uint8_t>(source[i]);
         
-        // Циклический сдвиг влево на 1 бит (вращение)
-        checksum = (checksum << 1) | (checksum >> 7);
-        // Сложение с байтом (по модулю 256)
-        checksum += byte;
+    //     // Циклический сдвиг влево на 1 бит (вращение)
+    //     checksum = (checksum << 1) | (checksum >> 7);
+    //     // Сложение с байтом (по модулю 256)
+    //     checksum += byte;
 
-        // Замена байта в буфере
-        unsigned int buffer_index = offset + i;
-        // Проверка границ буфера (на всякий случай)
-        if (buffer_index < needed_pages * page_size_bytes) {
-            byte_buffer[buffer_index] = byte;
-        }
-    }
+    //     // Замена байта в буфере
+    //     unsigned int buffer_index = offset + i;
+    //     // Проверка границ буфера (на всякий случай)
+    //     if (buffer_index < needed_pages * page_size_bytes) {
+    //         byte_buffer[buffer_index] = byte;
+    //     }
+    // }
 
-    // 3. Запись контрольной суммы в буфер
-    unsigned int checksum_index = offset + size;
-    if (checksum_index < needed_pages * page_size_bytes) {
-        byte_buffer[checksum_index] = checksum;
-    }
+    // // 3. Запись контрольной суммы в буфер
+    // unsigned int checksum_index = offset + size;
+    // if (checksum_index < needed_pages * page_size_bytes) {
+    //     byte_buffer[checksum_index] = checksum;
+    // }
 
-    HAL_StatusTypeDef result;
+    // HAL_StatusTypeDef result;
 
-    // 4. Запись буфера обратно в EEPROM по одной странице за проход
-    for (unsigned int page = 0; page < needed_pages; ++page) {
-       unsigned int global_page = start_page + page;
-       uint32_t *page_data = buffer + page * EEPROM_PAGE_WORDS;
-       result = eeprom_write_from_page(global_page, page_data, EEPROM_PAGE_WORDS);
-       if (result == HAL_OK)
-       {
-        delay_ms(1);
-       }
-    }
+    // // 4. Запись буфера обратно в EEPROM по одной странице за проход
+    // for (unsigned int page = 0; page < needed_pages; ++page) {
+    //    unsigned int global_page = start_page + page;
+    //    uint32_t *page_data = buffer + page * EEPROM_PAGE_WORDS;
+    //    result = eeprom_write_from_page(global_page, page_data, EEPROM_PAGE_WORDS);
+    //    if (result == HAL_OK)
+    //    {
+    //     delay_ms(1);
+    //    }
+    // }
 }
 
 /**
@@ -294,6 +296,10 @@ void memcpy_to_eeprom_with_checksum(unsigned int destination, unsigned int count
  * @return 1 (истина), если контрольная сумма совпадает, иначе 0 (ложь).
  */
 int memcpy_from_eeprom_with_checksum(char *destination, unsigned int source_page, unsigned int count_page, unsigned int offset, unsigned int size) {
+    
+    // Временная заглушка
+    return 0;
+
     //Проверка на нулевой размер
     if (size == 0) {
         return 0;

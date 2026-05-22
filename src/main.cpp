@@ -1,6 +1,7 @@
 /*
-  main.c - An embedded CNC Controller with rs274/ngc (g-code) support
+  main.c - Встраиваемый CNC контроллер с поддержкой rs274/ngc (G-код)
   Part of Grbl
+
 
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -22,48 +23,49 @@
 // #include <Arduino.h>
 #include <grbl.hpp>
 
-char line[LINE_BUFFER_SIZE] = "3388HELLO";
-char line_result[LINE_BUFFER_SIZE] = "";
 
-// Declare system global variable structure
+
+// Объявление глобальной структуры системных переменных
 system_t sys;
-int32_t sys_position[N_AXIS];      // Real-time machine (aka home) position vector in steps.
-int32_t sys_probe_position[N_AXIS]; // Last probe position in machine coordinates and steps.
-volatile uint8_t sys_probe_state;   // Probing state value.  Used to coordinate the probing cycle with stepper ISR.
-volatile uint8_t sys_rt_exec_state;   // Global realtime executor bitflag variable for state management. See EXEC bitmasks.
-volatile uint8_t sys_rt_exec_alarm;   // Global realtime executor bitflag variable for setting various alarms.
-volatile uint8_t sys_rt_exec_motion_override; // Global realtime executor bitflag variable for motion-based overrides.
-volatile uint8_t sys_rt_exec_accessory_override; // Global realtime executor bitflag variable for spindle/coolant overrides.
+int32_t sys_position[N_AXIS];      // Вектор позиции машины (также домашней позиции) в шагах в реальном времени.
+int32_t sys_probe_position[N_AXIS]; // Последняя позиция датчика в координатах машины и шагах.
+volatile uint8_t sys_probe_state;   // Состояние зондирования. Используется для координации цикла зондирования с прерыванием шагового двигателя.
+volatile uint8_t sys_rt_exec_state;   // Глобальная переменная-битовый флаг исполнителя реального времени для управления состоянием. См. битовые маски EXEC.
+volatile uint8_t sys_rt_exec_alarm;   // Глобальная переменная-битовый флаг исполнителя реального времени для установки различных аварийных сигналов.
+volatile uint8_t sys_rt_exec_motion_override; // Глобальная переменная-битовый флаг исполнителя реального времени для переопределений, связанных с движением.
+volatile uint8_t sys_rt_exec_accessory_override; // Глобальная переменная-битовый флаг исполнителя реального времени для переопределений шпинделя/охлаждения.
 #ifdef DEBUG
   volatile uint8_t sys_rt_exec_debug;
 #endif
 
 void setup(){
-  // Initialize system upon power-up.
-  serial_init();    // Setup serial connection
-  eeprom_init();		// Initialize EEPROM
-  settings_init();  // Load Grbl settings from EEPROM
-  stepper_init();   // Configure stepper pins and interrupt timers
-  system_init();    // Configure pinout pins and pin-change interrupt
 
-  memset(sys_position,0,sizeof(sys_position)); // Clear machine position.
-  //sei(); // Enable interrupts
+  // Инициализация системы при включении питания.
+  serial_init();    // Настройка последовательного соединения
+  eeprom_init();		// Инициализация EEPROM
+  settings_init();  // Загрузка настроек Grbl из EEPROM
+  stepper_init();   // Конфигурация выводов шагового двигателя и таймеров прерываний
+  system_init();    // Конфигурация выводов и прерываний по изменению состояния выводов
 
-  // Initialize system state.
+  memset(sys_position,0,sizeof(sys_position)); // Очистка позиции машины.
+  //sei(); // Включение прерываний
+
+  // Инициализация состояния системы.
   #ifdef FORCE_INITIALIZATION_ALARM
-    // Force Grbl into an ALARM state upon a power-cycle or hard reset.
+    // Принудительный перевод Grbl в состояние ALARM при перезагрузке питания или аппаратном сбросе.
     sys.state = STATE_ALARM;
   #else
     sys.state = STATE_IDLE;
   #endif
 
-  // Check for power-up and set system alarm if homing is enabled to force homing cycle
-  // by setting Grbl's alarm state. Alarm locks out all g-code commands, including the
-  // startup scripts, but allows access to settings and internal commands. Only a homing
-  // cycle '$H' or kill alarm locks '$X' will disable the alarm.
-  // NOTE: The startup script will run after successful completion of the homing cycle, but
-  // not after disabling the alarm locks. Prevents motion startup blocks from crashing into
-  // things uncontrollably. Very bad.
+  // Проверка включения питания и установка системной тревоги, если включена функция поиска дома,
+  // чтобы принудительно выполнить цикл поиска дома путём установки состояния тревоги Grbl.
+  // Тревога блокирует все команды G-кода, включая стартовые скрипты, но разрешает доступ
+  // к настройкам и внутренним командам. Только цикл поиска дома '$H' или снятие блокировки тревоги '$X'
+  // отключат тревогу.
+  // ПРИМЕЧАНИЕ: Стартовый скрипт выполнится после успешного завершения цикла поиска дома,
+  // но не после снятия блокировки тревоги. Это предотвращает неконтролируемые столкновения
+  // стартовых блоков движения с объектами. Очень важно.
   #ifdef HOMING_INIT_LOCK
     if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { sys.state = STATE_ALARM; }
   #endif
@@ -115,48 +117,52 @@ void trap_handler()
     }
 
 
+    
 int main()
 {
-    eeprom_init();
 
-    memcpy_to_eeprom_with_checksum(0, 1, (char*)line, 0, 10);
-    memcpy_from_eeprom_with_checksum((char*)line_result, 0, 1, 0, 10);
+    // Тестирование EEPROM
+    // char line[LINE_BUFFER_SIZE] = "3388HELLO";
+    // char line_result[LINE_BUFFER_SIZE] = "";
+    // eeprom_init();
+    // memcpy_to_eeprom_with_checksum(0, 1, (char*)line, 0, 10);
+    // memcpy_from_eeprom_with_checksum((char*)line_result, 0, 1, 0, 10);
 
-  // Grbl initialization loop upon power-up or a system abort. For the latter, all processes
-  // will return to this loop to be cleanly re-initialized.
-  // setup();
-  // Reset system variables.
-  // uint8_t prior_state = sys.state;
-  // memset(&sys, 0, sizeof(system_t)); // Clear system struct variable.
-  // sys.state = prior_state;
-  // sys.f_override = DEFAULT_FEED_OVERRIDE;  // Set to 100%
-  // sys.r_override = DEFAULT_RAPID_OVERRIDE; // Set to 100%
-  // sys.spindle_speed_ovr = DEFAULT_SPINDLE_SPEED_OVERRIDE; // Set to 100%
-	// memset(sys_probe_position,0,sizeof(sys_probe_position)); // Clear probe position.
-  // sys_probe_state = 0;
-  // sys_rt_exec_state = 0;
-  // sys_rt_exec_alarm = 0;
-  // sys_rt_exec_motion_override = 0;
-  // sys_rt_exec_accessory_override = 0;
+  // Цикл инициализации Grbl при включении питания или аварийной остановке системы. В последнем случае все процессы
+  // вернутся в этот цикл для чистой повторной инициализации.
+   setup();
+  // Сброс системных переменных.
+   uint8_t prior_state = sys.state;
+   memset(&sys, 0, sizeof(system_t)); // Очистка структурной переменной системы.
+   sys.state = prior_state;
+   sys.f_override = DEFAULT_FEED_OVERRIDE;  // Установить на 100%
+   sys.r_override = DEFAULT_RAPID_OVERRIDE; // Установить на 100%
+   sys.spindle_speed_ovr = DEFAULT_SPINDLE_SPEED_OVERRIDE; // Установить на 100%
+	 memset(sys_probe_position,0,sizeof(sys_probe_position)); // Очистка позиции датчика.
+   sys_probe_state = 0;
+   sys_rt_exec_state = 0;
+   sys_rt_exec_alarm = 0;
+   sys_rt_exec_motion_override = 0;
+   sys_rt_exec_accessory_override = 0;
 
-  // Reset Grbl primary systems.
-  // serial_reset_read_buffer(CLIENT_ALL); // Clear serial read buffer
-  // gc_init(); // Set g-code parser to default state
-  // spindle_init();
-  // coolant_init();
-  // limits_init();
-  // probe_init();
-  // plan_reset(); // Clear block buffer and planner variables
-  // st_reset(); // Clear stepper subsystem variables.
+  // Сброс основных систем Grbl.
+   serial_reset_read_buffer(CLIENT_ALL); // Очистка буфера чтения последовательного порта
+   gc_init(); // Установка парсера G-кода в состояние по умолчанию
+   spindle_init();
+   coolant_init();
+   limits_init();
+   probe_init();
+   plan_reset(); // Очистка буфера блоков и переменных планировщика
+   st_reset(); // Очистка переменных подсистемы шагового двигателя.
 
-  // Sync cleared gcode and planner positions to current system position.
-  // plan_sync_position();
-  // gc_sync_position();
+  // Синхронизация очищенных позиций G-кода и планировщика с текущей системной позицией.
+   plan_sync_position();
+   gc_sync_position();
 
-  // Print welcome message. Indicates an initialization has occured at power-up or with a reset.
-  // report_init_message(CLIENT_ALL);
+  // Вывод приветственного сообщения. Указывает, что произошла инициализация при включении питания или сбросе.
+   report_init_message(CLIENT_ALL);
 
-  // Start Grbl main loop. Processes program inputs and executes them.
-  // protocol_main_loop();
+  // Запуск основного цикла Grbl. Обрабатывает входные данные программы и выполняет их.
+   protocol_main_loop();
   return 0;
 }

@@ -92,8 +92,8 @@ C_INCLUDES = \
 # Compiler flags
 MCU = -march=$(ARCH) -mabi=$(ABI) -MD -fstrict-volatile-bitfields -fno-strict-aliasing -fno-common -fno-builtin-printf
 OPT = -Os
-CFLAGS = $(MCU) $(C_INCLUDES) $(OPT) -MMD -MP -MF"$(@:%.o=%.d)" -g -std=gnu11
-CXXFLAGS = $(MCU) $(C_INCLUDES) $(OPT) -MMD -MP -MF"$(@:%.o=%.d)" -g -std=gnu++11
+CFLAGS = $(MCU) $(C_INCLUDES) $(OPT) -MMD -MP -MF"$(@:%.o=%.d)" -g -std=gnu11 -fsingle-precision-constant
+CXXFLAGS = $(MCU) $(C_INCLUDES) $(OPT) -MMD -MP -MF"$(@:%.o=%.d)" -g -std=gnu++11 -fsingle-precision-constant
 ASFLAGS = $(MCU) $(AS_INCLUDES) $(OPT) -MMD -MP -MF"$(@:%.o=%.d)"
 
 # Linker script

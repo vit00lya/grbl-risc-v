@@ -239,10 +239,7 @@ void grbl_msg_sendf(uint8_t client, uint8_t level, const char *format, ...) {
 // formats axis values into a string and returns that string in rpt
 static void report_util_axis_values(float *axis_value, char *rpt) {
   uint8_t idx;
-  char axisVal[10];
   float unit_conv = 1.0; // unit conversion multiplier..default is mm
-
-  rpt[0] = '\0';
 
   if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
     unit_conv = 1.0 / MM_PER_INCH;
@@ -250,14 +247,13 @@ static void report_util_axis_values(float *axis_value, char *rpt) {
 
   for (idx=0; idx<N_AXIS; idx++) {
     if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-      xsprintf(axisVal, "%4.4f", axis_value[idx] * unit_conv);  // Report inches to 4 decimals
+      printFloat(axis_value[idx] * unit_conv,4);
     } else {
-      xsprintf(axisVal, "%4.3f", axis_value[idx] * unit_conv);  // Report mm to 3 decimals
+      printFloat(axis_value[idx] * unit_conv,3);
     }
-    strcat(rpt, axisVal);
 
     if (idx < (N_AXIS-1)) {
-      strcat(rpt, ",");
+      grbl_send(CLIENT_SERIAL,","); 
     }
   }
 }
@@ -335,39 +331,37 @@ void report_grbl_help(uint8_t client) {
 void report_grbl_settings(uint8_t client) {
   // Print Grbl settings.
   char setting[20];
-  char rpt[1000];
 
-  rpt[0] = '\0';
-  xsprintf(setting, "$0=%d\r\n", settings.pulse_microseconds); strcat(rpt, setting);
-  xsprintf(setting, "$1=%d\r\n", settings.stepper_idle_lock_time);  strcat(rpt, setting);
-  xsprintf(setting, "$2=%d\r\n", settings.step_invert_mask);  strcat(rpt, setting);
-  xsprintf(setting, "$3=%d\r\n", settings.dir_invert_mask);  strcat(rpt, setting);
-  xsprintf(setting, "$4=%d\r\n", bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));  strcat(rpt, setting);
-  xsprintf(setting, "$5=%d\r\n", bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS));  strcat(rpt, setting);
-  xsprintf(setting, "$6=%d\r\n", bit_istrue(settings.flags,BITFLAG_INVERT_PROBE_PIN));  strcat(rpt, setting);
-  xsprintf(setting, "$10=%d\r\n", settings.status_report_mask);  strcat(rpt, setting);
+  xsprintf(setting, "$0=%d\r\n", settings.pulse_microseconds); 
+  xsprintf(setting, "$1=%d\r\n", settings.stepper_idle_lock_time);  
+  xsprintf(setting, "$2=%d\r\n", settings.step_invert_mask);  
+  xsprintf(setting, "$3=%d\r\n", settings.dir_invert_mask);  
+  xsprintf(setting, "$4=%d\r\n", bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));  
+  xsprintf(setting, "$5=%d\r\n", bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS));  
+  xsprintf(setting, "$6=%d\r\n", bit_istrue(settings.flags,BITFLAG_INVERT_PROBE_PIN));  
+  xsprintf(setting, "$10=%d\r\n", settings.status_report_mask);  
 
-  xsprintf(setting, "$11=%4.3f\r\n", settings.junction_deviation);   strcat(rpt, setting);
-  xsprintf(setting, "$12=%4.3f\r\n", settings.arc_tolerance);   strcat(rpt, setting);
+  grbl_send(client,"$11="); printFloat(settings.junction_deviation,3); grbl_send(client,"\r\n");
+  grbl_send(client,"$12="); printFloat(settings.arc_tolerance,3); grbl_send(client,"\r\n");
 
-  xsprintf(setting, "$13=%d\r\n", bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));   strcat(rpt, setting);
-  xsprintf(setting, "$20=%d\r\n", bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));   strcat(rpt, setting);
-  xsprintf(setting, "$21=%d\r\n", bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));   strcat(rpt, setting);
-  xsprintf(setting, "$22=%d\r\n", bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));   strcat(rpt, setting);
-  xsprintf(setting, "$23=%d\r\n", settings.homing_dir_mask);   strcat(rpt, setting);
+  xsprintf(setting, "$13=%d\r\n", bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));   
+  xsprintf(setting, "$20=%d\r\n", bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));   
+  xsprintf(setting, "$21=%d\r\n", bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));   
+  xsprintf(setting, "$22=%d\r\n", bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));   
+  xsprintf(setting, "$23=%d\r\n", settings.homing_dir_mask);   
 
-  xsprintf(setting, "$24=%4.3f\r\n", settings.homing_feed_rate);   strcat(rpt, setting);
-  xsprintf(setting, "$25=%4.3f\r\n", settings.homing_seek_rate);   strcat(rpt, setting);
-  xsprintf(setting, "$26=%d\r\n", settings.homing_debounce_delay);   strcat(rpt, setting);
+  grbl_send(client,"$24="); printFloat(settings.homing_feed_rate,3); grbl_send(client,"\r\n");
+  grbl_send(client,"$25="); printFloat(settings.homing_seek_rate,3); grbl_send(client,"\r\n");
+  xsprintf(setting, "$26=%d\r\n", settings.homing_debounce_delay);   
 
-  xsprintf(setting, "$27=%4.3f\r\n", settings.homing_pulloff);   strcat(rpt, setting);
-  xsprintf(setting, "$30=%4.3f\r\n", settings.rpm_max);   strcat(rpt, setting);
-  xsprintf(setting, "$31=%4.3f\r\n", settings.rpm_min);   strcat(rpt, setting);
+  grbl_send(client,"$27="); printFloat(settings.homing_pulloff,3); grbl_send(client,"\r\n");
+  grbl_send(client,"$30="); printFloat(settings.rpm_max,3); grbl_send(client,"\r\n");
+  grbl_send(client,"$31="); printFloat(settings.rpm_min,3); grbl_send(client,"\r\n");
 
 #ifdef VARIABLE_SPINDLE
-  xsprintf(setting, "$32=%d\r\n", bit_istrue(settings.flags,BITFLAG_LASER_MODE));  strcat(rpt, setting);
+  xsprintf(setting, "$32=%d\r\n", bit_istrue(settings.flags,BITFLAG_LASER_MODE));  
 #else
-  strcat(rpt, "$32=0\r\n");
+  printString ("$32=0\r\n");
 #endif
 
   // Print axis settings
@@ -376,15 +370,15 @@ void report_grbl_settings(uint8_t client) {
   for (set_idx=0; set_idx<AXIS_N_SETTINGS; set_idx++) {
     for (idx=0; idx<N_AXIS; idx++) {
       switch (set_idx) {
-        case 0: xsprintf(setting, "$%d=%4.3f\r\n", val+idx, settings.steps_per_mm[idx]);   strcat(rpt, setting);	 break;
-        case 1: xsprintf(setting, "$%d=%4.3f\r\n", val+idx, settings.max_rate[idx]);   strcat(rpt, setting);	 break;
-        case 2: xsprintf(setting, "$%d=%4.3f\r\n", val+idx, settings.acceleration[idx]/(60*60));   strcat(rpt, setting);	 break;
-        case 3: xsprintf(setting, "$%d=%4.3f\r\n", val+idx, -settings.max_travel[idx]);   strcat(rpt, setting);	 break;
+        case 0: xsprintf(setting, "$%d=", val+idx);  printFloat(settings.steps_per_mm[idx],3); grbl_send(client,"\r\n"); break;
+        case 1: xsprintf(setting, "$%d=", val+idx);  printFloat(settings.max_rate[idx],3); grbl_send(client,"\r\n");	 break;
+        case 2: xsprintf(setting, "$%d=", val+idx);  printFloat(settings.acceleration[idx]/(60*60),3); grbl_send(client,"\r\n");	 break;
+        case 3: xsprintf(setting, "$%d=", val+idx);  printFloat(-settings.max_travel[idx],3); grbl_send(client,"\r\n");	 break;
       }
     }
     val += AXIS_SETTINGS_INCREMENT;
   }
-  grbl_send(client,rpt);
+
 }
 
 
@@ -449,9 +443,9 @@ void report_ngc_parameters(uint8_t client)
   strcat(ngc_rpt, "[TLO:"); // Print tool length offset value
 
   if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-    xsprintf(temp, "%4.3f]\r\n", gc_state.tool_length_offset * INCH_PER_MM);
+    printFloat(gc_state.tool_length_offset * INCH_PER_MM,3); grbl_send(client,"]\r\n");
   } else {
-    xsprintf(temp, "%4.3f]\r\n", gc_state.tool_length_offset);
+    printFloat(gc_state.tool_length_offset,3); grbl_send(client,"]\r\n");
   }
   strcat(ngc_rpt, temp);
   grbl_send(client, ngc_rpt);
@@ -531,14 +525,14 @@ void report_gcode_modes(uint8_t client)
   strcat(modes_rpt, temp);
 
   if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-    xsprintf(temp, " F%.1f", gc_state.feed_rate);
+    grbl_send(client," F"); printFloat(gc_state.feed_rate,1); 
   } else {
-    xsprintf(temp, " F%.0f", gc_state.feed_rate);
+    grbl_send(client," F"); printFloat(gc_state.feed_rate,0); 
   }
   strcat(modes_rpt, temp);
 
 #ifdef VARIABLE_SPINDLE
-  xsprintf(temp, " S%4.3f", gc_state.spindle_speed);
+  grbl_send(client," S"); printFloat(gc_state.spindle_speed,3); 
   strcat(modes_rpt, temp);
 #endif
 
@@ -711,11 +705,11 @@ void report_realtime_status(uint8_t client)
   }
   report_util_axis_values(print_position, temp);
   strcat(status, temp);
-
+  
+  int bufsize = 0;
   // Returns planner and serial read buffer states.
   #ifdef REPORT_FIELD_BUFFER_STATE
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_BUFFER_STATE)) {
-    int bufsize;
     if (client == CLIENT_TELNET) {
 #ifdef ENABLE_TELNET
       bufsize = telnetServer.get_rx_buffer_available();
@@ -746,9 +740,9 @@ void report_realtime_status(uint8_t client)
   #ifdef REPORT_FIELD_CURRENT_FEED_SPEED
     #ifdef VARIABLE_SPINDLE
       if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-        xsprintf(temp, "|FS:%.1f,%.0f", st_get_realtime_rate(), sys.spindle_speed / MM_PER_INCH);
+        grbl_send(client,"|FS:"); printFloat(st_get_realtime_rate(),1); printFloat(sys.spindle_speed / MM_PER_INCH,0);  
       } else {
-        xsprintf(temp, "|FS:%.0f,%.0f", st_get_realtime_rate(), sys.spindle_speed);
+        grbl_send(client,"|FS:"); printFloat(st_get_realtime_rate(),0); printFloat(sys.spindle_speed / MM_PER_INCH,0);  
       }
       strcat(status, temp);
     #else
