@@ -33,22 +33,22 @@ void spindle_init()
     GPIO_InitTypeDef GPIO_InitStruct = {};
     
     // Настройка пина enable шпинделя
-    GPIO_InitStruct.Pin = (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT);
+    GPIO_InitStruct.Pin = SPINDLE_ENABLE_BIT;
     GPIO_InitStruct.Mode = HAL_GPIO_MODE_GPIO_OUTPUT;
     GPIO_InitStruct.Pull = HAL_GPIO_PULL_UP;
-    HAL_GPIO_Init((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, &GPIO_InitStruct);
+    HAL_GPIO_Init(SPINDLE_ENABLE_PORT, &GPIO_InitStruct);
     
     // Настройка пина direction шпинделя, если не используется как enable
     #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
-      GPIO_InitStruct.Pin = (HAL_PinsTypeDef)(1 << SPINDLE_DIRECTION_BIT);
-      HAL_GPIO_Init((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, &GPIO_InitStruct);
+      GPIO_InitStruct.Pin = SPINDLE_DIRECTION_BIT;
+      HAL_GPIO_Init(SPINDLE_ENABLE_PORT, &GPIO_InitStruct);
     #endif
     
     #ifdef VARIABLE_SPINDLE
       // Настройка PWM пина, если определен
       #ifdef SPINDLE_PWM_BIT
-        GPIO_InitStruct.Pin = (HAL_PinsTypeDef)(1 << SPINDLE_PWM_BIT);
-        HAL_GPIO_Init((GPIO_TypeDef*)SPINDLE_PWM_PORT, &GPIO_InitStruct);
+        GPIO_InitStruct.Pin = SPINDLE_PWM_BIT;
+        HAL_GPIO_Init(SPINDLE_PWM_PORT, &GPIO_InitStruct);
       #endif
       pwm_gradient = SPINDLE_PWM_RANGE/(settings.rpm_max-settings.rpm_min);
     #endif
@@ -88,11 +88,11 @@ uint8_t spindle_get_state()
   #ifdef VARIABLE_SPINDLE
     #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
       #ifdef INVERT_SPINDLE_ENABLE_PIN
-        if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT)) == GPIO_PIN_LOW) {
+        if (HAL_GPIO_ReadPin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT) == GPIO_PIN_LOW) {
           return(SPINDLE_STATE_CW);
         }
       #else
-        if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT)) == GPIO_PIN_HIGH) {
+        if (HAL_GPIO_ReadPin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT) == GPIO_PIN_HIGH) {
           return(SPINDLE_STATE_CW);
         }
       #endif
@@ -102,11 +102,11 @@ uint8_t spindle_get_state()
       // Здесь предполагается, что PWM активен, если enable пин активен (или отдельный флаг)
       // Для простоты считаем, что если enable пин активен, то шпиндель вращается
       #ifdef INVERT_SPINDLE_ENABLE_PIN
-        if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT)) == GPIO_PIN_LOW) {
+        if (HAL_GPIO_ReadPin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT) == GPIO_PIN_LOW) {
       #else
-        if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT)) == GPIO_PIN_HIGH) {
+        if (HAL_GPIO_ReadPin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT) == GPIO_PIN_HIGH) {
       #endif
-        if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_DIRECTION_BIT)) == GPIO_PIN_HIGH) {
+        if (HAL_GPIO_ReadPin(SPINDLE_ENABLE_PORT, SPINDLE_DIRECTION_BIT) == GPIO_PIN_HIGH) {
           return(SPINDLE_STATE_CCW);
         } else {
           return(SPINDLE_STATE_CW);
@@ -115,11 +115,11 @@ uint8_t spindle_get_state()
     #endif
   #else
     #ifdef INVERT_SPINDLE_ENABLE_PIN
-      if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT)) == GPIO_PIN_LOW) {
+      if (HAL_GPIO_ReadPin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT) == GPIO_PIN_LOW) {
     #else
-      if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT)) == GPIO_PIN_HIGH) {
+      if (HAL_GPIO_ReadPin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT) == GPIO_PIN_HIGH) {
     #endif
-      if (HAL_GPIO_ReadPin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_DIRECTION_BIT)) == GPIO_PIN_HIGH) {
+      if (HAL_GPIO_ReadPin(SPINDLE_ENABLE_PORT, SPINDLE_DIRECTION_BIT) == GPIO_PIN_HIGH) {
         return(SPINDLE_STATE_CCW);
       } else {
         return(SPINDLE_STATE_CW);
@@ -170,15 +170,15 @@ void spindle_stop()
   #endif
   #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
     #ifdef INVERT_SPINDLE_ENABLE_PIN
-      HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_HIGH);
+      HAL_GPIO_WritePin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT, GPIO_PIN_HIGH);
     #else
-      HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_LOW);
+      HAL_GPIO_WritePin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT, GPIO_PIN_LOW);
     #endif
   #else
     #ifdef INVERT_SPINDLE_ENABLE_PIN
-      HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_HIGH);
+      HAL_GPIO_WritePin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT, GPIO_PIN_HIGH);
     #else
-      HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_LOW);
+      HAL_GPIO_WritePin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT, GPIO_PIN_LOW);
     #endif
   #endif
 #else
@@ -218,9 +218,9 @@ void spindle_stop()
         spindle_stop();
       } else {
         #ifdef INVERT_SPINDLE_ENABLE_PIN
-          HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_LOW);
+          HAL_GPIO_WritePin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT, GPIO_PIN_LOW);
         #else
-          HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_HIGH);
+          HAL_GPIO_WritePin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT, GPIO_PIN_HIGH);
         #endif
       }
     #else
@@ -352,9 +352,9 @@ void spindle_stop()
 #ifdef ELRON_ACE_UNO
     #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
       if (state == SPINDLE_ENABLE_CW) {
-        HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_DIRECTION_BIT), GPIO_PIN_LOW);
+        HAL_GPIO_WritePin(SPINDLE_ENABLE_PORT, SPINDLE_DIRECTION_BIT, GPIO_PIN_LOW);
       } else {
-        HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_DIRECTION_BIT), GPIO_PIN_HIGH);
+        HAL_GPIO_WritePin(SPINDLE_ENABLE_PORT, SPINDLE_DIRECTION_BIT, GPIO_PIN_HIGH);
       }
     #endif
 
@@ -370,9 +370,9 @@ void spindle_stop()
       // NOTE: Without variable spindle, the enable bit should just turn on or off, regardless
       // if the spindle speed value is zero, as its ignored anyhow.
       #ifdef INVERT_SPINDLE_ENABLE_PIN
-        HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_LOW);
+        HAL_GPIO_WritePin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT, GPIO_PIN_LOW);
       #else
-        HAL_GPIO_WritePin((GPIO_TypeDef*)SPINDLE_ENABLE_PORT, (HAL_PinsTypeDef)(1 << SPINDLE_ENABLE_BIT), GPIO_PIN_HIGH);
+        HAL_GPIO_WritePin(SPINDLE_ENABLE_PORT, SPINDLE_ENABLE_BIT, GPIO_PIN_HIGH);
       #endif
     #endif
 #else

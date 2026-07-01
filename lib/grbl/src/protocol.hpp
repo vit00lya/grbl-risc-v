@@ -32,7 +32,7 @@
 
 // Starts Grbl main loop. It handles all incoming characters from the serial port and executes
 // them as they complete. It is also responsible for finishing the initialization procedures.
-void protocol_main_loop();
+void protocol_main_loop(char* line, uint8_t* line_flags);
 
 // Checks and executes a realtime command at various stop points in main program
 void protocol_execute_realtime();

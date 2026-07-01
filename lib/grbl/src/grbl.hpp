@@ -25,6 +25,12 @@
 #define GRBL_VERSION "1.1g"
 #define GRBL_VERSION_BUILD "20181112"
 
+// Определение флагов строки. Включает отслеживание типа комментариев и обнаружение переполнения строки.
+#define LINE_FLAG_OVERFLOW bit(0)
+#define LINE_FLAG_COMMENT_PARENTHESES bit(1)
+#define LINE_FLAG_COMMENT_SEMICOLON bit(2)
+#define LINE_FLAG_LINE_READ bit(3)
+
 extern "C" {
     #include "mik32_hal_pcc.h"
     #include "mik32_hal_gpio.h"

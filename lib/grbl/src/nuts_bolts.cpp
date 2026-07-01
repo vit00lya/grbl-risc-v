@@ -212,3 +212,25 @@ float limit_value_by_axis_maximum(float *max_value, float *unit_vec)
   }
   return(limit_value);
 }
+
+/* Разрешить прерывания по признаку "регистр приемника не пуст" */
+void HAL_UART_RXNE_EnableInterrupt(UART_TypeDef* uart)
+{
+    uart->CONTROL1 |= UART_CONTROL1_RXNEIE_M;
+}
+
+/* Запретить прерывания по признаку "регистр приемника не пуст" */
+void HAL_UART_RXNE_DisableInterrupt(UART_TypeDef* uart)
+{
+    uart->CONTROL1 &= ~UART_CONTROL1_RXNEIE_M;
+}
+
+bool HAL_USART_RXNE_ReadFlag(UART_TypeDef* uart)
+{
+    return ((uart->FLAGS & UART_FLAGS_RXNE_M) == 0) ;
+}
+
+void HAL_USART_RXNE_ClearFlag(UART_TypeDef* uart)
+{
+    uart->FLAGS |= UART_FLAGS_RXNE_M;
+}

@@ -184,3 +184,4 @@ void ClearGPIOInterrupts(uint8_t line_mask) {
 void ClearGPIOInterruptLines(uint8_t mask) {
     GPIO_IRQ->CLEAR = mask;
 }
+

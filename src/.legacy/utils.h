@@ -104,4 +104,5 @@ void delay_us(uint32_t us);
 // Вычисляет гипотенузу, избегая раздутой версии avr-gcc и дополнительной проверки ошибок.
 float hypot_f(float x, float y);
 
+
 #endif

@@ -31,17 +31,17 @@ void coolant_init()
   // Настройка пина для flood охлаждения
   // COOLANT_FLOOD_PORT определен как GPIO_1, COOLANT_FLOOD_BIT как 2
   GPIO_InitTypeDef GPIO_InitStruct = {};
-  GPIO_InitStruct.Pin = (HAL_PinsTypeDef)(1 << COOLANT_FLOOD_BIT);
+  GPIO_InitStruct.Pin = COOLANT_FLOOD_BIT;
   GPIO_InitStruct.Mode = HAL_GPIO_MODE_GPIO_OUTPUT;
   GPIO_InitStruct.Pull = HAL_GPIO_PULL_UP;
-  HAL_GPIO_Init((GPIO_TypeDef*)COOLANT_FLOOD_PORT, &GPIO_InitStruct);
+  HAL_GPIO_Init(COOLANT_FLOOD_PORT, &GPIO_InitStruct);
   
-  #ifdef ENABLE_M7
+  //#ifdef ENABLE_M7
   // Настройка пина для mist охлаждения
   // COOLANT_MIST_BIT определен как 0,9 - это означает порт 0, пин 9
-  GPIO_InitStruct.Pin = (HAL_PinsTypeDef)(1 << 9); // Пин 9
-  HAL_GPIO_Init(GPIO_0, &GPIO_InitStruct);
-  #endif
+  //GPIO_InitStruct.Pin = (HAL_PinsTypeDef)(1 << 9); // Пин 9
+  //HAL_GPIO_Init(GPIO_0, &GPIO_InitStruct);
+  //#endif
 #else
   COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT); // Configure as output pin
   #ifdef ENABLE_M7
@@ -60,7 +60,7 @@ uint8_t coolant_get_state()
 #ifdef ELRON_ACE_UNO
   // Для ELRON_ACE_UNO используем HAL функции для чтения состояния пинов
   // Проверка состояния пина flood охлаждения
-  if (HAL_GPIO_ReadPin((GPIO_TypeDef*)COOLANT_FLOOD_PORT, (HAL_PinsTypeDef)(1 << COOLANT_FLOOD_BIT)) == GPIO_PIN_HIGH) {
+  if (HAL_GPIO_ReadPin(COOLANT_FLOOD_PORT, COOLANT_FLOOD_BIT) == GPIO_PIN_HIGH) {
     cl_state |= COOLANT_STATE_FLOOD;
   }
   
@@ -101,19 +101,19 @@ void coolant_stop()
   // Для ELRON_ACE_UNO используем HAL функции для управления пинами охлаждения
   // Отключение flood охлаждения
   #ifdef INVERT_COOLANT_FLOOD_PIN
-    HAL_GPIO_WritePin((GPIO_TypeDef*)COOLANT_FLOOD_PORT, (HAL_PinsTypeDef)(1 << COOLANT_FLOOD_BIT), GPIO_PIN_HIGH);
+    HAL_GPIO_WritePin(COOLANT_FLOOD_PORT, COOLANT_FLOOD_BIT, GPIO_PIN_HIGH);
   #else
-    HAL_GPIO_WritePin((GPIO_TypeDef*)COOLANT_FLOOD_PORT, (HAL_PinsTypeDef)(1 << COOLANT_FLOOD_BIT), GPIO_PIN_LOW);
+    HAL_GPIO_WritePin(COOLANT_FLOOD_PORT, COOLANT_FLOOD_BIT, GPIO_PIN_LOW);
   #endif
   
-  #ifdef ENABLE_M7
+  //#ifdef ENABLE_M7
   // Отключение mist охлаждения
-  #ifdef INVERT_COOLANT_MIST_PIN
-    HAL_GPIO_WritePin(GPIO_0, (HAL_PinsTypeDef)(1 << 9), GPIO_PIN_HIGH);
-  #else
-    HAL_GPIO_WritePin(GPIO_0, (HAL_PinsTypeDef)(1 << 9), GPIO_PIN_LOW);
-  #endif
-  #endif
+  //#ifdef INVERT_COOLANT_MIST_PIN
+  //  HAL_GPIO_WritePin(GPIO_0, (HAL_PinsTypeDef)(1 << 9), GPIO_PIN_HIGH);
+  //#else
+  //  HAL_GPIO_WritePin(GPIO_0, (HAL_PinsTypeDef)(1 << 9), GPIO_PIN_LOW);
+  //#endif
+  //#endif
 #else
   #ifdef INVERT_COOLANT_FLOOD_PIN
     COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
@@ -145,15 +145,15 @@ void coolant_set_state(uint8_t mode)
   // Управление flood охлаждением
   if (mode & COOLANT_FLOOD_ENABLE) {
     #ifdef INVERT_COOLANT_FLOOD_PIN
-      HAL_GPIO_WritePin((GPIO_TypeDef*)COOLANT_FLOOD_PORT, (HAL_PinsTypeDef)(1 << COOLANT_FLOOD_BIT), GPIO_PIN_LOW);
+      HAL_GPIO_WritePin(COOLANT_FLOOD_PORT, COOLANT_FLOOD_BIT, GPIO_PIN_LOW);
     #else
-      HAL_GPIO_WritePin((GPIO_TypeDef*)COOLANT_FLOOD_PORT, (HAL_PinsTypeDef)(1 << COOLANT_FLOOD_BIT), GPIO_PIN_HIGH);
+      HAL_GPIO_WritePin(COOLANT_FLOOD_PORT, COOLANT_FLOOD_BIT, GPIO_PIN_HIGH);
     #endif
   } else {
     #ifdef INVERT_COOLANT_FLOOD_PIN
-      HAL_GPIO_WritePin((GPIO_TypeDef*)COOLANT_FLOOD_PORT, (HAL_PinsTypeDef)(1 << COOLANT_FLOOD_BIT), GPIO_PIN_HIGH);
+      HAL_GPIO_WritePin(COOLANT_FLOOD_PORT, COOLANT_FLOOD_BIT, GPIO_PIN_HIGH);
     #else
-      HAL_GPIO_WritePin((GPIO_TypeDef*)COOLANT_FLOOD_PORT, (HAL_PinsTypeDef)(1 << COOLANT_FLOOD_BIT), GPIO_PIN_LOW);
+      HAL_GPIO_WritePin(COOLANT_FLOOD_PORT, COOLANT_FLOOD_BIT, GPIO_PIN_LOW);
     #endif
   }
   

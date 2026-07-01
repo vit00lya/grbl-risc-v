@@ -20,295 +20,252 @@
 */
 #include "grbl.hpp"
 
-// Define line flags. Includes comment type tracking and line overflow detection.
 #define LINE_FLAG_OVERFLOW bit(0)
-#define LINE_FLAG_COMMENT_PARENTHESES bit(1)
-#define LINE_FLAG_COMMENT_SEMICOLON bit(2)
-
-
-static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
 
 static void protocol_exec_rt_suspend();
 
 
 /*
-  GRBL PRIMARY LOOP:
+  ГЛАВНЫЙ ЦИКЛ GRBL:
 */
-void protocol_main_loop()
+void protocol_main_loop(char* line, uint8_t* line_flags)
 {
-  // Perform some machine checks to make sure everything is good to go.
+  // Выполнить проверки оборудования, чтобы убедиться, что всё готово к работе.
   #ifdef CHECK_LIMITS_AT_INIT
     if (bit_istrue(settings.flags, BITFLAG_HARD_LIMIT_ENABLE)) {
       if (limits_get_state()) {
-        sys.state = STATE_ALARM; // Ensure alarm state is active.
+        sys.state = STATE_ALARM; // Убедиться, что состояние тревоги активно.
         report_feedback_message(MESSAGE_CHECK_LIMITS);
       }
     }
   #endif
-  // Check for and report alarm state after a reset, error, or an initial power up.
-  // NOTE: Sleep mode disables the stepper drivers and position can't be guaranteed.
-  // Re-initialize the sleep state as an ALARM mode to ensure user homes or acknowledges.
+  // Проверить и сообщить о состоянии тревоги после сброса, ошибки или начального включения.
+  // ПРИМЕЧАНИЕ: Режим сна отключает драйверы шаговых двигателей, и положение не гарантируется.
+  // Переинициализировать состояние сна как режим ТРЕВОГИ, чтобы пользователь выполнил
+  // перемещение в ноль (homing) или подтвердил сброс.
   if (sys.state & (STATE_ALARM | STATE_SLEEP)) {
     report_feedback_message(MESSAGE_ALARM_LOCK);
-    sys.state = STATE_ALARM; // Ensure alarm state is set.
+    sys.state = STATE_ALARM; // Убедиться, что состояние тревоги установлено.
   } else {
-    // Check if the safety door is open.
+    // Проверить, открыта ли защитная дверца.
     sys.state = STATE_IDLE;
     if (system_check_safety_door_ajar()) {
       bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
-      protocol_execute_realtime(); // Enter safety door mode. Should return as IDLE state.
+      protocol_execute_realtime(); // Войти в режим защитной дверцы. Должен вернуться в состояние IDLE.
     }
-    // All systems go!
-    system_execute_startup(line); // Execute startup script.
+    // Всё готово к работе!
+    system_execute_startup(line); // Выполнить стартовый скрипт.
   }
 
-  // 
+  //
   // ---------------------------------------------------------------------------------
   // Основная петля. При прерывании работы возвращается к функции main.
-  // здесь станок находится в ождании до получения каких-либо команд.
+  // здесь станок находится в ожидании до получения каких-либо команд.
   // ---------------------------------------------------------------------------------
 
-  uint8_t line_flags = 0;
-  uint8_t char_counter = 0;
-  uint8_t c;
-  for (;;) {
-    // Process one line of incoming serial data, as the data becomes available. Performs an
-    // initial filtering by removing spaces and comments and capitalizing all letters.
-    uint8_t client = CLIENT_SERIAL;
-    for (client = 1; client <= CLIENT_COUNT; client++)
-    {
-      while((c = serial_read(client)) != SERIAL_NO_DATA) {
-        if ((c == '\n') || (c == '\r')) { // End of line reached
-          protocol_execute_realtime(); // Runtime command check point.
-          if (sys.abort) { return; } // Bail to calling function upon system abort
 
-          line[char_counter] = 0; // Set string termination character.
+  uint8_t char_counter = 0;
+  uint8_t client = CLIENT_SERIAL;
+  for (;;) {
+    // Обработать одну строку входящих последовательных данных, по мере их поступления.
+    // Выполняет начальную фильтрацию: удаляет пробелы и комментарии, приводит буквы к верхнему регистру.
+    if(*line_flags & LINE_FLAG_LINE_READ){
+          protocol_execute_realtime(); // Точка проверки команд реального времени.
+          if (sys.abort) { return; } // Выход из цикла при системном прерывании
+
+          line[char_counter] = 0; // Установить символ завершения строки.
           #ifdef REPORT_ECHO_LINE_RECEIVED
             report_echo_line_received(line, client);
           #endif
 
-          // Direct and execute one line of formatted input, and report status of execution.
-          if (line_flags & LINE_FLAG_OVERFLOW) {
-            // Report line overflow error.
+          // Направить и выполнить одну строку форматированного ввода и сообщить статус выполнения.
+          if (*line_flags & LINE_FLAG_OVERFLOW) {
+            // Сообщить об ошибке переполнения строки.
             report_status_message(STATUS_OVERFLOW, client);
           } else if (line[0] == 0) {
-            // Empty or comment line. For syncing purposes.
+            // Пустая строка или строка комментария. Для целей синхронизации.
             report_status_message(STATUS_OK, client);
           } else if (line[0] == '$') {
-            // Grbl '$' system command
+            // Системная команда Grbl '$'
             report_status_message(system_execute_line(line, client), client);
           } else if (sys.state & (STATE_ALARM | STATE_JOG)) {
-            // Everything else is gcode. Block if in alarm or jog mode.
+            // Всё остальное — gcode. Блокировать, если в режиме тревоги или JOG.
             report_status_message(STATUS_SYSTEM_GC_LOCK, client);
           } else {
-            // Parse and execute g-code block.
+            // Разобрать и выполнить g-code блок.
             report_status_message(gc_execute_line(line, client), client);
           }
-
-          // Reset tracking data for next line.
-          line_flags = 0;
           char_counter = 0;
-
-        } else {
-
-          if (line_flags) {
-            // Throw away all (except EOL) comment characters and overflow characters.
-            if (c == ')') {
-              // End of '()' comment. Resume line allowed.
-              if (line_flags & LINE_FLAG_COMMENT_PARENTHESES) { line_flags &= ~(LINE_FLAG_COMMENT_PARENTHESES); }
-            }
-          } else {
-            if (c <= ' ') {
-              // Throw away whitepace and control characters
-            } else if (c == '/') {
-              // Block delete NOT SUPPORTED. Ignore character.
-              // NOTE: If supported, would simply need to check the system if block delete is enabled.
-            } else if (c == '(') {
-              // Enable comments flag and ignore all characters until ')' or EOL.
-              // NOTE: This doesn't follow the NIST definition exactly, but is good enough for now.
-              // In the future, we could simply remove the items within the comments, but retain the
-              // comment control characters, so that the g-code parser can error-check it.
-              line_flags |= LINE_FLAG_COMMENT_PARENTHESES;
-            } else if (c == ';') {
-              // NOTE: ';' comment to EOL is a LinuxCNC definition. Not NIST.
-              line_flags |= LINE_FLAG_COMMENT_SEMICOLON;
-            // TODO: Install '%' feature
-            // } else if (c == '%') {
-              // Program start-end percent sign NOT SUPPORTED.
-              // NOTE: This maybe installed to tell Grbl when a program is running vs manual input,
-              // where, during a program, the system auto-cycle start will continue to execute
-              // everything until the next '%' sign. This will help fix resuming issues with certain
-              // functions that empty the planner buffer to execute its task on-time.
-            } else if (char_counter >= (LINE_BUFFER_SIZE-1)) {
-              // Detect line buffer overflow and set flag.
-              line_flags |= LINE_FLAG_OVERFLOW;
-            } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
-              line[char_counter++] = c-'a'+'A';
-            } else {
-              line[char_counter++] = c;
-            }
-          }
-        }
+        // else {
+        // }
         delay(0);
-      }
     }
 
-    // If there are no more characters in the serial read buffer to be processed and executed,
-    // this indicates that g-code streaming has either filled the planner buffer or has
-    // completed. In either case, auto-cycle start, if enabled, any queued moves.
+    // Если в буфере последовательного порта больше нет символов для обработки и выполнения,
+    // это означает, что поток g-code либо заполнил буфер планировщика, либо завершён.
+    // В любом случае, если автозапуск цикла включён, запустить поставленные в очередь перемещения.
     protocol_auto_cycle_start();
 
-    protocol_execute_realtime();  // Runtime command check point.
-    if (sys.abort) { return; } // Bail to main() program loop to reset system.
+    protocol_execute_realtime();  // Точка проверки команд реального времени.
+    if (sys.abort) { return; } // Выход в main() для сброса системы.
     delay(0);
   }
 
-  return; /* Never reached */
+  return; /* Никогда не достигается */
 }
 
 
-// Block until all buffered steps are executed or in a cycle state. Works with feed hold
-// during a synchronize call, if it should happen. Also, waits for clean cycle end.
+// Блокировать выполнение, пока все шаги в буфере не будут выполнены или не войдут в состояние цикла.
+// Работает с удержанием подачи (feed hold) во время вызова синхронизации, если это происходит.
+// Также ожидает чистого завершения цикла.
 void protocol_buffer_synchronize()
 {
-  // If system is queued, ensure cycle resumes if the auto start flag is present.
+  // Если система в очереди, убедиться, что цикл возобновится, если установлен флаг автозапуска.
   protocol_auto_cycle_start();
   do {
-    protocol_execute_realtime();   // Check and execute run-time commands
-    if (sys.abort) { return; } // Check for system abort
+    protocol_execute_realtime();   // Проверить и выполнить команды реального времени
+    if (sys.abort) { return; } // Проверить системное прерывание
     delay(0);
   } while (plan_get_current_block() || (sys.state == STATE_CYCLE));
 }
 
 
-// Auto-cycle start triggers when there is a motion ready to execute and if the main program is not
-// actively parsing commands.
-// NOTE: This function is called from the main loop, buffer sync, and mc_line() only and executes
-// when one of these conditions exist respectively: There are no more blocks sent (i.e. streaming
-// is finished, single commands), a command that needs to wait for the motions in the buffer to
-// execute calls a buffer sync, or the planner buffer is full and ready to go.
+// Автозапуск цикла срабатывает, когда есть готовое к выполнению движение и главная программа
+// не занята активным разбором команд.
+// ПРИМЕЧАНИЕ: Эта функция вызывается из главного цикла, синхронизации буфера и mc_line().
+// Выполняется, когда выполняется одно из условий: больше нет отправленных блоков (поток завершён,
+// одиночные команды), команда, ожидающая выполнения движений в буфере, вызывает синхронизацию,
+// или буфер планировщика заполнен и готов к работе.
 void protocol_auto_cycle_start()
 {
-  if (plan_get_current_block() != NULL) { // Check if there are any blocks in the buffer.
-    system_set_exec_state_flag(EXEC_CYCLE_START); // If so, execute them!
+  if (plan_get_current_block() != NULL) { // Проверить, есть ли блоки в буфере.
+    system_set_exec_state_flag(EXEC_CYCLE_START); // Если есть — выполнить их!
   }
 }
 
 
-// This function is the general interface to Grbl's real-time command execution system. It is called
-// from various check points in the main program, primarily where there may be a while loop waiting
-// for a buffer to clear space or any point where the execution time from the last check point may
-// be more than a fraction of a second. This is a way to execute realtime commands asynchronously
-// (aka multitasking) with grbl's g-code parsing and planning functions. This function also serves
-// as an interface for the interrupts to set the system realtime flags, where only the main program
-// handles them, removing the need to define more computationally-expensive volatile variables. This
-// also provides a controlled way to execute certain tasks without having two or more instances of
-// the same task, such as the planner recalculating the buffer upon a feedhold or overrides.
-// NOTE: The sys_rt_exec_state variable flags are set by any process, step or serial interrupts, pinouts,
-// limit switches, or the main program.
+// Эта функция является общим интерфейсом к системе выполнения команд реального времени Grbl.
+// Она вызывается из различных контрольных точек в главной программе, в первую очередь там,
+// где может быть цикл while, ожидающий освобождения места в буфере, или в любой точке,
+// где время выполнения с последней контрольной точки может превышать долю секунды.
+// Это способ асинхронного выполнения команд реального времени (многозадачность)
+// вместе с функциями разбора g-code и планирования Grbl. Эта функция также служит
+// интерфейсом для прерываний, устанавливающих флаги реального времени системы,
+// которые обрабатываются только главной программой, устраняя необходимость в более
+// вычислительно-затратных volatile-переменных. Это также обеспечивает контролируемый
+// способ выполнения определённых задач без создания двух или более экземпляров
+// одной и той же задачи, например, пересчёт буфера планировщиком при удержании подачи
+// или переопределениях.
+// ПРИМЕЧАНИЕ: Флаги переменной sys_rt_exec_state устанавливаются любым процессом,
+// прерываниями шагового двигателя или последовательного порта, выводами,
+// концевыми выключателями или главной программой.
 void protocol_execute_realtime()
 {
   protocol_exec_rt_system();
   if (sys.suspend) { protocol_exec_rt_suspend(); }
 }
 
-// Executes run-time commands, when required. This function primarily operates as Grbl's state
-// machine and controls the various real-time features Grbl has to offer.
-// NOTE: Do not alter this unless you know exactly what you are doing!
+// Выполняет команды реального времени, когда это необходимо. Эта функция в основном работает
+// как конечный автомат Grbl и управляет различными функциями реального времени.
+// ПРИМЕЧАНИЕ: Не изменяйте это, если вы точно не знаете, что делаете!
 void protocol_exec_rt_system()
 {
-  uint8_t rt_exec; // Temp variable to avoid calling volatile multiple times.
-  rt_exec = sys_rt_exec_alarm; // Copy volatile sys_rt_exec_alarm.
-  if (rt_exec) { // Enter only if any bit flag is true
-    // System alarm. Everything has shutdown by something that has gone severely wrong. Report
-    // the source of the error to the user. If critical, Grbl disables by entering an infinite
-    // loop until system reset/abort.
-    sys.state = STATE_ALARM; // Set system alarm state
+  uint8_t rt_exec; // Временная переменная для избежания множественного обращения к volatile.
+  rt_exec = sys_rt_exec_alarm; // Копировать volatile sys_rt_exec_alarm.
+  if (rt_exec) { // Войти только если установлен хотя бы один битовый флаг
+    // Системная тревога. Всё остановлено из-за серьёзной ошибки. Сообщить
+    // пользователю источник ошибки. При критической ошибке Grbl отключается,
+    // входя в бесконечный цикл до сброса/прерывания системы.
+    sys.state = STATE_ALARM; // Установить состояние тревоги
     report_alarm_message(rt_exec);
-    // Halt everything upon a critical event flag. Currently hard and soft limits flag this.
+    // Остановить всё при флаге критического события. В настоящее время это флаги
+    // жёстких и программных концевых выключателей.
     if ((rt_exec == EXEC_ALARM_HARD_LIMIT) || (rt_exec == EXEC_ALARM_SOFT_LIMIT)) {
       report_feedback_message(MESSAGE_CRITICAL_EVENT);
-      system_clear_exec_state_flag(EXEC_RESET); // Disable any existing reset
+      system_clear_exec_state_flag(EXEC_RESET); // Отключить любой существующий сброс
       do {
         delay(0);
-        // Block everything, except reset and status reports, until user issues reset or power
-        // cycles. Hard limits typically occur while unattended or not paying attention. Gives
-        // the user and a GUI time to do what is needed before resetting, like killing the
-        // incoming stream. The same could be said about soft limits. While the position is not
-        // lost, continued streaming could cause a serious crash if by chance it gets executed.
+        // Блокировать всё, кроме сброса и отчётов о состоянии, пока пользователь
+        // не выполнит сброс или перезагрузку питания. Жёсткие концевые обычно
+        // срабатывают, когда за станком не следят. Даёт пользователю и GUI время
+        // сделать необходимое перед сбросом, например, остановить входящий поток.
+        // То же самое можно сказать о программных концевых. Хотя позиция не теряется,
+        // продолжение потока может привести к серьёзной аварии.
       } while (bit_isfalse(sys_rt_exec_state,EXEC_RESET));
     }
-    system_clear_exec_alarm(); // Clear alarm
+    system_clear_exec_alarm(); // Очистить тревогу
   }
 
-  rt_exec = sys_rt_exec_state; // Copy volatile sys_rt_exec_state.
+  rt_exec = sys_rt_exec_state; // Копировать volatile sys_rt_exec_state.
   if (rt_exec) {
 
-    // Execute system abort.
+    // Выполнить системное прерывание.
     if (rt_exec & EXEC_RESET) {
-      sys.abort = true;  // Only place this is set true.
-      return; // Nothing else to do but exit.
+      sys.abort = true;  // Единственное место, где это устанавливается в true.
+      return; // Больше нечего делать, кроме выхода.
     }
 
-    // Execute and serial print status
+    // Выполнить и вывести через последовательный порт отчёт о состоянии
     if (rt_exec & EXEC_STATUS_REPORT) {
       report_realtime_status(CLIENT_ALL);
       system_clear_exec_state_flag(EXEC_STATUS_REPORT);
     }
 
-    // NOTE: Once hold is initiated, the system immediately enters a suspend state to block all
-    // main program processes until either reset or resumed. This ensures a hold completes safely.
+    // ПРИМЕЧАНИЕ: Как только удержание инициировано, система немедленно входит в состояние
+    // приостановки, блокируя все процессы главной программы до сброса или возобновления.
+    // Это обеспечивает безопасное завершение удержания.
     if (rt_exec & (EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR | EXEC_SLEEP)) {
 
-      // State check for allowable states for hold methods.
+      // Проверка состояния на допустимость для методов удержания.
       if (!(sys.state & (STATE_ALARM | STATE_CHECK_MODE))) {
 
-        // If in CYCLE or JOG states, immediately initiate a motion HOLD.
+        // Если в состоянии CYCLE или JOG, немедленно инициировать удержание движения.
         if (sys.state & (STATE_CYCLE | STATE_JOG)) {
-          if (!(sys.suspend & (SUSPEND_MOTION_CANCEL | SUSPEND_JOG_CANCEL))) { // Block, if already holding.
-            st_update_plan_block_parameters(); // Notify stepper module to recompute for hold deceleration.
-            sys.step_control = STEP_CONTROL_EXECUTE_HOLD; // Initiate suspend state with active flag.
-            if (sys.state == STATE_JOG) { // Jog cancelled upon any hold event, except for sleeping.
+          if (!(sys.suspend & (SUSPEND_MOTION_CANCEL | SUSPEND_JOG_CANCEL))) { // Блокировать, если уже удержание.
+            st_update_plan_block_parameters(); // Уведомить шаговый модуль о пересчёте для замедления удержания.
+            sys.step_control = STEP_CONTROL_EXECUTE_HOLD; // Инициировать состояние приостановки с активным флагом.
+            if (sys.state == STATE_JOG) { // JOG отменяется при любом событии удержания, кроме сна.
               if (!(rt_exec & EXEC_SLEEP)) { sys.suspend |= SUSPEND_JOG_CANCEL; }
             }
           }
         }
-        // If IDLE, Grbl is not in motion. Simply indicate suspend state and hold is complete.
+        // Если IDLE, Grbl не движется. Просто указать состояние приостановки, удержание завершено.
         if (sys.state == STATE_IDLE) { sys.suspend = SUSPEND_HOLD_COMPLETE; }
 
-        // Execute and flag a motion cancel with deceleration and return to idle. Used primarily by probing cycle
-        // to halt and cancel the remainder of the motion.
+        // Выполнить и отметить отмену движения с замедлением и возвратом в IDLE.
+        // Используется в основном циклом зондирования для остановки и отмены остатка движения.
         if (rt_exec & EXEC_MOTION_CANCEL) {
-          // MOTION_CANCEL only occurs during a CYCLE, but a HOLD and SAFETY_DOOR may been initiated beforehand
-          // to hold the CYCLE. Motion cancel is valid for a single planner block motion only, while jog cancel
-          // will handle and clear multiple planner block motions.
-          if (!(sys.state & STATE_JOG)) { sys.suspend |= SUSPEND_MOTION_CANCEL; } // NOTE: State is STATE_CYCLE.
+          // MOTION_CANCEL происходит только во время CYCLE, но HOLD и SAFETY_DOOR могут быть
+          // инициированы заранее для удержания CYCLE. Отмена движения действительна только
+          // для одного блока планировщика, в то время как отмена JOG обрабатывает несколько блоков.
+          if (!(sys.state & STATE_JOG)) { sys.suspend |= SUSPEND_MOTION_CANCEL; } // ПРИМЕЧАНИЕ: Состояние STATE_CYCLE.
         }
 
-        // Execute a feed hold with deceleration, if required. Then, suspend system.
+        // Выполнить удержание подачи с замедлением, если требуется. Затем приостановить систему.
         if (rt_exec & EXEC_FEED_HOLD) {
-          // Block SAFETY_DOOR, JOG, and SLEEP states from changing to HOLD state.
+          // Блокировать переход состояний SAFETY_DOOR, JOG и SLEEP в состояние HOLD.
           if (!(sys.state & (STATE_SAFETY_DOOR | STATE_JOG | STATE_SLEEP))) { sys.state = STATE_HOLD; }
         }
 
-        // Execute a safety door stop with a feed hold and disable spindle/coolant.
-        // NOTE: Safety door differs from feed holds by stopping everything no matter state, disables powered
-        // devices (spindle/coolant), and blocks resuming until switch is re-engaged.
+        // Выполнить останов защитной дверцы с удержанием подачи и отключением шпинделя/СОЖ.
+        // ПРИМЕЧАНИЕ: Защитная дверца отличается от удержания подачи тем, что останавливает всё
+        // независимо от состояния, отключает питаемые устройства (шпиндель/СОЖ) и блокирует
+        // возобновление до повторного замыкания выключателя.
         if (rt_exec & EXEC_SAFETY_DOOR) {
           report_feedback_message(MESSAGE_SAFETY_DOOR_AJAR);
-          // If jogging, block safety door methods until jog cancel is complete. Just flag that it happened.
+          // Если выполняется JOG, блокировать методы защитной дверцы до завершения отмены JOG.
           if (!(sys.suspend & SUSPEND_JOG_CANCEL)) {
-            // Check if the safety re-opened during a restore parking motion only. Ignore if
-            // already retracting, parked or in sleep state.
+            // Проверить, не открылась ли дверца снова во время восстановления парковки.
+            // Игнорировать, если уже втягивание, парковка или сон.
             if (sys.state == STATE_SAFETY_DOOR) {
-              if (sys.suspend & SUSPEND_INITIATE_RESTORE) { // Actively restoring
+              if (sys.suspend & SUSPEND_INITIATE_RESTORE) { // Активное восстановление
                 #ifdef PARKING_ENABLE
-                  // Set hold and reset appropriate control flags to restart parking sequence.
+                  // Установить удержание и сбросить соответствующие флаги для перезапуска парковки.
                   if (sys.step_control & STEP_CONTROL_EXECUTE_SYS_MOTION) {
-                    st_update_plan_block_parameters(); // Notify stepper module to recompute for hold deceleration.
+                    st_update_plan_block_parameters(); // Уведомить шаговый модуль о пересчёте для замедления.
                     sys.step_control = (STEP_CONTROL_EXECUTE_HOLD | STEP_CONTROL_EXECUTE_SYS_MOTION);
                     sys.suspend &= ~(SUSPEND_HOLD_COMPLETE);
-                  } // else NO_MOTION is active.
+                  } // иначе активно NO_MOTION.
                 #endif
                 sys.suspend &= ~(SUSPEND_RETRACT_COMPLETE | SUSPEND_INITIATE_RESTORE | SUSPEND_RESTORE_COMPLETE);
                 sys.suspend |= SUSPEND_RESTART_RETRACT;
@@ -316,8 +273,9 @@ void protocol_exec_rt_system()
             }
             if (sys.state != STATE_SLEEP) { sys.state = STATE_SAFETY_DOOR; }
           }
-          // NOTE: This flag doesn't change when the door closes, unlike sys.state. Ensures any parking motions
-          // are executed if the door switch closes and the state returns to HOLD.
+          // ПРИМЕЧАНИЕ: Этот флаг не меняется при закрытии дверцы, в отличие от sys.state.
+          // Гарантирует выполнение парковочных движений, если выключатель дверцы замкнётся
+          // и состояние вернётся в HOLD.
           sys.suspend |= SUSPEND_SAFETY_DOOR_AJAR;
         }
 
@@ -331,38 +289,38 @@ void protocol_exec_rt_system()
       system_clear_exec_state_flag((EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR | EXEC_SLEEP));
     }
 
-    // Execute a cycle start by starting the stepper interrupt to begin executing the blocks in queue.
+    // Выполнить запуск цикла, запуская прерывание шагового двигателя для выполнения блоков в очереди.
     if (rt_exec & EXEC_CYCLE_START) {
-      // Block if called at same time as the hold commands: feed hold, motion cancel, and safety door.
-      // Ensures auto-cycle-start doesn't resume a hold without an explicit user-input.
+      // Блокировать, если вызвано одновременно с командами удержания: feed hold, motion cancel, safety door.
+      // Гарантирует, что автозапуск цикла не возобновит удержание без явного ввода пользователя.
       if (!(rt_exec & (EXEC_FEED_HOLD | EXEC_MOTION_CANCEL | EXEC_SAFETY_DOOR))) {
-        // Resume door state when parking motion has retracted and door has been closed.
+        // Возобновить состояние дверцы, когда парковочное движение втянуто и дверца закрыта.
         if ((sys.state == STATE_SAFETY_DOOR) && !(sys.suspend & SUSPEND_SAFETY_DOOR_AJAR)) {
           if (sys.suspend & SUSPEND_RESTORE_COMPLETE) {
-            sys.state = STATE_IDLE; // Set to IDLE to immediately resume the cycle.
+            sys.state = STATE_IDLE; // Установить IDLE для немедленного возобновления цикла.
           } else if (sys.suspend & SUSPEND_RETRACT_COMPLETE) {
-            // Flag to re-energize powered components and restore original position, if disabled by SAFETY_DOOR.
-            // NOTE: For a safety door to resume, the switch must be closed, as indicated by HOLD state, and
-            // the retraction execution is complete, which implies the initial feed hold is not active. To
-            // restore normal operation, the restore procedures must be initiated by the following flag. Once,
-            // they are complete, it will call CYCLE_START automatically to resume and exit the suspend.
+            // Флаг для повторного включения питаемых компонентов и восстановления исходной позиции.
+            // ПРИМЕЧАНИЕ: Для возобновления после защитной дверцы выключатель должен быть замкнут
+            // (состояние HOLD), и втягивание должно быть завершено. Для восстановления нормальной
+            // работы процедуры восстановления инициируются следующим флагом. После их завершения
+            // будет автоматически вызван CYCLE_START для возобновления и выхода из приостановки.
             sys.suspend |= SUSPEND_INITIATE_RESTORE;
           }
         }
-        // Cycle start only when IDLE or when a hold is complete and ready to resume.
+        // Запуск цикла только когда IDLE или когда удержание завершено и готово к возобновлению.
         if ((sys.state == STATE_IDLE) || ((sys.state & STATE_HOLD) && (sys.suspend & SUSPEND_HOLD_COMPLETE))) {
           if (sys.state == STATE_HOLD && sys.spindle_stop_ovr) {
-            sys.spindle_stop_ovr |= SPINDLE_STOP_OVR_RESTORE_CYCLE; // Set to restore in suspend routine and cycle start after.
+            sys.spindle_stop_ovr |= SPINDLE_STOP_OVR_RESTORE_CYCLE; // Установить для восстановления в процедуре приостановки и последующего запуска цикла.
           } else {
-            // Start cycle only if queued motions exist in planner buffer and the motion is not canceled.
-            sys.step_control = STEP_CONTROL_NORMAL_OP; // Restore step control to normal operation
+            // Запустить цикл, только если есть движения в очереди планировщика и движение не отменено.
+            sys.step_control = STEP_CONTROL_NORMAL_OP; // Восстановить нормальное управление шагами
             if (plan_get_current_block() && bit_isfalse(sys.suspend,SUSPEND_MOTION_CANCEL)) {
-              sys.suspend = SUSPEND_DISABLE; // Break suspend state.
+              sys.suspend = SUSPEND_DISABLE; // Снять состояние приостановки.
               sys.state = STATE_CYCLE;
-              st_prep_buffer(); // Initialize step segment buffer before beginning cycle.
+              st_prep_buffer(); // Инициализировать буфер сегментов шагов перед началом цикла.
               st_wake_up();
-            } else { // Otherwise, do nothing. Set and resume IDLE state.
-              sys.suspend = SUSPEND_DISABLE; // Break suspend state.
+            } else { // Иначе ничего не делать. Установить и возобновить состояние IDLE.
+              sys.suspend = SUSPEND_DISABLE; // Снять состояние приостановки.
               sys.state = STATE_IDLE;
             }
           }
@@ -372,28 +330,31 @@ void protocol_exec_rt_system()
     }
 
     if (rt_exec & EXEC_CYCLE_STOP) {
-      // Reinitializes the cycle plan and stepper system after a feed hold for a resume. Called by
-      // realtime command execution in the main program, ensuring that the planner re-plans safely.
-      // NOTE: Bresenham algorithm variables are still maintained through both the planner and stepper
-      // cycle reinitializations. The stepper path should continue exactly as if nothing has happened.
-      // NOTE: EXEC_CYCLE_STOP is set by the stepper subsystem when a cycle or feed hold completes.
+      // Переинициализирует план цикла и шаговую систему после удержания подачи для возобновления.
+      // Вызывается выполнением команд реального времени в главной программе, обеспечивая
+      // безопасное перепланирование.
+      // ПРИМЕЧАНИЕ: Переменные алгоритма Брезенхема сохраняются при переинициализации
+      // как планировщика, так и шагового цикла. Путь шагового двигателя должен продолжиться
+      // точно так, как если бы ничего не произошло.
+      // ПРИМЕЧАНИЕ: EXEC_CYCLE_STOP устанавливается подсистемой шагового двигателя,
+      // когда цикл или удержание подачи завершены.
       if ((sys.state & (STATE_HOLD|STATE_SAFETY_DOOR|STATE_SLEEP)) && !(sys.soft_limit) && !(sys.suspend & SUSPEND_JOG_CANCEL)) {
-        // Hold complete. Set to indicate ready to resume.  Remain in HOLD or DOOR states until user
-        // has issued a resume command or reset.
+        // Удержание завершено. Установить флаг готовности к возобновлению.
+        // Оставаться в состояниях HOLD или DOOR, пока пользователь не даст команду возобновления или сброс.
         plan_cycle_reinitialize();
         if (sys.step_control & STEP_CONTROL_EXECUTE_HOLD) { sys.suspend |= SUSPEND_HOLD_COMPLETE; }
         bit_false(sys.step_control,(STEP_CONTROL_EXECUTE_HOLD | STEP_CONTROL_EXECUTE_SYS_MOTION));
       } else {
-        // Motion complete. Includes CYCLE/JOG/HOMING states and jog cancel/motion cancel/soft limit events.
-        // NOTE: Motion and jog cancel both immediately return to idle after the hold completes.
-        if (sys.suspend & SUSPEND_JOG_CANCEL) {   // For jog cancel, flush buffers and sync positions.
+        // Движение завершено. Включает состояния CYCLE/JOG/HOMING и события отмены jog/motion/soft limit.
+        // ПРИМЕЧАНИЕ: Отмена движения и JOG немедленно возвращаются в IDLE после завершения удержания.
+        if (sys.suspend & SUSPEND_JOG_CANCEL) {   // Для отмены JOG очистить буферы и синхронизировать позиции.
           sys.step_control = STEP_CONTROL_NORMAL_OP;
           plan_reset();
           st_reset();
           gc_sync_position();
           plan_sync_position();
         }
-        if (sys.suspend & SUSPEND_SAFETY_DOOR_AJAR) { // Only occurs when safety door opens during jog.
+        if (sys.suspend & SUSPEND_SAFETY_DOOR_AJAR) { // Происходит только когда дверца открывается во время JOG.
           sys.suspend &= ~(SUSPEND_JOG_CANCEL);
           sys.suspend |= SUSPEND_HOLD_COMPLETE;
           sys.state = STATE_SAFETY_DOOR;
@@ -406,10 +367,10 @@ void protocol_exec_rt_system()
     }
   }
 
-  // Execute overrides.
-  rt_exec = sys_rt_exec_motion_override; // Copy volatile sys_rt_exec_motion_override
+  // Выполнить переопределения (override).
+  rt_exec = sys_rt_exec_motion_override; // Копировать volatile sys_rt_exec_motion_override
   if (rt_exec) {
-    system_clear_exec_motion_overrides(); // Clear all motion override flags.
+    system_clear_exec_motion_overrides(); // Очистить все флаги переопределения движения.
 
     uint8_t new_f_override =  sys.f_override;
     if (rt_exec & EXEC_FEED_OVR_RESET) { new_f_override = DEFAULT_FEED_OVERRIDE; }
@@ -428,7 +389,7 @@ void protocol_exec_rt_system()
     if ((new_f_override != sys.f_override) || (new_r_override != sys.r_override)) {
       sys.f_override = new_f_override;
       sys.r_override = new_r_override;
-      sys.report_ovr_counter = 0; // Set to report change immediately
+      sys.report_ovr_counter = 0; // Установить для немедленного отчёта об изменении
       plan_update_velocity_profile_parameters();
       plan_cycle_reinitialize();
     }
@@ -436,9 +397,10 @@ void protocol_exec_rt_system()
 
   rt_exec = sys_rt_exec_accessory_override;
   if (rt_exec) {
-    system_clear_exec_accessory_overrides(); // Clear all accessory override flags.
+    system_clear_exec_accessory_overrides(); // Очистить все флаги переопределения принадлежностей.
 
-    // NOTE: Unlike motion overrides, spindle overrides do not require a planner reinitialization.
+    // ПРИМЕЧАНИЕ: В отличие от переопределений движения, переопределения шпинделя
+    // не требуют переинициализации планировщика.
     uint8_t last_s_override =  sys.spindle_speed_ovr;
     if (rt_exec & EXEC_SPINDLE_OVR_RESET) { last_s_override = DEFAULT_SPINDLE_SPEED_OVERRIDE; }
     if (rt_exec & EXEC_SPINDLE_OVR_COARSE_PLUS) { last_s_override += SPINDLE_OVERRIDE_COARSE_INCREMENT; }
@@ -450,24 +412,24 @@ void protocol_exec_rt_system()
 
     if (last_s_override != sys.spindle_speed_ovr) {
       sys.spindle_speed_ovr = last_s_override;
-      // NOTE: Spindle speed overrides during HOLD state are taken care of by suspend function.
+      // ПРИМЕЧАНИЕ: Переопределения скорости шпинделя во время HOLD обрабатываются функцией приостановки.
       if (sys.state == STATE_IDLE) { spindle_set_state(gc_state.modal.spindle, gc_state.spindle_speed); }
-			else { bit_true(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM); }
-      sys.report_ovr_counter = 0; // Set to report change immediately
+  	else { bit_true(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM); }
+      sys.report_ovr_counter = 0; // Установить для немедленного отчёта об изменении
     }
 
     if (rt_exec & EXEC_SPINDLE_OVR_STOP) {
-      // Spindle stop override allowed only while in HOLD state.
-      // NOTE: Report counters are set in spindle_set_state() when spindle stop is executed.
+      // Переопределение останова шпинделя разрешено только в состоянии HOLD.
+      // ПРИМЕЧАНИЕ: Счётчики отчётов устанавливаются в spindle_set_state() при выполнении останова шпинделя.
       if (sys.state == STATE_HOLD) {
         if (!(sys.spindle_stop_ovr)) { sys.spindle_stop_ovr = SPINDLE_STOP_OVR_INITIATE; }
         else if (sys.spindle_stop_ovr & SPINDLE_STOP_OVR_ENABLED) { sys.spindle_stop_ovr |= SPINDLE_STOP_OVR_RESTORE; }
       }
     }
 
-    // NOTE: Since coolant state always performs a planner sync whenever it changes, the current
-    // run state can be determined by checking the parser state.
-    // NOTE: Coolant overrides only operate during IDLE, CYCLE, HOLD, and JOG states. Ignored otherwise.
+    // ПРИМЕЧАНИЕ: Поскольку состояние СОЖ всегда выполняет синхронизацию планировщика при изменении,
+    // текущее состояние выполнения можно определить по состоянию парсера.
+    // ПРИМЕЧАНИЕ: Переопределения СОЖ работают только в состояниях IDLE, CYCLE, HOLD и JOG.
     if (rt_exec & (EXEC_COOLANT_FLOOD_OVR_TOGGLE | EXEC_COOLANT_MIST_OVR_TOGGLE)) {
       if ((sys.state == STATE_IDLE) || (sys.state & (STATE_CYCLE | STATE_HOLD | STATE_JOG))) {
         uint8_t coolant_state = gc_state.modal.coolant;
@@ -484,7 +446,7 @@ void protocol_exec_rt_system()
           if (coolant_state & COOLANT_FLOOD_ENABLE) { bit_false(coolant_state,COOLANT_FLOOD_ENABLE); }
           else { coolant_state |= COOLANT_FLOOD_ENABLE; }
         #endif
-        coolant_set_state(coolant_state); // Report counter set in coolant_set_state().
+        coolant_set_state(coolant_state); // Счётчик отчёта устанавливается в coolant_set_state().
         gc_state.modal.coolant = coolant_state;
       }
     }
@@ -497,7 +459,7 @@ void protocol_exec_rt_system()
     }
   #endif
 
-  // Reload step segment buffer
+  // Перезагрузить буфер сегментов шагов
   if (sys.state & (STATE_CYCLE | STATE_HOLD | STATE_SAFETY_DOOR | STATE_HOMING | STATE_SLEEP| STATE_JOG)) {
     st_prep_buffer();
   }
@@ -505,15 +467,15 @@ void protocol_exec_rt_system()
 }
 
 
-// Handles Grbl system suspend procedures, such as feed hold, safety door, and parking motion.
-// The system will enter this loop, create local variables for suspend tasks, and return to
-// whatever function that invoked the suspend, such that Grbl resumes normal operation.
-// This function is written in a way to promote custom parking motions. Simply use this as a
-// template
+// Обрабатывает процедуры приостановки системы Grbl, такие как удержание подачи,
+// защитная дверца и парковочное движение. Система входит в этот цикл, создаёт
+// локальные переменные для задач приостановки и возвращается к функции, вызвавшей
+// приостановку, чтобы Grbl возобновил нормальную работу.
+// Эта функция написана так, чтобы способствовать пользовательским парковочным движениям.
 static void protocol_exec_rt_suspend()
 {
   #ifdef PARKING_ENABLE
-    // Declare and initialize parking local variables
+    // Объявить и инициализировать локальные переменные парковки
     float restore_target[N_AXIS];
     float parking_target[N_AXIS];
     float retract_waypoint = PARKING_PULLOUT_INCREMENT;
@@ -550,27 +512,28 @@ static void protocol_exec_rt_suspend()
   while (sys.suspend) {
     if (sys.abort) { return; }
 
-    // Block until initial hold is complete and the machine has stopped motion.
+    // Блокировать, пока начальное удержание не завершено и станок не остановил движение.
     if (sys.suspend & SUSPEND_HOLD_COMPLETE) {
 
-      // Parking manager. Handles de/re-energizing, switch state checks, and parking motions for
-      // the safety door and sleep states.
+      // Менеджер парковки. Обрабатывает включение/отключение питания, проверку состояния
+      // выключателей и парковочные движения для состояний защитной дверцы и сна.
       if (sys.state & (STATE_SAFETY_DOOR | STATE_SLEEP)) {
 
-        // Handles retraction motions and de-energizing.
+        // Обрабатывает втягивание и отключение питания.
         if (bit_isfalse(sys.suspend,SUSPEND_RETRACT_COMPLETE)) {
 
-          // Ensure any prior spindle stop override is disabled at start of safety door routine.
+          // Убедиться, что предыдущее переопределение останова шпинделя отключено
+          // при запуске процедуры защитной дверцы.
           sys.spindle_stop_ovr = SPINDLE_STOP_OVR_DISABLED;
 
           #ifndef PARKING_ENABLE
 
-            spindle_set_state(SPINDLE_DISABLE,0.0); // De-energize
-            coolant_set_state(COOLANT_DISABLE);     // De-energize
+            spindle_set_state(SPINDLE_DISABLE,0.0); // Отключить питание
+            coolant_set_state(COOLANT_DISABLE);     // Отключить питание
 
           #else
 
-            // Get current position and store restore location and spindle retract waypoint.
+            // Получить текущую позицию и сохранить место восстановления и точку втягивания шпинделя.
             system_convert_array_steps_to_mpos(parking_target,sys_position);
             if (bit_isfalse(sys.suspend,SUSPEND_RESTART_RETRACT)) {
               memcpy(restore_target,parking_target,sizeof(parking_target));
@@ -578,9 +541,10 @@ static void protocol_exec_rt_suspend()
               retract_waypoint = min(retract_waypoint,PARKING_TARGET);
             }
 
-            // Execute slow pull-out parking retract motion. Parking requires homing enabled, the
-            // current location not exceeding the parking target location, and laser mode disabled.
-            // NOTE: State is will remain DOOR, until the de-energizing and retract is complete.
+            // Выполнить медленное вытягивание парковочного втягивания. Парковка требует
+            // включённого homing, текущая позиция не должна превышать целевую позицию парковки,
+            // и лазерный режим должен быть отключён.
+            // ПРИМЕЧАНИЕ: Состояние останется DOOR до завершения отключения питания и втягивания.
             #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
             if ((bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) &&
                             (parking_target[PARKING_AXIS] < PARKING_TARGET) &&
@@ -591,23 +555,24 @@ static void protocol_exec_rt_suspend()
                             (parking_target[PARKING_AXIS] < PARKING_TARGET) &&
                             bit_isfalse(settings.flags,BITFLAG_LASER_MODE)) {
             #endif
-              // Retract spindle by pullout distance. Ensure retraction motion moves away from
-              // the workpiece and waypoint motion doesn't exceed the parking target location.
+              // Втянуть шпиндель на расстояние вытягивания. Убедиться, что движение втягивания
+              // уходит от заготовки и не превышает целевую позицию парковки.
               if (parking_target[PARKING_AXIS] < retract_waypoint) {
                 parking_target[PARKING_AXIS] = retract_waypoint;
                 pl_data->feed_rate = PARKING_PULLOUT_RATE;
-                pl_data->condition |= (restore_condition & PL_COND_ACCESSORY_MASK); // Retain accessory state
+                pl_data->condition |= (restore_condition & PL_COND_ACCESSORY_MASK); // Сохранить состояние принадлежностей
                 pl_data->spindle_speed = restore_spindle_speed;
                 mc_parking_motion(parking_target, pl_data);
               }
 
-              // NOTE: Clear accessory state after retract and after an aborted restore motion.
+              // ПРИМЕЧАНИЕ: Очистить состояние принадлежностей после втягивания
+              // и после прерванного восстановления.
               pl_data->condition = (PL_COND_FLAG_SYSTEM_MOTION|PL_COND_FLAG_NO_FEED_OVERRIDE);
               pl_data->spindle_speed = 0.0;
-              spindle_set_state(SPINDLE_DISABLE,0.0); // De-energize
-              coolant_set_state(COOLANT_DISABLE); // De-energize
+              spindle_set_state(SPINDLE_DISABLE,0.0); // Отключить питание
+              coolant_set_state(COOLANT_DISABLE); // Отключить питание
 
-              // Execute fast parking retract motion to parking target location.
+              // Выполнить быстрое парковочное втягивание к целевой позиции парковки.
               if (parking_target[PARKING_AXIS] < PARKING_TARGET) {
                 parking_target[PARKING_AXIS] = PARKING_TARGET;
                 pl_data->feed_rate = PARKING_RATE;
@@ -616,10 +581,10 @@ static void protocol_exec_rt_suspend()
 
             } else {
 
-              // Parking motion not possible. Just disable the spindle and coolant.
-              // NOTE: Laser mode does not start a parking motion to ensure the laser stops immediately.
-              spindle_set_state(SPINDLE_DISABLE,0.0); // De-energize
-              coolant_set_state(COOLANT_DISABLE);     // De-energize
+              // Парковочное движение невозможно. Просто отключить шпиндель и СОЖ.
+              // ПРИМЕЧАНИЕ: Лазерный режим не запускает парковку, чтобы лазер остановился немедленно.
+              spindle_set_state(SPINDLE_DISABLE,0.0); // Отключить питание
+              coolant_set_state(COOLANT_DISABLE);     // Отключить питание
 
             }
 
@@ -633,37 +598,38 @@ static void protocol_exec_rt_suspend()
 
           if (sys.state == STATE_SLEEP) {
             report_feedback_message(MESSAGE_SLEEP_MODE);
-            // Spindle and coolant should already be stopped, but do it again just to be sure.
-            spindle_set_state(SPINDLE_DISABLE,0.0); // De-energize
-            coolant_set_state(COOLANT_DISABLE); // De-energize
-            st_go_idle(); // Disable steppers
+            // Шпиндель и СОЖ уже должны быть остановлены, но повторить для надёжности.
+            spindle_set_state(SPINDLE_DISABLE,0.0); // Отключить питание
+            coolant_set_state(COOLANT_DISABLE); // Отключить питание
+            st_go_idle(); // Отключить шаговые двигатели
             while (!(sys.abort)) {
               protocol_exec_rt_system();
               delay(0);
-              } // Do nothing until reset.
-            return; // Abort received. Return to re-initialize.
+              } // Ничего не делать до сброса.
+            return; // Получено прерывание. Вернуться для переинициализации.
           }
 
-          // Allows resuming from parking/safety door. Actively checks if safety door is closed and ready to resume.
+          // Разрешить возобновление после парковки/защитной дверцы.
+          // Активно проверять, закрыта ли дверца и готова ли к возобновлению.
           if (sys.state == STATE_SAFETY_DOOR) {
             if (!(system_check_safety_door_ajar())) {
-              sys.suspend &= ~(SUSPEND_SAFETY_DOOR_AJAR); // Reset door ajar flag to denote ready to resume.
+              sys.suspend &= ~(SUSPEND_SAFETY_DOOR_AJAR); // Сбросить флаг открытой дверцы, обозначая готовность к возобновлению.
             }
           }
 
-          // Handles parking restore and safety door resume.
+          // Обрабатывает восстановление парковки и возобновление после защитной дверцы.
           if (sys.suspend & SUSPEND_INITIATE_RESTORE) {
 
             #ifdef PARKING_ENABLE
-              // Execute fast restore motion to the pull-out position. Parking requires homing enabled.
-              // NOTE: State is will remain DOOR, until the de-energizing and retract is complete.
+              // Выполнить быстрое восстановление до позиции вытягивания. Парковка требует homing.
+              // ПРИМЕЧАНИЕ: Состояние останется DOOR до завершения отключения и втягивания.
               #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
               if (((settings.flags & (BITFLAG_HOMING_ENABLE|BITFLAG_LASER_MODE)) == BITFLAG_HOMING_ENABLE) &&
                    (sys.override_ctrl == OVERRIDE_PARKING_MOTION)) {
               #else
               if ((settings.flags & (BITFLAG_HOMING_ENABLE|BITFLAG_LASER_MODE)) == BITFLAG_HOMING_ENABLE) {
               #endif
-                // Check to ensure the motion doesn't move below pull-out position.
+                // Проверить, что движение не уходит ниже позиции вытягивания.
                 if (parking_target[PARKING_AXIS] <= PARKING_TARGET) {
                   parking_target[PARKING_AXIS] = retract_waypoint;
                   pl_data->feed_rate = PARKING_RATE;
@@ -672,12 +638,12 @@ static void protocol_exec_rt_suspend()
               }
             #endif
 
-            // Delayed Tasks: Restart spindle and coolant, delay to power-up, then resume cycle.
+            // Отложенные задачи: перезапустить шпиндель и СОЖ, задержка включения, затем возобновить цикл.
             if (gc_state.modal.spindle != SPINDLE_DISABLE) {
-              // Block if safety door re-opened during prior restore actions.
+              // Блокировать, если дверца снова открылась во время предыдущих действий восстановления.
               if (bit_isfalse(sys.suspend,SUSPEND_RESTART_RETRACT)) {
                 if (bit_istrue(settings.flags,BITFLAG_LASER_MODE)) {
-                  // When in laser mode, ignore spindle spin-up delay. Set to turn on laser when cycle starts.
+                  // В лазерном режиме игнорировать задержку раскрутки шпинделя. Включить лазер при старте цикла.
                   bit_true(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM);
                 } else {
                   spindle_set_state((restore_condition & (PL_COND_FLAG_SPINDLE_CW | PL_COND_FLAG_SPINDLE_CCW)), restore_spindle_speed);
@@ -686,30 +652,30 @@ static void protocol_exec_rt_suspend()
               }
             }
             if (gc_state.modal.coolant != COOLANT_DISABLE) {
-              // Block if safety door re-opened during prior restore actions.
+              // Блокировать, если дверца снова открылась во время предыдущих действий восстановления.
               if (bit_isfalse(sys.suspend,SUSPEND_RESTART_RETRACT)) {
-                // NOTE: Laser mode will honor this delay. An exhaust system is often controlled by this pin.
+                // ПРИМЕЧАНИЕ: Лазерный режим учитывает эту задержку. Вытяжная система часто управляется этим пином.
                 coolant_set_state((restore_condition & (PL_COND_FLAG_COOLANT_FLOOD | PL_COND_FLAG_COOLANT_MIST)));
                 delay_sec(SAFETY_DOOR_COOLANT_DELAY, DELAY_MODE_SYS_SUSPEND);
               }
             }
 
             #ifdef PARKING_ENABLE
-              // Execute slow plunge motion from pull-out position to resume position.
+              // Выполнить медленное погружение от позиции вытягивания до позиции возобновления.
               #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
               if (((settings.flags & (BITFLAG_HOMING_ENABLE|BITFLAG_LASER_MODE)) == BITFLAG_HOMING_ENABLE) &&
                    (sys.override_ctrl == OVERRIDE_PARKING_MOTION)) {
               #else
               if ((settings.flags & (BITFLAG_HOMING_ENABLE|BITFLAG_LASER_MODE)) == BITFLAG_HOMING_ENABLE) {
               #endif
-                // Block if safety door re-opened during prior restore actions.
+                // Блокировать, если дверца снова открылась во время предыдущих действий восстановления.
                 if (bit_isfalse(sys.suspend,SUSPEND_RESTART_RETRACT)) {
-                  // Regardless if the retract parking motion was a valid/safe motion or not, the
-                  // restore parking motion should logically be valid, either by returning to the
-                  // original position through valid machine space or by not moving at all.
+                  // Независимо от того, было ли парковочное втягивание допустимым/безопасным,
+                  // восстановление должно быть логически допустимым — либо возвратом в исходную
+                  // позицию через допустимое пространство станка, либо отсутствием движения.
                   pl_data->feed_rate = PARKING_PULLOUT_RATE;
-									pl_data->condition |= (restore_condition & PL_COND_ACCESSORY_MASK); // Restore accessory state
-									pl_data->spindle_speed = restore_spindle_speed;
+        	pl_data->condition |= (restore_condition & PL_COND_ACCESSORY_MASK); // Восстановить состояние принадлежностей
+        	pl_data->spindle_speed = restore_spindle_speed;
                   mc_parking_motion(restore_target, pl_data);
                 }
               }
@@ -717,7 +683,7 @@ static void protocol_exec_rt_suspend()
 
             if (bit_isfalse(sys.suspend,SUSPEND_RESTART_RETRACT)) {
               sys.suspend |= SUSPEND_RESTORE_COMPLETE;
-              system_set_exec_state_flag(EXEC_CYCLE_START); // Set to resume program.
+              system_set_exec_state_flag(EXEC_CYCLE_START); // Установить для возобновления программы.
             }
           }
 
@@ -726,36 +692,37 @@ static void protocol_exec_rt_suspend()
 
       } else {
 
-        // Feed hold manager. Controls spindle stop override states.
-        // NOTE: Hold ensured as completed by condition check at the beginning of suspend routine.
+        // Менеджер удержания подачи. Управляет состояниями переопределения останова шпинделя.
+        // ПРИМЕЧАНИЕ: Удержание считается завершённым по проверке условия в начале процедуры приостановки.
         if (sys.spindle_stop_ovr) {
-          // Handles beginning of spindle stop
+          // Обрабатывает начало останова шпинделя
           if (sys.spindle_stop_ovr & SPINDLE_STOP_OVR_INITIATE) {
             if (gc_state.modal.spindle != SPINDLE_DISABLE) {
-              spindle_set_state(SPINDLE_DISABLE,0.0); // De-energize
-              sys.spindle_stop_ovr = SPINDLE_STOP_OVR_ENABLED; // Set stop override state to enabled, if de-energized.
+              spindle_set_state(SPINDLE_DISABLE,0.0); // Отключить питание
+              sys.spindle_stop_ovr = SPINDLE_STOP_OVR_ENABLED; // Установить состояние переопределения останова как включённое.
             } else {
-              sys.spindle_stop_ovr = SPINDLE_STOP_OVR_DISABLED; // Clear stop override state
+              sys.spindle_stop_ovr = SPINDLE_STOP_OVR_DISABLED; // Очистить состояние переопределения останова
             }
-          // Handles restoring of spindle state
+          // Обрабатывает восстановление состояния шпинделя
           } else if (sys.spindle_stop_ovr & (SPINDLE_STOP_OVR_RESTORE | SPINDLE_STOP_OVR_RESTORE_CYCLE)) {
             if (gc_state.modal.spindle != SPINDLE_DISABLE) {
               report_feedback_message(MESSAGE_SPINDLE_RESTORE);
               if (bit_istrue(settings.flags,BITFLAG_LASER_MODE)) {
-                // When in laser mode, ignore spindle spin-up delay. Set to turn on laser when cycle starts.
+                // В лазерном режиме игнорировать задержку раскрутки. Включить лазер при старте цикла.
                 bit_true(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM);
               } else {
                 spindle_set_state((restore_condition & (PL_COND_FLAG_SPINDLE_CW | PL_COND_FLAG_SPINDLE_CCW)), restore_spindle_speed);
               }
             }
             if (sys.spindle_stop_ovr & SPINDLE_STOP_OVR_RESTORE_CYCLE) {
-              system_set_exec_state_flag(EXEC_CYCLE_START);  // Set to resume program.
+              system_set_exec_state_flag(EXEC_CYCLE_START);  // Установить для возобновления программы.
             }
-            sys.spindle_stop_ovr = SPINDLE_STOP_OVR_DISABLED; // Clear stop override state
+            sys.spindle_stop_ovr = SPINDLE_STOP_OVR_DISABLED; // Очистить состояние переопределения останова
           }
         } else {
-          // Handles spindle state during hold. NOTE: Spindle speed overrides may be altered during hold state.
-          // NOTE: STEP_CONTROL_UPDATE_SPINDLE_PWM is automatically reset upon resume in step generator.
+          // Обрабатывает состояние шпинделя во время удержания.
+          // ПРИМЕЧАНИЕ: Переопределения скорости шпинделя могут изменяться во время удержания.
+          // ПРИМЕЧАНИЕ: STEP_CONTROL_UPDATE_SPINDLE_PWM автоматически сбрасывается при возобновлении в генераторе шагов.
           if (bit_istrue(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM)) {
             spindle_set_state((restore_condition & (PL_COND_FLAG_SPINDLE_CW | PL_COND_FLAG_SPINDLE_CCW)), restore_spindle_speed);
             bit_false(sys.step_control, STEP_CONTROL_UPDATE_SPINDLE_PWM);

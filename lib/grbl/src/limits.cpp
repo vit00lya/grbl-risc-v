@@ -48,13 +48,13 @@ void limits_init()
   // Инициализация пинов концевиков для ELRON_ACE_UNO
   #ifdef ELRON_ACE_UNO
     // X_LIMIT
-    PinInitInputIRQ(X_LIMIT_BIT, (GPIO_TypeDef*)LIMIT_BIT_PORT, pull, (HAL_GPIO_Line_Config)X_LIMIT_LINE_IRQ);
+    PinInitInputIRQ(X_LIMIT_BIT, LIMIT_BIT_PORT, pull, (HAL_GPIO_Line_Config)X_LIMIT_LINE_IRQ);
     // Y_LIMIT
-    PinInitInputIRQ(Y_LIMIT_BIT, (GPIO_TypeDef*)LIMIT_BIT_PORT, pull, (HAL_GPIO_Line_Config)Y_LIMIT_LINE_IRQ);
+    PinInitInputIRQ(Y_LIMIT_BIT, LIMIT_BIT_PORT, pull, (HAL_GPIO_Line_Config)Y_LIMIT_LINE_IRQ);
     // Z_LIMIT
-    PinInitInputIRQ(Z_LIMIT_BIT, (GPIO_TypeDef*)LIMIT_BIT_PORT, pull, (HAL_GPIO_Line_Config)Z_LIMIT_LINE_IRQ);
+    PinInitInputIRQ(Z_LIMIT_BIT, LIMIT_BIT_PORT, pull, (HAL_GPIO_Line_Config)Z_LIMIT_LINE_IRQ);
     // A_LIMIT
-    PinInitInputIRQ(A_LIMIT_BIT, (GPIO_TypeDef*)LIMIT_BIT_PORT, pull, (HAL_GPIO_Line_Config)A_LIMIT_LINE_IRQ);
+    PinInitInputIRQ(A_LIMIT_BIT, LIMIT_BIT_PORT, pull, (HAL_GPIO_Line_Config)A_LIMIT_LINE_IRQ);
   #endif
 
   // Turn off all limit inputs
@@ -82,9 +82,9 @@ uint8_t limits_get_state()
 
   #ifdef ELRON_ACE_UNO
     // Для ELRON_ACE_UNO читаем состояние пинов напрямую
-    if (HAL_GPIO_ReadPin((GPIO_TypeDef*)LIMIT_BIT_PORT, (HAL_PinsTypeDef)(1 << X_LIMIT_BIT)) == GPIO_PIN_LOW) limit_state |= bit(X_AXIS);
-    if (HAL_GPIO_ReadPin((GPIO_TypeDef*)LIMIT_BIT_PORT, (HAL_PinsTypeDef)(1 << Y_LIMIT_BIT)) == GPIO_PIN_LOW) limit_state |= bit(Y_AXIS);
-    if (HAL_GPIO_ReadPin((GPIO_TypeDef*)LIMIT_BIT_PORT, (HAL_PinsTypeDef)(1 << Z_LIMIT_BIT)) == GPIO_PIN_LOW) limit_state |= bit(Z_AXIS);
+    if (HAL_GPIO_ReadPin(LIMIT_BIT_PORT, X_LIMIT_BIT) == GPIO_PIN_LOW) limit_state |= bit(X_AXIS);
+    if (HAL_GPIO_ReadPin(LIMIT_BIT_PORT, Y_LIMIT_BIT) == GPIO_PIN_LOW) limit_state |= bit(Y_AXIS);
+    if (HAL_GPIO_ReadPin(LIMIT_BIT_PORT, Z_LIMIT_BIT) == GPIO_PIN_LOW) limit_state |= bit(Z_AXIS);
   #else
     uint8_t pin = (LIMIT_PORT_INPUTS & LIMIT_MASK);
     #ifdef INVERT_LIMIT_PIN_MASK
@@ -122,9 +122,9 @@ void pin_limit_vect() {
 
   #ifdef ELRON_ACE_UNO
     // Для ELRON_ACE_UNO читаем состояние пинов напрямую
-    if (HAL_GPIO_ReadPin((GPIO_TypeDef*)LIMIT_BIT_PORT, (HAL_PinsTypeDef)(1 << X_LIMIT_BIT)) == GPIO_PIN_LOW) limit_state |= bit(X_AXIS);
-    if (HAL_GPIO_ReadPin((GPIO_TypeDef*)LIMIT_BIT_PORT, (HAL_PinsTypeDef)(1 << Y_LIMIT_BIT)) == GPIO_PIN_LOW) limit_state |= bit(Y_AXIS);
-    if (HAL_GPIO_ReadPin((GPIO_TypeDef*)LIMIT_BIT_PORT, (HAL_PinsTypeDef)(1 << Z_LIMIT_BIT)) == GPIO_PIN_LOW) limit_state |= bit(Z_AXIS);
+    if (HAL_GPIO_ReadPin(LIMIT_BIT_PORT, X_LIMIT_BIT) == GPIO_PIN_LOW) limit_state |= bit(X_AXIS);
+    if (HAL_GPIO_ReadPin(LIMIT_BIT_PORT, Y_LIMIT_BIT) == GPIO_PIN_LOW) limit_state |= bit(Y_AXIS);
+    if (HAL_GPIO_ReadPin(LIMIT_BIT_PORT, Z_LIMIT_BIT) == GPIO_PIN_LOW) limit_state |= bit(Z_AXIS);
     
     // Сброс прерываний для всех линий концевиков
     ClearGPIOInterruptLines((1 << (X_LIMIT_LINE_IRQ >> GPIO_IRQ_LINE_S)) |

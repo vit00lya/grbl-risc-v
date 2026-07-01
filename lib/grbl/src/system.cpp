@@ -227,7 +227,8 @@ uint8_t system_execute_line(char *line, uint8_t client)
           #endif
           } else { return(STATUS_INVALID_STATEMENT); }
           if (!sys.abort) {  // Выполнить стартовые скрипты после успешного возврата в нулевую точку.
-            sys.state = STATE_IDLE;  // Установить в IDLE по завершении.
+            sys.state = STATE_IDLE;  
+// Установить в IDLE по завершении.
             st_go_idle(); // Установить шаговые двигатели в состояние покоя согласно настройкам перед возвратом.
             if (line[2] == 0) { system_execute_startup(line); }
           }
@@ -393,6 +394,7 @@ uint8_t system_check_travel_limits(float *target)
 // Специальные обработчики для установки и очистки флагов выполнения Grbl в реальном времени.
 void system_set_exec_state_flag(uint8_t mask) {
   //uint8_t sreg = save_SREG();
+  HAL_IRQ_DisableInterrupts();
   //cli();
   sys_rt_exec_state |= (mask);
   //restore_SREG(sreg);
@@ -400,6 +402,7 @@ void system_set_exec_state_flag(uint8_t mask) {
 
 void system_clear_exec_state_flag(uint8_t mask) {
   //uint8_t sreg = save_SREG();
+  HAL_IRQ_DisableInterrupts();
   //cli();
   sys_rt_exec_state &= ~(mask);
   //restore_SREG(sreg);
@@ -408,6 +411,7 @@ void system_clear_exec_state_flag(uint8_t mask) {
 
 void system_set_exec_alarm(uint8_t code) {
   //uint8_t sreg = save_SREG();
+  HAL_IRQ_DisableInterrupts();
   //cli();
   sys_rt_exec_alarm = code;
   //restore_SREG(sreg);
@@ -415,6 +419,7 @@ void system_set_exec_alarm(uint8_t code) {
 
 void system_clear_exec_alarm() {
   //uint8_t sreg = save_SREG();
+  HAL_IRQ_DisableInterrupts();
   //cli();
   sys_rt_exec_alarm = 0;
   //restore_SREG(sreg);
@@ -423,6 +428,7 @@ void system_clear_exec_alarm() {
 
 void system_set_exec_motion_override_flag(uint8_t mask) {
   //uint8_t sreg = save_SREG();
+  HAL_IRQ_DisableInterrupts();
   //cli();
   sys_rt_exec_motion_override |= (mask);
   //restore_SREG(sreg);
@@ -430,6 +436,7 @@ void system_set_exec_motion_override_flag(uint8_t mask) {
 
 void system_set_exec_accessory_override_flag(uint8_t mask) {
   //uint8_t sreg = save_SREG();
+  HAL_IRQ_DisableInterrupts();
   //cli();
   sys_rt_exec_accessory_override |= (mask);
   //restore_SREG(sreg);
@@ -437,6 +444,7 @@ void system_set_exec_accessory_override_flag(uint8_t mask) {
 
 void system_clear_exec_motion_overrides() {
   //uint8_t sreg = save_SREG();
+  HAL_IRQ_DisableInterrupts();
   //cli();
   sys_rt_exec_motion_override = 0;
   //restore_SREG(sreg);
@@ -445,6 +453,7 @@ void system_clear_exec_motion_overrides() {
 
 void system_clear_exec_accessory_overrides() {
   //uint8_t sreg = save_SREG();
+  HAL_IRQ_DisableInterrupts();
   //cli();
   sys_rt_exec_accessory_override = 0;
   //restore_SREG(sreg);

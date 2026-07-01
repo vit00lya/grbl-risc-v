@@ -43,9 +43,13 @@ uint8_t serial_get_rx_buffer_available(uint8_t client)
 
 void serial_init()
 {
+
   UART_Init(UART_0, F_CPU/BAUD_RATE, UART_CONTROL1_TE_M | UART_CONTROL1_RE_M  | UART_CONTROL1_M_8BIT_M, 0, 0);
+  HAL_EPIC_MaskLevelSet(HAL_EPIC_UART_0_MASK); 
 
 }
+
+
 
 // Writes one byte to the TX serial buffer. Called by main program.
 void serial_write(uint8_t data) {
@@ -58,7 +62,14 @@ void serial_write(uint8_t data) {
 // Fetches the first byte in the serial read buffer. Called by main program.
 uint16_t serial_read(uint8_t client)
 {
-   return UART_ReadByte(UART_0);
+
+  // if (UART_IsRxFifoEmpty(UART_0)){
+  //  return SERIAL_NO_DATA;
+  // }
+  // else{
+    return UART_ReadByte(UART_0);
+  // }
+  
 }
 
 void serial_poll_rx()

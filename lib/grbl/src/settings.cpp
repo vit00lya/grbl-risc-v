@@ -109,7 +109,7 @@ void settings_restore(uint8_t restore_flag) {
     settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
     settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
 
-    settings.flags = 0;
+     settings.flags = 0;
     if (DEFAULT_REPORT_INCHES) { settings.flags |= BITFLAG_REPORT_INCHES; }
     if (DEFAULT_LASER_MODE) { settings.flags |= BITFLAG_LASER_MODE; }
     if (DEFAULT_INVERT_ST_ENABLE) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }

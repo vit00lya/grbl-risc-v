@@ -98,4 +98,13 @@ void ClearGPIOInterrupts(uint8_t line_mask);
 // Функция для сброса конкретных линий прерываний, заданных через HAL_GPIO_Line
 void ClearGPIOInterruptLines(uint8_t mask);
 
+/* Разрешить прерывания по признаку "регистр приемника не пуст" */
+void HAL_UART_RXNE_EnableInterrupt(UART_TypeDef* local);
+
+/* Запретить прерывания по признаку "регистр приемника не пуст" */
+void HAL_UART_RXNE_DisableInterrupt(UART_TypeDef* local);
+
+void HAL_USART_RXNE_ClearFlag(UART_TypeDef* uart);
+
+bool HAL_USART_RXNE_ReadFlag(UART_TypeDef* uart);
 #endif
